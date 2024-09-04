@@ -21,7 +21,7 @@ exports.signup = async (req, res) => {
         const newClinicianId = lastClinicianId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
         const response = req.body;
         // const accountId = req.params.accountId;
-        const isUser = await Clinical.findOne({ email: response.email });
+        const isUser = await Clinical.findOne({ email: response.email.toLowerCase() });
         console.log(moment(Date.now()).format("MM/DD/YYYY"));
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
@@ -33,7 +33,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email.toLowerCase()}" target="_blank">${response.email.toLowerCase()}</a></p>
                 <p><strong>Password</strong>: <br></p>
                 <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber}</a></p>
                 <p>-----------------------</p>
@@ -50,7 +50,7 @@ exports.signup = async (req, res) => {
             response.aic = newClinicianId;
             response.userStatus = "pending approval"
             const auth = new Clinical(response);
-            let sendResult = mailTrans.sendMail(response.email, subject, content);
+            let sendResult = mailTrans.sendMail(response.email.toLowerCase(), subject, content);
             if (sendResult) {
                 // const delay = Math.floor(Math.random() * (300000 - 180000 + 1)) + 180000; // Random delay between 3-5 minutes
                 // console.log(`Next action will be performed in ${delay / 1000} seconds`);
@@ -63,7 +63,7 @@ exports.signup = async (req, res) => {
                 // }
                 // }, delay)
                 const payload = {
-                    email: response.email,
+                    email: response.email.toLowerCase(),
                     userRole: response.userRole,
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
@@ -87,10 +87,11 @@ exports.signup = async (req, res) => {
 
 //Login Account
 exports.login = async (req, res) => {
+    console.log('start backend')
     try {
         const { email, password, userRole, device } = req.body;
-        const isUser = await Clinical.findOne({ email: email, password: password, userRole: userRole });
-
+        const isUser = await Clinical.findOne({ email: email.toLowerCase(), password: password, userRole: userRole });
+        console.log('is User => ', typeof isUser);
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
@@ -107,7 +108,7 @@ exports.login = async (req, res) => {
                     phoneAuth = true;
                 } else {
                     phoneAuth = false;
-                    const updateUser = await Clinical.updateOne({ email: email, userRole: userRole }, { $set: { logined: true } });
+                    const updateUser = await Clinical.updateOne({ email: email.toLowerCase(), userRole: userRole }, { $set: { logined: true } });
                 }
 
                 if (token) {
@@ -120,7 +121,8 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Clinical.findOne({ email: email, userrole: userRole });
+            const isExist = await Clinical.findOne({ email: email.toLowerCase(), userrole: userRole });
+            console.log('isExist => ', typeof isExist);
 
             if (isExist) {
                 res.status(401).json({ message: "Login informaation is incorrect." })
