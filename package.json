@@ -1,0 +1,49 @@
+{
+  "name": "node-express-mongodb",
+  "version": "1.0.0",
+  "description": "Node.js Restful CRUD API with Node.js, Express and MongoDB",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "rest",
+    "api",
+    "mongodb"
+  ],
+  "author": "crystal",
+  "license": "ISC",
+  "dependencies": {
+    "@clerk/clerk-sdk-node": "^5.0.26",
+    "@ironsoftware/ironpdf": "^2024.7.1",
+    "@sendgrid/mail": "^8.1.3",
+    "@truffle/hdwallet-provider": "^1.7.0",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^5.4.0",
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "jwt-encode": "^1.0.1",
+    "method-override": "^3.0.0",
+    "moment": "^2.30.1",
+    "mongoose": "^6.11.1",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.14",
+    "nodemon": "^3.0.1",
+    "pdfkit": "^0.15.0",
+    "pdfkit-table": "^0.1.99",
+    "puppeteer": "^23.0.2",
+    "socket.io": "^4.7.4",
+    "socket.io-server": "^1.0.0-b",
+    "twilio": "^5.2.2",
+    "web3": "^4.1.1"
+  }
+}
