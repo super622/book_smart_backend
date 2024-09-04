@@ -88,10 +88,9 @@ exports.signup = async (req, res) => {
 //Login Account
 exports.login = async (req, res) => {
     try {
-        console.log("LogIn");
         const { email, password, userRole, device } = req.body;
-        console.log(device, 'dddd');
         const isUser = await Clinical.findOne({ email: email, password: password, userRole: userRole });
+
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
@@ -101,35 +100,33 @@ exports.login = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                console.log(token);
                 let devices = isUser.device;
-                console.log(devices);
                 let phoneAuth = true;
                 if (!devices.includes(device)) {
-                    console.log('true');
                     devices.push(device); // Only push if it's not already present
                     phoneAuth = true;
-                }
-                else {
-                    console.log('false');
+                } else {
                     phoneAuth = false;
                     const updateUser = await Clinical.updateOne({ email: email, userRole: userRole }, { $set: { logined: true } });
+                }
 
-                }
                 if (token) {
-                    console.log(phoneAuth, "ATHATEWER");
                     res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser, phoneAuth: phoneAuth });
-                }
-                else {
+                } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
             }
             else {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+        } else {
+            const isExist = await Clinical.findOne({ email: email, userrole: userRole });
+
+            if (isExist) {
+                res.status(401).json({ message: "Login informaation is incorrect." })
+            } else {
+                res.status(404).json({ message: "User Not Found! Please Register First." })
+            }
         }
     } catch (e) {
         console.log(e);
