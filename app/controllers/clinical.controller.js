@@ -116,8 +116,7 @@ exports.login = async (req, res) => {
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
-            }
-            else {
+            } else {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
