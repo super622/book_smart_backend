@@ -126,7 +126,7 @@ exports.login = async (req, res) => {
             console.log('isExist => ', typeof isExist);
 
             if (isExist) {
-                res.status(401).json({ message: "Login informaation is incorrect." })
+                res.status(401).json({ message: "Login information is incorrect." })
             } else {
                 res.status(404).json({ message: "User Not Found! Please Register First." })
             }

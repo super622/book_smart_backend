@@ -79,11 +79,10 @@ exports.login = async (req, res) => {
     try {
         console.log("LogIn");
         const { contactEmail, password, userRole } = req.body;
-        console.log("email: ", contactEmail)
-        const isUser = await Facility.findOne({ contactEmail: contactEmail, password: password, userRole: userRole });
+        const isUser = await Facility.findOne({ contactEmail: contactEmail.toLowerCase(), password: password, userRole: userRole });
+        console.log(isUser);
         if (isUser) {
             if (isUser.userStatus === 'activate') {
-                console.log('isUser', isUser)
                 const payload = {
                     contactEmail: isUser.contactEmail,
                     userRole: isUser.userRole,
@@ -91,21 +90,22 @@ exports.login = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                console.log(token);
                 if (token) {
-                    // const updateUser = await Facility.updateOne({ contactEmail: contactEmail, userRole: userRole }, { $set: { userStatus: 'activate' } });
                     res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
-                }
-                else {
+                } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
-            }
-            else {
+            } else {
                 res.status(402).json({message: "You are not approved! Please wait until the admin accept you."})
             }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+        } else {
+            const isExist = await Facility.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+      
+            if (isExist) {
+                res.status(401).json({ message: "Login information is incorrect." })
+            } else {
+                res.status(404).json({ message: "User Not Found! Please Register First." })
+            }
         }
     } catch (e) {
         console.log(e);
