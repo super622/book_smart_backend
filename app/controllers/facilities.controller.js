@@ -29,7 +29,6 @@ exports.signup = async (req, res) => {
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
                 <p><strong>Password</strong>: <br></p>
@@ -58,19 +57,20 @@ exports.signup = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                console.log(token);
-                res.status(201).json({ message: "Successfully Registered", token: token });
-            } 
-            else {
-                res.status(405).json({message: 'User not approved.'})
+                return res.status(200).json({ msg: "Successfully Registered", token: token });
+            } else {
+                return res.status(500).json({ msg: "Can't Register Now" });
             }
-        }
-        else {
-            res.status(409).json({ message: "The Email is already registered" })
+        } else {
+            if (isUser.userStatus === 'activate') {
+                return res.status(409).json({ msg: "The Email is already registered" })
+            } else {
+                return res.status(405).json({ msg: 'User not approved.'})
+            }
         }
     } catch (e) {
         console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" });
+        return res.status(404).json({ msg: "An Error Occured!" });
     }
 }
 

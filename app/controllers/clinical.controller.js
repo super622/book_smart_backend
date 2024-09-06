@@ -71,17 +71,19 @@ exports.signup = async (req, res) => {
                 const token = setToken(payload);
                 console.log(token);
                 res.status(201).json({ message: "Successfully Regisetered", token: token });
-            } 
-            else {
-                res.status(405).json({message: 'User not approved.'})
+            } else {
+                return res.status(500).json({ msg: "Can't Register Now" });
             }
-        }
-        else {
-            res.status(409).json({ message: "The Email is already registered" })
+        } else {
+            if (isUser.userStatus === 'activate') {
+                return res.status(409).json({ msg: "The Email is already registered" })
+            } else {
+                return res.status(405).json({ msg: 'User not approved.'})
+            }
         }
     } catch (e) {
         console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" });
+        return res.status(404).json({ msg: "An Error Occured!" });
     }
 }
 
