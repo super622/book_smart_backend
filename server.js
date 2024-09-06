@@ -16,8 +16,8 @@ const certificate = fs.readFileSync('ssl/server.crt', 'utf8');
 
 const credentials = { key: privateKey, cert: certificate };
 
-// const server = http.createServer(app);
-const server = https.createServer(credentials, app);
+const server = http.createServer(app);
+// const server = https.createServer(credentials, app);
 app.use(fileUpload());
 require("./app/socketServer")(server);
 // require("./app/walletavatar")
