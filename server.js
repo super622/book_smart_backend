@@ -1,5 +1,7 @@
 const express = require("express");
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const cors = require("cors");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
@@ -8,7 +10,14 @@ const cron = require('node-cron');
 
 const app = express();
 
-const server = http.createServer(app);
+// Load SSL certificate and key
+const privateKey = fs.readFileSync('ssl/server.key', 'utf8');
+const certificate = fs.readFileSync('ssl/server.cert', 'utf8');
+
+const credentials = { key: privateKey, cert: certificate };
+
+// const server = http.createServer(app);
+const server = https.createServer(credentials, app);
 app.use(fileUpload());
 require("./app/socketServer")(server);
 // require("./app/walletavatar")
