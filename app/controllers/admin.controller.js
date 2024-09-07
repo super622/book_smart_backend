@@ -15,9 +15,8 @@ exports.signup = async (req, res) => {
     try {
         console.log("register");
         const response = req.body;
-        // const accountId = req.params.accountId;
         const isUser = await Admin.findOne({ email: response.email });
-        // console.log(isUser);
+
         if (!isUser) {
             response.entryDate = new Date();
             const auth = new Admin(response);
@@ -31,9 +30,7 @@ exports.signup = async (req, res) => {
             const token = setToken(payload);
             console.log(token);
             res.status(201).json({ message: "Successfully Regisetered", token: token });
-
-        }
-        else {
+        } else {
             res.status(409).json({ message: "The Email is already registered" })
         }
     } catch (e) {
@@ -47,28 +44,34 @@ exports.login = async (req, res) => {
     try {
         console.log("LogIn");
         const { email, password, userRole } = req.body;
-        const isUser = await Admin.findOne({ email: email, password: password, userRole: userRole });
+        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole });
         if (isUser) {
+            if (isUser.userStatus === 'activate') {
+                const payload = {
+                    email: isUser.email,
+                    userRole: isUser.userRole,
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+                }
+                const token = setToken(payload);
+                console.log(token);
+                if (token) {
+                    const updateUser = await Admin.updateOne({ email: email.toLowerCase(), userRole: userRole }, { $set: { logined: true } });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
+                } else {
+                    res.status(400).json({ message: "Cannot logined User!" })
+                }
+            } else {
+                res.status(402).json({message: "You are not approved! Please wait."})
+            }
+        } else {
+            const isExist = await Admin.findOne({ email: email.toLowerCase(), userRole: userRole });
 
-            const payload = {
-                email: isUser.email,
-                userRole: isUser.userRole,
-                iat: Math.floor(Date.now() / 1000), // Issued at time
-                exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+            if (isExist) {
+                res.status(401).json({ message: "Login information is incorrect." })
+            } else {
+                res.status(404).json({ message: "User Not Found! Please Register First." })
             }
-            const token = setToken(payload);
-            console.log(token);
-            if (token) {
-                const updateUser = await Admin.updateOne({ email: email, userRole: userRole }, { $set: { logined: true } });
-                console.log('ererererer');
-                res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
-            }
-            else {
-                res.status(400).json({ message: "Cannot logined User!" })
-            }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
         }
     } catch (e) {
         console.log(e);
