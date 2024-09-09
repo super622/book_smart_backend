@@ -12,36 +12,35 @@ const expirationTime = 10000000;
 exports.postBid = async (req, res) => {
   try {
     console.log("register");
-    // const accountId = req.params.accountId;
-
     const user = req.user
+
     if (!req.bidId) {
-      const lastBid = await Bid.find().sort({ bidId: -1 }).limit(1); // Retrieve the last BidId
-      const lastBidId = lastBid.length > 0 ? lastBid[0].bidId : 0; // Get the last BidId value or default to 0
-      const newBidId = lastBidId + 1; // Increment the last BidId by 1 to set the new BidId for the next data entry
-      // const isUser = await Bid.findOne({ BidId: newBidId });
       const response = req.body;
-      console.log("new Id------------->", newBidId)
-      response.entryDate = moment(new Date()).format("MM/DD/YYYY");
-      // response.hoursDateAndTIme = new Date();
-    //   response.payRate = '$'+response.payRate;
-      response.bidId = newBidId;
+      const lastBid = await Bid.find().sort({ bidId: -1 }).limit(1);
+      const lastBidId = lastBid.length > 0 ? lastBid[0].bidId : 0;
+      const lastBidOffer = await Job.findOne({ jobId: response.jobId }).select('bid_offer');
+      const newBidOffer = parseInt(lastBidOffer.bid_offer) + 1;
+      const newBidId = lastBidId + 1;
       const facility = await Job.findOne({ jobId: response.jobId }).select('facility');
-      console.log(facility);
+      
+      response.entryDate = moment(new Date()).format("MM/DD/YYYY");
+      response.bidId = newBidId;
       response.facility = facility.facility;
       const auth = new Bid(response);
       await auth.save();
+
+      const updateJob = await Job.updateOne({ jobId: response.jobId }, { $set: { bid_offer: newBidOffer } });
+      console.log(updateJob);
+
       const payload = {
         email: user.email,
         userRole: user.userRole,
         iat: Math.floor(Date.now() / 1000), // Issued at time
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-      }
+      };
       const token = setToken(payload);
-      console.log(token);
       res.status(201).json({ message: "Successfully Registered", token: token });
-    }
-    else {
+    } else {
       console.log('content', req.body.content)
       const id = { jobId: req.body.jobId }
       const updateData = { bid: req.body.content } || { timeSheet: req.body.timeSheet }

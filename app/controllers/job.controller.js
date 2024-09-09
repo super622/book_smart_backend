@@ -150,14 +150,11 @@ exports.postJob = async (req, res) => {
 //Login Account
 exports.shifts = async (req, res) => {
   try {
-    // console.log("shifts");
     const user = req.user;
     const role = req.headers.role;
-    console.log('role------', req.headers.role);
     const data = await Job.find({});
-    // console.log("data---++++++++++++++++++++++++>", data)
     let dataArray = [];
-    // const token = ;
+
     if (role === 'Facilities') {
       data.map((item, index) => {
         console.log(user.companyName, item.facility);

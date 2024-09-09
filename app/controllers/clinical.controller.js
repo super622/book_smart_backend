@@ -19,10 +19,10 @@ exports.signup = async (req, res) => {
         const lastClinician = await Clinical.find().sort({ aic: -1 }).limit(1); // Retrieve the last jobId
         const lastClinicianId = lastClinician.length > 0 ? lastClinician[0].aic : 0; // Get the last jobId value or default to 0
         const newClinicianId = lastClinicianId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
-        const response = req.body;
+        let response = req.body;
         // const accountId = req.params.accountId;
         const isUser = await Clinical.findOne({ email: response.email.toLowerCase() });
-        console.log(moment(Date.now()).format("MM/DD/YYYY"));
+
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
             const content = `<div id=":18t" class="a3s aiL ">
@@ -48,7 +48,8 @@ exports.signup = async (req, res) => {
             </div>`
             response.entryDate = new Date();
             response.aic = newClinicianId;
-            response.userStatus = "pending approval"
+            response.userStatus = "pending approval";
+            response.email = response.email.toLowerCase();
             const auth = new Clinical(response);
             let sendResult = mailTrans.sendMail(response.email.toLowerCase(), subject, content);
             if (sendResult) {

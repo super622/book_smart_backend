@@ -16,11 +16,9 @@ const expirationTime = 10000000;
 exports.signup = async (req, res) => {
     try {
         console.log("register");
-        const response = req.body;
-        console.log('user', req.body)
-        // const accountId = req.params.accountId;
-        const isUser = await Facility.findOne({ contactEmail: response.contactEmail });
-        console.log('isUser--------------------->', isUser);
+        let response = req.body;
+        const isUser = await Facility.findOne({ contactEmail: response.contactEmail.toLowerCase() });
+
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
             const content = `<div id=":18t" class="a3s aiL ">
@@ -30,7 +28,7 @@ exports.signup = async (req, res) => {
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail.toLowerCase()}" target="_blank">${response.contactEmail.toLowerCase()}</a></p>
                 <p><strong>Password</strong>: <br></p>
                 <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber}</a></p>
                 <p>-----------------------</p>
@@ -44,9 +42,10 @@ exports.signup = async (req, res) => {
                 <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
             </div>`
             response.entryDate = new Date();
-            response.userStatus = "pending approval"
+            response.userStatus = "pending approval";
+            response.contactEmail = response.contactEmail.toLowerCase();
             const auth = new Facility(response);
-            console.log(auth)
+
             let sendResult = mailTrans.sendMail(response.email, subject, content);
             if (sendResult) {
                 await auth.save();
@@ -228,13 +227,13 @@ exports.Update = async (req, res) => {
     const user = req.user;
     const role = request.userRole || user.userRole;
     const extracted = extractNonJobId(request);
+
     if (extracted.updateEmail) {
        extracted.contactEmail =extracted.updateEmail; // Create the new property
        delete extracted.updateEmail;
     }
-    console.log("user", user, request);
+    
     if (user) {
-        console.log("items");
         try {
             const updatedDocument = await Facility.findOneAndUpdate(role=="Admin" ? { contactEmail: request.contactEmail, userRole: 'Facilities' } : {contactEmail: req.user.contactEmail, userRole: req.user.userRole}, role=="Admin" ? { $set: extracted } : { $set: request }, { new: false });
             const payload = {
@@ -243,13 +242,12 @@ exports.Update = async (req, res) => {
                 iat: Math.floor(Date.now() / 1000), // Issued at time
                 exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
             };
+
             if (role != 'Admin') {
                 const token = setToken(payload);
-                console.log(token, "\n", updatedDocument);
-                const users = await Facility.findOne({contactEmail: request.contactEmail});
-                if (users) {
-                    res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
-                }
+                const users = await Facility.findOne({contactEmail: user.contactEmail});
+
+                return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
             } else {
                 if (updatedDocument) {
                     if (extracted.userStatus == 'activate') {
@@ -262,8 +260,7 @@ exports.Update = async (req, res) => {
                             <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
                         </div>`
                         let approveResult = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject, verifiedContent);
-                    }
-                    else if (extracted.userStatus == "inactivate") {
+                    } else if (extracted.userStatus == "inactivate") {
                         console.log('Activated .........');
                         const verifySubject = "BookSmart™ - Your Account Restricted"
                         const verifiedContent = `
@@ -273,13 +270,11 @@ exports.Update = async (req, res) => {
                         </div>`
                         let approveResult = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject, verifiedContent);
                     }
-                    res.status(200).json({ message: 'Trading Signals saved Successfully', user: updatedDocument });
+                    return res.status(200).json({ message: 'Trading Signals saved Successfully', user: updatedDocument });
                 }
             }
         } catch (err) {
-            // Handle the error, e.g., return an error response
-            res.status(500).json({ error: err });
-            console.log(err);
+            return res.status(500).json({ error: err });
         }
     }
 };

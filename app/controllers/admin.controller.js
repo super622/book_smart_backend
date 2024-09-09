@@ -14,10 +14,11 @@ const expirationTime = 10000000;
 exports.signup = async (req, res) => {
     try {
         console.log("register");
-        const response = req.body;
-        const isUser = await Admin.findOne({ email: response.email });
+        let response = req.body;
+        const isUser = await Admin.findOne({ email: response.email.toLowerCase() });
 
         if (!isUser) {
+            response.email = response.email.toLowerCase();
             response.entryDate = new Date();
             const auth = new Admin(response);
             await auth.save();
