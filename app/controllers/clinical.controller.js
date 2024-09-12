@@ -3,6 +3,7 @@ const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
 const { set } = require('mongoose');
 const Clinical = db.clinical;
+const Bid = db.bids;
 const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const { verify } = require('jsonwebtoken');
@@ -425,9 +426,21 @@ exports.Update = async (req, res) => {
             }
         })
     }
+};
 
+exports.getClientInfo = async (req, res) => {
+    const bidId = req.body.bidId;
+    const bidder = await Bid.findOne({ bidId });
 
-}
+    if (bidder) {
+        const [firstName, lastName] = bidder.caregiver.split(' ');
+        const UserInfo = await Clinical.findOne({ firstName, lastName });
+        console.log(UserInfo);
+        return res.status(200).json({ message: "success", userData: UserInfo });
+    } else {
+        return res.status(500).json({ message: "Not exist" });
+    }
+};
 
 //Get All Data
 exports.clinician = async (req, res) => {

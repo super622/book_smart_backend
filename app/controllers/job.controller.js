@@ -147,6 +147,17 @@ exports.postJob = async (req, res) => {
   }
 }
 
+// Remove Job
+exports.removeJob = async (req, res) => {
+  console.log(req.body.jobId);
+  if (!req.body.jobId) {
+    return res.status(500).json({ message: "JobId not exist!" });
+  } else {
+    const result = await Job.deleteOne({ jobId: req.body.jobId });
+    return res.status(200).json({ message: "Successfully Removed" });
+  }
+};
+
 //Login Account
 exports.shifts = async (req, res) => {
   try {
@@ -157,26 +168,27 @@ exports.shifts = async (req, res) => {
 
     if (role === 'Facilities') {
       data.map((item, index) => {
-        console.log(user.companyName, item.facility);
+        const hiredUser = Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
         if (user.companyName === item.facility) {
-          console.log('sucss');
-        dataArray.push([item.degree,
-        item.entryDate,
-        item.jobId,
-        item.jobNum,
-        item.location,
-        item.unit,
-        item.shiftDate,
-        item.shift,
-        item.bid_offer,
-        item.bid,
-        item.jobStatus,
-        item.Hired,
-        item.timeSheetVerified,
-        item.jobRating,
-          "delete"])}
-      })
-      console.log(dataArray);
+          dataArray.push([
+            item.degree,
+            item.entryDate,
+            item.jobId,
+            item.jobNum,
+            item.location,
+            item.shiftDate,
+            item.shiftTime,
+            "",
+            item.bid_offer,
+            item.jobStatus,
+            hiredUser ? hiredUser.caregiver : '',
+            item.timeSheetVerified,
+            item.jobRating,
+            "delete"
+          ]);
+        }
+      });
+
       const payload = {
         contactEmail: user.contactEmail,
         userRole: user.userRole,
@@ -269,6 +281,106 @@ exports.shifts = async (req, res) => {
   }
 }
 
+exports.getJob = async (req, res) => {
+  try {
+    const user = req.user;
+    const jobId = req.body.jobId;
+
+    if (!jobId) {
+      return res.status(500).json({ message: "JobId not exist" });
+    }
+
+    // Fetch job data and bidders concurrently
+    const [jobData, bidders] = await Promise.all([
+      Job.findOne({ jobId }),
+      Bid.find({ jobId })
+    ]);
+
+    // Get unique caregiver names
+    const caregiverNames = bidders.map((item) => {
+      const [firstName, lastName] = item.caregiver.split(' ');
+      return { firstName, lastName };
+    });
+
+    // Fetch all caregiver info at once
+    const caregiverInfo = await Clinical.find({
+      $or: caregiverNames
+    });
+
+    const biddersList = bidders.map((item) => {
+      const [firstName, lastName] = item.caregiver.split(' ');
+      const bidderInfo = caregiverInfo.find(
+        (c) => c.firstName === firstName && c.lastName === lastName
+      ) || {};
+      
+      return [
+        item.entryDate,
+        item.caregiver,
+        "",
+        item.message,
+        item.bidStatus,
+        "",
+        item.bidId,
+        bidderInfo.email || '',
+        bidderInfo.phoneNumber || ''
+      ];
+    });
+
+    // Token creation
+    const payload = {
+      contactEmail: user.contactEmail,
+      userRole: user.userRole,
+      iat: Math.floor(Date.now() / 1000), // Issued at time
+      exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
+    };
+    const token = setToken(payload);
+
+    return res.status(200).json({
+      message: "Successfully Get",
+      jobData,
+      bidders: biddersList,
+      token
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "An error occurred", error });
+  }
+};
+
+exports.setAwraded = async (req, res) => {
+  const jobId = req.body.jobId;
+  const bidId = req.body.bidderId;
+  const status = req.body.status;
+  console.log(jobId, bidId, status);
+
+  if (status === 1) {
+    await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded' }});
+    await Bid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+  }
+
+  return res.status(200).json({ message: "Success" });
+};
+
+exports.updateJobRatings = async (req, res) => {
+  const jobId = req.body.jobId;
+  const rating = req.body.rating;
+
+  await Job.updateOne({ jobId }, { $set: { jobRating: rating }});
+  return res.status(200).json({ message: "Success" });
+};
+
+exports.updateJobTSVerify = async (req, res) => {
+  const jobId = req.body.jobId;
+  const status = req.body.status;
+  const file = req.body.file;
+
+  await Job.updateOne({ jobId }, { $set: { timeSheetVerified: status == 1 ? true : false }});
+  if (file?.name !== '') {
+    await Job.updateOne({ jobId }, { $set: { timeSheet: file }});
+  }
+  return res.status(200).json({ message: "Success" });
+};
 
 //Login Account
 exports.myShift = async (req, res) => {

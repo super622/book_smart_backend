@@ -25,5 +25,7 @@ module.exports = app => {
 
   router.get('/clinician', verifyUser, clinical.clinician);
 
+  router.post('/getClientInfo', verifyUser, clinical.getClientInfo);
+
   app.use("/api/clinical", router);
 };
