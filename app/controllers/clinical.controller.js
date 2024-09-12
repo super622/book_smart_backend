@@ -94,7 +94,7 @@ exports.login = async (req, res) => {
     console.log('start backend')
     try {
         const { email, password, userRole, device } = req.body;
-        const isUser = await Clinical.findOne({ email: email.toLowerCase(), password: password, userRole: userRole });
+        const isUser = await Clinical.findOne({ email: email.toLowerCase(), password: password });
         console.log('is User => ', typeof isUser);
         if (isUser) {
             if (isUser.userStatus === 'activate') {
@@ -112,7 +112,7 @@ exports.login = async (req, res) => {
                     phoneAuth = true;
                 } else {
                     phoneAuth = false;
-                    const updateUser = await Clinical.updateOne({ email: email.toLowerCase(), userRole: userRole }, { $set: { logined: true } });
+                    const updateUser = await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
                 }
 
                 if (token) {
@@ -124,7 +124,7 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Clinical.findOne({ email: email.toLowerCase(), userrole: userRole });
+            const isExist = await Clinical.findOne({ email: email.toLowerCase() });
             console.log('isExist => ', typeof isExist);
 
             if (isExist) {
