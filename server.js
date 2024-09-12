@@ -54,8 +54,8 @@ db.mongoose
 
 
 // simple route
-app.get("/test", (req, res) => {
-  res.json({ message: "Welcome to bezkoder application." });
+app.get("/", (req, res) => {
+  res.json({ message: "Server is running" });
 });
 
 require("./app/routes/clinical.route")(app);
