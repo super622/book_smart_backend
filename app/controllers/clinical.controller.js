@@ -298,7 +298,7 @@ exports.verifyPhone = async (req, res) => {
         
     //     // if (verifyCode === testVerifyCode) {
     //         res.status(200).json({message: 'success'})
-    //         const isUser = await Clinical.findOne({ email: email, userRole: 'Clinicians' });
+    //         const isUser = await Clinical.findOne({ email: email, userRole: 'Clinician' });
     //         if (isUser) {
     //             const devices = isUser.device;
                 // devices.push(device);
@@ -323,7 +323,7 @@ exports.verifyPhone = async (req, res) => {
             else { 
                 const payload = {
                     email: email,
-                    userRole: 'Clinicians',
+                    userRole: 'Clinician',
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
@@ -378,7 +378,7 @@ exports.Update = async (req, res) => {
     }
     if (user) {
         console.log("items", user.email);
-        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinicians' } : { email: user.email } ,role=="Admin" ? { $set: extracted } : { $set: request }, { new: false }, (err, updatedDocument) => {
+        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email } ,role=="Admin" ? { $set: extracted } : { $set: request }, { new: false }, (err, updatedDocument) => {
             if (err) {
                 // Handle the error, e.g., return an error response
                 res.status(500).json({ error: err });

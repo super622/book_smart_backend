@@ -204,10 +204,11 @@ exports.shifts = async (req, res) => {
       else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
-    }
-    else if (role === "Clinicians") {
+    } else if (role === "Clinician") {
       data.map((item, index) => {
-        if (item.jobStatus == 'Available') {
+        console.log(item.jobStatus == 'Available');
+        console.log(item.degree == user.title);
+        if (item.jobStatus == 'Available' && item.degree == user.title) {
           dataArray.push({
             jobId: item.jobId,
             degree: item.degree,
@@ -239,8 +240,7 @@ exports.shifts = async (req, res) => {
       else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
-    }
-    else if (role === 'Admin') {
+    } else if (role === 'Admin') {
       data.map((item, index) => {
         const times = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
         dataArray.push([
@@ -394,7 +394,7 @@ exports.myShift = async (req, res) => {
     const data = await Job.find({ nurse: nurse });
     console.log("data---++++>", data)
     let dataArray = [];
-    if (role === "Clinicians") {
+    if (role === "Clinician") {
       data.map((item) => {
         if (item.jobStatus !== 'Available') {
           dataArray.push({

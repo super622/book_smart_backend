@@ -43,7 +43,7 @@ const verifyUser = (req, res, next) => {
         if (req.user.userRole === "Facilities") {
             console.log('Facilities------------------------');
             isUser = await Facility.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole})
-        } else if(req.user.userRole === "Clinicians") {
+        } else if(req.user.userRole === "Clinician") {
             console.log('Clinician');
             isUser = await Clinical.findOne({email: req.user.email, userRole: req.user.userRole})
         } else if(req.user.userRole === "Admin") {

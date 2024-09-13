@@ -417,14 +417,14 @@ exports.UpdateUser = async (req, res) => {
                     res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
                 }
             })        
-        } else if (userRole === 'Clinicians') {
+        } else if (userRole === 'Clinician') {
             const extracted = extractNonJobId(request.updateData, 'email');
             if (extracted.updateEmail) {
                extracted.email =extracted.updateEmail; // Create the new property
                delete extracted.updateEmail;
             }
             console.log(extracted, userRole)
-            Clinical.findOneAndUpdate({ email: request.updateData.email, userRole: 'Clinicians' }, { $set: extracted}, { new: false }, async (err, updatedDocument) => {
+            Clinical.findOneAndUpdate({ email: request.updateData.email, userRole: 'Clinician' }, { $set: extracted}, { new: false }, async (err, updatedDocument) => {
                 if (err) {
                     // Handle the error, e.g., return an error response
                     res.status(500).json({ error: err });
@@ -547,7 +547,7 @@ exports.UpdateUser = async (req, res) => {
             const token = setToken(payload);
             console.log(token, "--3-3-3-3--3-3-3--3-3-3-");
             res.status(200).json({ message: 'Trading Signals saved Successfully', token: token});
-        } else if (userRole === 'Clinicians') {
+        } else if (userRole === 'Clinician') {
             let auth = new Clinical(request.updateData);
             let phone = '';
             let password = '';

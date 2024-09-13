@@ -74,7 +74,7 @@ var verifyUser = function verifyUser(req, res, next) {
             break;
 
           case 7:
-            if (!(req.user.userRole === "Clinicians")) {
+            if (!(req.user.userRole === "Clinician")) {
               _context.next = 11;
               break;
             }

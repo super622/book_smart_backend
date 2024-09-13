@@ -120,7 +120,7 @@ exports.shifts = async (req, res) => {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     }
-    else if (role === "Clinicians") {
+    else if (role === "Clinician") {
       data.map((item, index) => {
         dataArray.push({
           jobId: item.jobId,
