@@ -4,6 +4,8 @@ const { setToken } = require('../utils/verifyToken');
 const { set } = require('mongoose');
 const Job = db.jobs;
 const Bid = db.bids;
+const Facility = db.facilities;
+const mailTrans = require("../controllers/mailTrans.controller.js");
 const moment = require('moment');
 
 // const limitAccNum = 100;
@@ -21,7 +23,8 @@ exports.postBid = async (req, res) => {
       const lastBidOffer = await Job.findOne({ jobId: response.jobId }).select('bid_offer');
       const newBidOffer = parseInt(lastBidOffer.bid_offer) + 1;
       const newBidId = lastBidId + 1;
-      const facility = await Job.findOne({ jobId: response.jobId }).select('facility');
+      const facility = await Job.findOne({ jobId: response.jobId });
+      const facilityEmail = await Facility.findOne({ companyName: facility.facility });
       
       response.entryDate = moment(new Date()).format("MM/DD/YYYY");
       response.bidId = newBidId;
@@ -39,7 +42,28 @@ exports.postBid = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       };
       const token = setToken(payload);
-      res.status(201).json({ message: "Successfully Registered", token: token });
+
+      const verifySubject1 = "BookSmart™ - Applied"
+      const verifiedContent1 = `
+      <div id=":15j" class="a3s aiL ">
+          <p>Hello,</p>
+          <p>${user.firstName} applied to the shift of ${facility.facility}.</p>
+      </div>`
+      
+      let approveResult = mailTrans.sendMail(facilityEmail?.contactEmail, verifySubject1, verifiedContent1);
+      console.log(approveResult);
+  
+      const verifySubject2 = "BookSmart™ - Applied"
+      const verifiedContent2 = `
+      <div id=":15j" class="a3s aiL ">
+          <p>Hello,</p>
+          <p>${user.firstName} applied to the shift of ${facility.facility}.</p>
+      </div>`
+      
+      let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+      console.log(approveResult1)
+
+      return res.status(201).json({ message: "Successfully Applied", token: token });
     } else {
       console.log('content', req.body.content)
       const id = { jobId: req.body.jobId }

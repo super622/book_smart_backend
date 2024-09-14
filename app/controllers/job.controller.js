@@ -58,6 +58,22 @@ function parseTime(timeStr) {
   return new Date(0, 0, 0, hours, minutes || 0); // Create a date object for time
 }
 
+exports.updateTimeSheet = async (req, res) => {
+  const user = req.user;
+  const request = req.body;
+  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: request.timeSheet} });
+
+  const payload = {
+    email: user.email,
+    userRole: user.userRole,
+    iat: Math.floor(Date.now() / 1000), // Issued at time
+    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+  };
+  const token = setToken(payload);
+  // Document updated successfully, return the updated document as the response
+  return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token });
+};
+
 //Regiseter Account
 exports.postJob = async (req, res) => {
   try {
@@ -86,9 +102,8 @@ exports.postJob = async (req, res) => {
       }
       const token = setToken(payload);
       console.log(token);
-      res.status(201).json({ message: "Successfully Registered", token: token });
-    }
-    else {
+      return res.status(201).json({ message: "Successfully Applied", token: token });
+    } else {
       console.log('content', req.body)
       const request = req.body;
       // request.timeSheet._id=new ObjectId(request.timeSheet._id);
@@ -167,8 +182,8 @@ exports.shifts = async (req, res) => {
     let dataArray = [];
 
     if (role === 'Facilities') {
-      data.map((item, index) => {
-        const hiredUser = Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
+      for (const item of data) {
+        const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
         if (user.companyName === item.facility) {
           dataArray.push([
             item.degree,
@@ -187,21 +202,19 @@ exports.shifts = async (req, res) => {
             "delete"
           ]);
         }
-      });
+      }
 
       const payload = {
         contactEmail: user.contactEmail,
         userRole: user.userRole,
         iat: Math.floor(Date.now() / 1000), // Issued at time
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-      }
+      };
       const token = setToken(payload);
-      // console.log('token----------------------------------------------------->',token);
       if (token) {
         // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
         res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
-      }
-      else {
+      } else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     } else if (role === "Clinician") {
@@ -241,24 +254,31 @@ exports.shifts = async (req, res) => {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     } else if (role === 'Admin') {
-      data.map((item, index) => {
-        const times = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
+      for (const item of data) {
+        const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
         dataArray.push([
           item.entryDate,
-          item.nurse,
+          item.facility,
           item.jobId,
           item.jobNum,
           item.location,
           item.shiftDate,
           item.shiftTime,
-          item.bid_offer,
-          item.bid,
+          "view_shift",
+          item.degree,
           item.jobStatus,
-          item.jobRating,
-          item.facility,
-          times
+          hiredUser ? hiredUser.caregiver : '',
+          item.bid_offer,
+          "view_hours",
+          item.isHoursSubmit ? "yes" : "no",
+          item.isHoursApproved ? "yes" : "no",
+          item.timeSheet.name,
+          "",
+          "",
+          "delete"
         ])
-      })
+      }
+
       const payload = {
         email: user.email,
         userRole: user.userRole,
@@ -282,38 +302,22 @@ exports.shifts = async (req, res) => {
 }
 
 exports.getJob = async (req, res) => {
+  console.log('get job');
   try {
-    const user = req.user;
+    // const user = req.user;
     const jobId = req.body.jobId;
 
     if (!jobId) {
       return res.status(500).json({ message: "JobId not exist" });
     }
 
-    // Fetch job data and bidders concurrently
-    const [jobData, bidders] = await Promise.all([
-      Job.findOne({ jobId }),
-      Bid.find({ jobId })
-    ]);
+    let jobData = await Job.findOne({ jobId });
+    const bidders = await Bid.find({ jobId });
 
-    // Get unique caregiver names
-    const caregiverNames = bidders.map((item) => {
-      const [firstName, lastName] = item.caregiver.split(' ');
-      return { firstName, lastName };
-    });
-
-    // Fetch all caregiver info at once
-    const caregiverInfo = await Clinical.find({
-      $or: caregiverNames
-    });
-
-    const biddersList = bidders.map((item) => {
-      const [firstName, lastName] = item.caregiver.split(' ');
-      const bidderInfo = caregiverInfo.find(
-        (c) => c.firstName === firstName && c.lastName === lastName
-      ) || {};
-      
-      return [
+    let biddersList = [];
+    for (const item of bidders) {
+      let bidderInfo = await Clinical.findOne({ firstName: item.caregiver.split(' ')[0], lastName: item.caregiver.split(' ')[1] });
+      biddersList.push([
         item.entryDate,
         item.caregiver,
         "",
@@ -323,23 +327,26 @@ exports.getJob = async (req, res) => {
         item.bidId,
         bidderInfo.email || '',
         bidderInfo.phoneNumber || ''
-      ];
-    });
+      ]);
+    };
+
+    const workedHours = calculateShiftHours(jobData.shiftStartTime, jobData.shiftEndTime);
+    jobData = { ...jobData.toObject(), workedHours: workedHours };
 
     // Token creation
-    const payload = {
-      contactEmail: user.contactEmail,
-      userRole: user.userRole,
-      iat: Math.floor(Date.now() / 1000), // Issued at time
-      exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
-    };
-    const token = setToken(payload);
+    // const payload = {
+    //   contactEmail: user.contactEmail,
+    //   userRole: user.userRole,
+    //   iat: Math.floor(Date.now() / 1000), // Issued at time
+    //   exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
+    // };
+    // const token = setToken(payload);
 
     return res.status(200).json({
       message: "Successfully Get",
       jobData,
       bidders: biddersList,
-      token
+      // token
     });
 
   } catch (error) {
@@ -348,15 +355,61 @@ exports.getJob = async (req, res) => {
   }
 };
 
-exports.setAwraded = async (req, res) => {
+exports.updateHoursStatus = async (req, res) => {
+  const user = req.user;
+  const shiftFromDate = req.body.fromDate;
+  const shiftEndDate = req.body.endDate;
+  const preTime = req.body.preTime;
+  const isHoursApproved = req.body.approved;
+  const noStatusExplanation = req.body.explanation;
+  const lunch = req.body.lunch;
+  const jobId = req.body.jobId;
+
+  const result = await Job.updateOne({ jobId }, { $set: { isHoursApproved, lunch, shiftFromDate: moment(shiftFromDate).format("MM/DD/YYYY h:m:s"), shiftEndDate: moment(shiftEndDate).format("MM/DD/YYYY h:m:s") } });
+  return res.status(200).json({ message: "Success" });
+};
+
+exports.setAwarded = async (req, res) => {
   const jobId = req.body.jobId;
   const bidId = req.body.bidderId;
   const status = req.body.status;
-  console.log(jobId, bidId, status);
+  const nurse = await Bid.findOne({ bidId });
+  const facility = req.user;
+  const user = await Clinical.findOne({ firstName: nurse?.caregiver.split(' ')[0], lastName: nurse?.caregiver.split(' ')[1] });
 
   if (status === 1) {
-    await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded' }});
+    await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
     await Bid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+
+    const verifySubject1 = "BookSmart™ - Awarded"
+    const verifiedContent1 = `
+    <div id=":15j" class="a3s aiL ">
+        <p>Hello ${nurse?.caregiver},</p>
+        <p>Successfully Awarded</p>
+    </div>`
+    
+    let approveResult = mailTrans.sendMail(user?.email, verifySubject1, verifiedContent1);
+    console.log(approveResult);
+
+    const verifySubject2 = "BookSmart™ - Awarded"
+    const verifiedContent2 = `
+    <div id=":15j" class="a3s aiL ">
+        <p>Hello,</p>
+        <p>Shift awarded to ${nurse?.caregiver}</p>
+    </div>`
+    
+    let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+    console.log(approveResult1)
+
+    const verifySubject3 = "BookSmart™ - Awarded"
+    const verifiedContent3 = `
+    <div id=":15j" class="a3s aiL ">
+        <p>Hello ${facility?.companyName},</p>
+        <p>Shift awarded to ${nurse?.caregiver}</p>
+    </div>`
+    
+    let approveResult3 = mailTrans.sendMail(facility?.contactEmail, verifySubject3, verifiedContent3);
+    console.log(approveResult3)
   }
 
   return res.status(200).json({ message: "Success" });
@@ -385,14 +438,13 @@ exports.updateJobTSVerify = async (req, res) => {
 //Login Account
 exports.myShift = async (req, res) => {
   try {
-    // console.log("shifts");
     const user = req.user;
     const role = req.headers.role;
-    console.log('role------', req.headers.role);
     const nurse = user.firstName + ' ' + user.lastName;
-    console.log(nurse, 'nurse-----');
     const data = await Job.find({ nurse: nurse });
-    console.log("data---++++>", data)
+
+    console.log(role);
+
     let dataArray = [];
     if (role === "Clinician") {
       data.map((item) => {
