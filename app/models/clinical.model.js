@@ -77,6 +77,10 @@ module.exports = mongoose => {
       required: true,
       default: ''
     },
+    clinicalAcknowledgeTerm: {
+      type: Boolean,
+      default: false
+    },
     signature: {
       type: String,
       require: true,

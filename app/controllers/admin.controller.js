@@ -7,6 +7,7 @@ const Clinical = db.clinical;
 const Facility = db.facilities;
 const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
+const e = require('cors');
 
 const limitAccNum = 100;
 const expirationTime = 10000000;
@@ -311,6 +312,130 @@ function extractNonJobId(job, mail) {
     
     return newObject;
 }
+
+exports.updateUserInfo = async (req, res) => {
+    const email = req.body.userEmail;
+    const userRole = req.body.userRole;
+    const status = req.body.status;
+    const password = req.body.password;
+
+    if (userRole === 'Admin') {
+        const adminUser = await Admin.findOne({ email });
+
+        await Admin.updateOne({ email }, {$set: { userStatus: status }});
+
+        if (password != '') {
+            await Admin.updateOne({ email }, {$set: { password }});
+            const verifySubject7 = "BookSmart™ - Your password has been changed"
+            const verifiedContent7 = `
+            <div id=":15j" class="a3s aiL ">
+                <p>Hello ${adminUser.firstName},</p>
+                <p>Your BookSmart™ account password has been chnaged.</p>
+                <p>Your password is <b>${password}</b></p>
+            </div>`
+            let approveResult7 = mailTrans.sendMail(updatedDocument.email, verifySubject7, verifiedContent7);
+        }
+
+        if (adminUser.userStatus != status) {
+            if (status == 'activate') {
+                const verifySubject8 = "BookSmart™ - Your Account Approval"
+                const verifiedContent8 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${adminUser.firstName},</p>
+                    <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
+                    <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
+                </div>`
+                let approveResult8 = mailTrans.sendMail(adminUser.email, verifySubject8, verifiedContent8);
+            } else {
+                const verifySubject9 = "BookSmart™ - Your Account Restricted"
+                const verifiedContent9 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${adminUser.firstName},</p>
+                    <p>Your BookSmart™ account has been restricted.</p>
+                </div>`
+                let approveResult9 = mailTrans.sendMail(adminUser.email, verifySubject9, verifiedContent9);
+            }
+        }
+    } else if (userRole === 'Clinician') {
+        const clientUser = await Clinical.findOne({ email });
+
+        await Clinical.updateOne({ email }, {$set: { userStatus: status }});
+
+        if (password != '') {
+            await Clinical.updateOne({ email }, {$set: { password }});
+
+            console.log(email, password, clientUser);
+            const verifySubject1 = "BookSmart™ - Your password has been changed"
+            const verifiedContent1 = `
+            <div id=":15j" class="a3s aiL ">
+                <p>Hello ${clientUser.firstName},</p>
+                <p>Your BookSmart™ account password has been chnaged.</p>
+                <p>Your password is <b>${password}</b></p>
+            </div>`
+            let approveResult1 = mailTrans.sendMail(clientUser.email, verifySubject1, verifiedContent1);
+        }
+
+        if (clientUser.userStatus != status) {
+            if (status == 'activate') {
+                const verifySubject2 = "BookSmart™ - Your Account Approval"
+                const verifiedContent2 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${clientUser.firstName},</p>
+                    <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
+                    <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
+                </div>`
+                let approveResult2 = mailTrans.sendMail(clientUser.email, verifySubject2, verifiedContent2);
+            } else {
+                const verifySubject3 = "BookSmart™ - Your Account Restricted"
+                const verifiedContent3 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${clientUser.firstName},</p>
+                    <p>Your BookSmart™ account has been restricted.</p>
+                </div>`
+                let approveResult3 = mailTrans.sendMail(clientUser.email, verifySubject3, verifiedContent3);
+            }
+        }
+    } else if (userRole === 'Facilities') {
+        const facilityUser = await Facility.findOne({ contactEmail: email });
+
+        await Facility.updateOne({ contactEmail: email }, {$set: { userStatus: status }});
+
+        if (password != '') {
+            await Facility.updateOne({ contactEmail: email }, {$set: { password }});
+            const verifySubject4 = "BookSmart™ - Your password has been changed"
+            const verifiedContent4 = `
+            <div id=":15j" class="a3s aiL ">
+                <p>Hello ${facilityUser.firstName},</p>
+                <p>Your BookSmart™ account password has been chnaged.</p>
+                <p>Your password is <b>${password}</b></p>
+            </div>`
+            let approveResult4 = mailTrans.sendMail(facilityUser.contactEmail, verifySubject4, verifiedContent4);
+        }
+
+        if (facilityUser.userStatus != status) {
+            if (status == 'activate') {
+                const verifySubject5 = "BookSmart™ - Your Account Approval"
+                const verifiedContent5 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${facilityUser.firstName},</p>
+                    <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
+                    <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
+                </div>`
+                let approveResult5 = mailTrans.sendMail(facilityUser.contactEmail, verifySubject5, verifiedContent5);
+            } else {
+                const verifySubject6 = "BookSmart™ - Your Account Restricted"
+                const verifiedContent6 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${facilityUser.firstName},</p>
+                    <p>Your BookSmart™ account has been restricted.</p>
+                </div>`
+                let approveResult6 = mailTrans.sendMail(facilityUser.contactEmail, verifySubject6, verifiedContent6);
+            }
+        }
+    }
+    return res.status(200).json({ message: 'User information has been updated' });
+};
+
 //Update Users Account
 exports.UpdateUser = async (req, res) => {
     console.log('updateSignalUser');

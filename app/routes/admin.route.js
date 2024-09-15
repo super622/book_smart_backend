@@ -20,6 +20,8 @@ module.exports = app => {
   router.post('/update', verifyUser, admin.Update);
 
   router.post('/updateUser', verifyUser, admin.UpdateUser);
+
+  router.post('/updateUserInfo', verifyUser, admin.updateUserInfo);
     
   router.get('/admin', verifyUser, admin.admin);
 

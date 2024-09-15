@@ -50,6 +50,7 @@ exports.signup = async (req, res) => {
             response.entryDate = new Date();
             response.aic = newClinicianId;
             response.userStatus = "pending approval";
+            response.clinicalAcknowledgeTerm = false;
             response.email = response.email.toLowerCase();
             const auth = new Clinical(response);
             let sendResult = mailTrans.sendMail(response.email.toLowerCase(), subject, content);
@@ -369,7 +370,6 @@ exports.Update = async (req, res) => {
     // console.log(request, req.headers, req.headers.userrole);
     const user = req.user;
     const role = req.headers.userrole ? req.headers.userrole : user.userRole;
-    console.log(role, user);
     const extracted = extractNonJobId(request);
     // console.log(extracted)
     if (extracted.updateEmail) {
