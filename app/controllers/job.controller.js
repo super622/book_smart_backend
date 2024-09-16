@@ -61,7 +61,7 @@ function parseTime(timeStr) {
 exports.updateTimeSheet = async (req, res) => {
   const user = req.user;
   const request = req.body;
-  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: request.timeSheet} });
+  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: request.timeSheet, jobStatus: 'Pending Verification'} });
 
   const payload = {
     email: user.email,
@@ -428,7 +428,12 @@ exports.updateJobTSVerify = async (req, res) => {
   const status = req.body.status;
   const file = req.body.file;
 
-  await Job.updateOne({ jobId }, { $set: { timeSheetVerified: status == 1 ? true : false }});
+  if (status == 1) {
+    await Job.updateOne({ jobId }, { $set: { timeSheetVerified: true, jobStatus: 'Verified' }});
+  } else {
+    await Job.updateOne({ jobId }, { $set: { timeSheetVerified: false }});
+  }
+
   if (file?.name !== '') {
     await Job.updateOne({ jobId }, { $set: { timeSheet: file }});
   }
