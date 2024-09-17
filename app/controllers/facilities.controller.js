@@ -30,7 +30,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail.toLowerCase()}" target="_blank">${response.contactEmail.toLowerCase()}</a></p>
                 <p><strong>Password</strong>: <br></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.contactPhone || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
@@ -50,7 +50,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.contactPhone || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
