@@ -56,20 +56,20 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
         sgMail
           .send(msg)
           .then((response) => {
-            console.log(response[0].statusCode)
-            console.log(response[0].headers)
+            console.log('Status => ', response[0]);
+            console.log('Status Code => ', response[0].statusCode)
+            console.log('Status Header => ', response[0].headers)
             if (response[0].status == '202') {
-                console.log('success SendGrid');
-                
+              console.log('success SendGrid');
             }
             return true;
           })
           .catch((error) => {
-            console.error(error)
+            console.log(JSON.stringify(error));
             return false;
           })
     } catch (error) {
-        console.log(error);
+        console.log(JSON.stringify(error));
         return false;
     }
 }
