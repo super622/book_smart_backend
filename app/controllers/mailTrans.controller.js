@@ -45,10 +45,11 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
 
   exports.sendMail = async(email, subject, content) => {
     try {
-        console.log("Creating Transport")
+        console.log("Creating Transport");
+        console.log('to => ', email + ', from  => ', process.env.USER);
         const msg = {
           to: email, // Change to your recipient
-          from: process.env.USER, // Change to your verified sender
+          from: 'support@whybookdumb.com', // Change to your verified sender
           subject: subject,
           html: content,
         }
