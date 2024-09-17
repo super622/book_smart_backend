@@ -20,19 +20,10 @@ exports.signup = async (req, res) => {
         const isUser = await Facility.findOne({ contactEmail: response.contactEmail.toLowerCase() });
 
         if (!isUser) {
-            const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
+            const subject = `Welcome to BookSmart™`
             const content = `<div id=":18t" class="a3s aiL ">
-                <p>
-                <strong>Note: Once you are "APPROVED" you will be notified via email and can view shifts<br></strong>
-                </p>
-                <p><strong>-----------------------<br></strong></p>
-                <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
-                <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail.toLowerCase()}" target="_blank">${response.contactEmail.toLowerCase()}</a></p>
-                <p><strong>Password</strong>: <br></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.contactPhone || ''}</a></p>
-                <p>-----------------------</p>
-                <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
+                <p>Thank you for registering as a Facility User!</p>
+                <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
             </div>`
             response.entryDate = new Date();
             response.userStatus = "pending approval";
@@ -50,7 +41,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.contactPhone || ''}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:${response.contactPhone || ''}" target="_blank">${response.contactPhone || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`

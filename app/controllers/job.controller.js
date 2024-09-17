@@ -61,6 +61,9 @@ function parseTime(timeStr) {
 exports.updateTimeSheet = async (req, res) => {
   const user = req.user;
   const request = req.body;
+  const jobDetail = await Job.findOne({ jobId: request.jobId });
+  const facility = await Facility.findOne({ companyName: jobDetail.facility });
+
   await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: request.timeSheet, jobStatus: 'Pending Verification'} });
 
   const payload = {
@@ -70,8 +73,19 @@ exports.updateTimeSheet = async (req, res) => {
     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
   };
   const token = setToken(payload);
-  // Document updated successfully, return the updated document as the response
-  return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token });
+
+  const verifySubject1 = `${user.firstName} ${user.lastName} has uploaded a timesheet for Shift ID # ${request.jobId}`
+  const verifiedContent1 = `
+  <div id=":15j" class="a3s aiL ">
+    <p><strong>Shift ID</strong> : ${request.jobId}</p>
+    <p><strong>Name</strong> : ${user.firstName} ${user.lastName}</p>
+    <p><strong>Timesheet</strong> : ${request.timeSheet?.name || ''}</p>
+  </div>`
+  let approveResult = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
+  let approveResult1 = mailTrans.sendMail('mikaelpesonen9@gmail.com', verifySubject1, verifiedContent1);
+  let approveResult2 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1);
+
+  return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
 };
 
 //Regiseter Account
@@ -381,35 +395,25 @@ exports.setAwarded = async (req, res) => {
     await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
     await Bid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
 
-    const verifySubject1 = "BookSmart™ - Awarded"
+    const verifySubject1 = `Congrats ${nurse?.caregiver}, You Have Been Hired for Shift - #${jobId}`
     const verifiedContent1 = `
     <div id=":15j" class="a3s aiL ">
-        <p>Hello ${nurse?.caregiver},</p>
-        <p>Successfully Awarded</p>
+      <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+      <p><strong>Job</strong> - ${jobId}</p>
+      <p><strong>Name</strong> : ${nurse?.caregiver}</p>
     </div>`
     
     let approveResult = mailTrans.sendMail(user?.email, verifySubject1, verifiedContent1);
-    console.log(approveResult);
 
-    const verifySubject2 = "BookSmart™ - Awarded"
+    const verifySubject2 =  `${nurse?.caregiver} was hired for Shift - #${jobId}`
     const verifiedContent2 = `
     <div id=":15j" class="a3s aiL ">
-        <p>Hello,</p>
-        <p>Shift awarded to ${nurse?.caregiver}</p>
+      <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+      <p><strong>Job</strong> - ${jobId}</p>
+      <p><strong>Name</strong> : ${nurse?.caregiver}</p>
     </div>`
     
     let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
-    console.log(approveResult1)
-
-    const verifySubject3 = "BookSmart™ - Awarded"
-    const verifiedContent3 = `
-    <div id=":15j" class="a3s aiL ">
-        <p>Hello ${facility?.companyName},</p>
-        <p>Shift awarded to ${nurse?.caregiver}</p>
-    </div>`
-    
-    let approveResult3 = mailTrans.sendMail(facility?.contactEmail, verifySubject3, verifiedContent3);
-    console.log(approveResult3)
   }
 
   return res.status(200).json({ message: "Success" });
@@ -427,6 +431,8 @@ exports.updateJobTSVerify = async (req, res) => {
   const jobId = req.body.jobId;
   const status = req.body.status;
   const file = req.body.file;
+  const JobDetails = await Job.findOne({ jobId });
+  const clinicalInfo = await Clinical.findOne({ firstName: JobDetails.nurse.split(' ')[0], lastName: JobDetails.nurse.split(' ')[1] });
 
   if (status == 1) {
     await Job.updateOne({ jobId }, { $set: { timeSheetVerified: true, jobStatus: 'Verified' }});
@@ -436,6 +442,31 @@ exports.updateJobTSVerify = async (req, res) => {
 
   if (file?.name !== '') {
     await Job.updateOne({ jobId }, { $set: { timeSheet: file }});
+  }
+
+  if (status == 1) {
+    const subject1 = `${clinicalInfo?.firstName} ${clinicalInfo?.lastName} - Your Timesheet has been verified!`;
+    const content1 = `<div id=":18t" class="a3s aiL ">
+      <p><strong>Job / Shift</strong> : ${jobId}</p>
+      <p><strong>Facility</strong> : ${JobDetails?.location || ''}</p>
+      <p><strong>Shift Date</strong> : ${JobDetails?.shiftDate || ''}</p>
+      <p><strong>Time</strong> : ${JobDetails?.shiftTime || ''}</p>
+    </div>`;
+    let sendResult1 = mailTrans.sendMail(clinicalInfo?.email, subject1, content1);
+
+    const subject2 = `${clinicalInfo?.firstName} ${clinicalInfo?.lastName}'s timesheet has been verified!`;
+    const content2 = `<div id=":18t" class="a3s aiL ">
+      <p><strong>Job / Shift</strong> : ${jobId}</p>
+      <p><strong>Facility</strong> : ${JobDetails?.location || ''}</p>
+      <p><strong>Shift Date</strong> : ${JobDetails?.shiftDate || ''}</p>
+      <p><strong>Time</strong> : ${JobDetails?.shiftTime || ''}</p>
+    </div>`;
+
+    // let sendResult2 = mailTrans.sendMail('support@whybookdumb.com', subject2, content2);
+    // let sendResult3 = mailTrans.sendMail('getpaid@whybookdumb.com', subject2, content2);
+
+    let sendResult2 = mailTrans.sendMail('techableteam@gmail.com', subject2, content2);
+    let sendResult3 = mailTrans.sendMail('mikaelpesonen9@gmail.com', subject2, content2);
   }
   return res.status(200).json({ message: "Success" });
 };

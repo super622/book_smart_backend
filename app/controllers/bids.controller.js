@@ -43,25 +43,25 @@ exports.postBid = async (req, res) => {
       };
       const token = setToken(payload);
 
-      const verifySubject1 = "BookSmart™ - Applied"
+      const verifySubject1 = `${user.firstName} ${user.lastName} has applied to Job #${response.jobId}`;
       const verifiedContent1 = `
-      <div id=":15j" class="a3s aiL ">
-          <p>Hello,</p>
-          <p>${user.firstName} applied to the shift of ${facility.facility}.</p>
-      </div>`
+        <div id=":15j" class="a3s aiL ">
+          <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+          <p><strong>Job</strong> - ${response.jobId}</p>
+          <p><strong>Submitted By</strong> : ${user.firstName} ${user.lastName}</p>
+        </div>`;
       
       let approveResult = mailTrans.sendMail(facilityEmail?.contactEmail, verifySubject1, verifiedContent1);
-      console.log(approveResult);
-  
-      const verifySubject2 = "BookSmart™ - Applied"
-      const verifiedContent2 = `
+      let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
+
+      const verifySubject3 = `Thank you for your interest in shift - ${response.jobId}`
+      const verifiedContent3 = `
       <div id=":15j" class="a3s aiL ">
-          <p>Hello,</p>
-          <p>${user.firstName} applied to the shift of ${facility.facility}.</p>
+        <p><span style="color: #0000ff;"><strong>You will be notified via email, if this shift is awarded to you!</strong></span></p>
+        <p>-----------------------</p>
       </div>`
       
-      let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
-      console.log(approveResult1)
+      let approveResult3 = mailTrans.sendMail(user?.email, verifySubject3, verifiedContent3);
 
       return res.status(201).json({ message: "Successfully Applied", token: token });
     } else {

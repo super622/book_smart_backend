@@ -36,8 +36,8 @@ exports.signup = async (req, res) => {
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
-                <p><strong>Password</strong>: ${response.password}<br></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Password</strong>: <br></p>
+                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
@@ -47,6 +47,12 @@ exports.signup = async (req, res) => {
             response.clinicalAcknowledgeTerm = false;
             const auth = new Clinical(response);
             let sendResult = mailTrans.sendMail(response.email, subject, content);
+            const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
+            const content2 = `<div id=":18t" class="a3s aiL ">
+                <p>Please click the following link to fill out the enrollment forms.</p>
+                <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhC7jj-Qqg1kETpx-qVqvryaiJrzPVomGSSnCFCPPc_Q_VSbdCEZnNvPS7PPD1499Gg*" target="_blank">BookSmart™ Enrollment Packet</a></p>
+            </div>`
+            let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
 
             const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
@@ -58,7 +64,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
