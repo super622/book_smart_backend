@@ -81,9 +81,10 @@ exports.updateTimeSheet = async (req, res) => {
     <p><strong>Name</strong> : ${user.firstName} ${user.lastName}</p>
     <p><strong>Timesheet</strong> : ${request.timeSheet?.name || ''}</p>
   </div>`
-  let approveResult = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
-  let approveResult1 = mailTrans.sendMail('mikaelpesonen9@gmail.com', verifySubject1, verifiedContent1);
-  let approveResult2 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1);
+  let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
+  let approveResult2 = mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1);
+  let approveResult3 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
+  let approveResult4 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1);
 
   return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
 };
@@ -413,7 +414,8 @@ exports.setAwarded = async (req, res) => {
       <p><strong>Name</strong> : ${nurse?.caregiver}</p>
     </div>`
     
-    let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+    let approveResult2 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+    let approveResult1 = mailTrans.sendMail('techableteam@gmail.com', verifySubject2, verifiedContent2);
   }
 
   return res.status(200).json({ message: "Success" });
@@ -462,11 +464,9 @@ exports.updateJobTSVerify = async (req, res) => {
       <p><strong>Time</strong> : ${JobDetails?.shiftTime || ''}</p>
     </div>`;
 
-    // let sendResult2 = mailTrans.sendMail('support@whybookdumb.com', subject2, content2);
-    // let sendResult3 = mailTrans.sendMail('getpaid@whybookdumb.com', subject2, content2);
-
+    let sendResult21 = mailTrans.sendMail('support@whybookdumb.com', subject2, content2);
+    let sendResult31 = mailTrans.sendMail('getpaid@whybookdumb.com', subject2, content2);
     let sendResult2 = mailTrans.sendMail('techableteam@gmail.com', subject2, content2);
-    let sendResult3 = mailTrans.sendMail('mikaelpesonen9@gmail.com', subject2, content2);
   }
   return res.status(200).json({ message: "Success" });
 };

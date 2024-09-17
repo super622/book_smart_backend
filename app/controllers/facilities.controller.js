@@ -45,9 +45,8 @@ exports.signup = async (req, res) => {
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
-            // let adminMail = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
+            let adminMail1 = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
             let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
-            let infoMail = mailTrans.sendMail('mikaelpesonen9@gmail.com', subject1, content1);
 
             if (sendResult) {
                 await auth.save();
