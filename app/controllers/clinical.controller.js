@@ -21,8 +21,9 @@ exports.signup = async (req, res) => {
         const lastClinicianId = lastClinician.length > 0 ? lastClinician[0].aic : 0; // Get the last jobId value or default to 0
         const newClinicianId = lastClinicianId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
         let response = req.body;
+        response.email = response.email.toLowerCase()
         // const accountId = req.params.accountId;
-        const isUser = await Clinical.findOne({ email: response.email.toLowerCase() });
+        const isUser = await Clinical.findOne({ email: response.email });
 
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
@@ -34,26 +35,36 @@ exports.signup = async (req, res) => {
                 <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email.toLowerCase()}" target="_blank">${response.email.toLowerCase()}</a></p>
-                <p><strong>Password</strong>: <br></p>
-                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
+                <p><strong>Password</strong>: ${response.password}<br></p>
+                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
-            </div>`
-            const verifySubject = "BookSmart™ - Your Account Approval"
-            const verifiedContent = `
-            <div id=":15j" class="a3s aiL ">
-                <p>Hello ${response.firstName},</p>
-                <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
-                <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
             </div>`
             response.entryDate = new Date();
             response.aic = newClinicianId;
             response.userStatus = "pending approval";
             response.clinicalAcknowledgeTerm = false;
-            response.email = response.email.toLowerCase();
             const auth = new Clinical(response);
-            let sendResult = mailTrans.sendMail(response.email.toLowerCase(), subject, content);
+            let sendResult = mailTrans.sendMail(response.email, subject, content);
+
+            const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            const content1 = `<div id=":18t" class="a3s aiL ">
+                <p>
+                <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
+                </p>
+                <p><strong>-----------------------<br></strong></p>
+                <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
+                <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:914811009" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p>-----------------------</p>
+                <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
+            </div>`
+            let adminMail = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
+            let infoMail = mailTrans.sendMail('info@whybookdumb.com', subject1, content1);
+
             if (sendResult) {
                 // const delay = Math.floor(Math.random() * (300000 - 180000 + 1)) + 180000; // Random delay between 3-5 minutes
                 // console.log(`Next action will be performed in ${delay / 1000} seconds`);
