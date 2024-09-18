@@ -43,16 +43,39 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
 
 
 
-  exports.sendMail = async(email, subject, content) => {
+  exports.sendMail = async(email, subject, content, file = '') => {
     try {
         console.log("Creating Transport");
         console.log('to => ', email + ', from  => ', process.env.USER);
-        const msg = {
-          to: email, // Change to your recipient
-          from: 'support@whybookdumb.com', // Change to your verified sender
-          subject: subject,
-          html: content,
+        let attachFile = file;
+        attachFile.content = attachFile.content.toString('base64');
+        console.log('file => ', attachFile);
+
+        let msg = null;
+        if (attachFile == '') {
+          msg = {
+            to: email,
+            from: 'support@whybookdumb.com',
+            subject: subject,
+            html: content,
+          };
+        } else {
+          msg = {
+            to: email,
+            from: 'support@whybookdumb.com',
+            subject: subject,
+            html: content,
+            attachments: [
+              {
+                content: attachFile?.content || '',
+                filename: attachFile?.name || '',
+                type: attachFile?.type == 'pdf' ? "application/pdf" : "image/jpeg",
+                disposition: "attachment"
+              }
+            ]
+          };
         }
+
         
         sgMail
           .send(msg)

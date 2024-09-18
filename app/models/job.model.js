@@ -81,7 +81,7 @@ module.exports = mongoose => {
       default: ''
     },
     timeSheet: {
-      content: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
       type: { type: String, default: '' },
       name: { type: String, default: '' },
     },

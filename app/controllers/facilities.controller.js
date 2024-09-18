@@ -271,7 +271,7 @@ exports.Update = async (req, res) => {
                         </div>`
                         let approveResult = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject, verifiedContent);
                     }
-                    return res.status(200).json({ message: 'Trading Signals saved Successfully', user: updatedDocument });
+                    return res.status(200).json({ message: 'Responded Successfully!', user: updatedDocument });
                 }
             }
         } catch (err) {
@@ -309,13 +309,13 @@ exports.facility = async (req, res) => {
             }
             const token = setToken(payload);
         // console.log('token----------------------------------------------------->',token);
-        if (token) {
-            // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-            res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
-        }
-        else {
-            res.status(400).json({ message: "Cannot logined User!" })
-        }
+            if (token) {
+                // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
+                res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+            }
+            else {
+                res.status(400).json({ message: "Cannot logined User!" })
+            }
         }
     } catch (e) {
         console.log(e);

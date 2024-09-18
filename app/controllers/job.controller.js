@@ -61,10 +61,12 @@ function parseTime(timeStr) {
 exports.updateTimeSheet = async (req, res) => {
   const user = req.user;
   const request = req.body;
+  let timeSheetFile = request.timeSheet;
+  timeSheetFile.content = Buffer.from(timeSheetFile.content, 'base64');
   const jobDetail = await Job.findOne({ jobId: request.jobId });
   const facility = await Facility.findOne({ companyName: jobDetail.facility });
 
-  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: request.timeSheet, jobStatus: 'Pending Verification'} });
+  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: timeSheetFile, jobStatus: 'Pending Verification'} });
 
   const payload = {
     email: user.email,
@@ -79,12 +81,13 @@ exports.updateTimeSheet = async (req, res) => {
   <div id=":15j" class="a3s aiL ">
     <p><strong>Shift ID</strong> : ${request.jobId}</p>
     <p><strong>Name</strong> : ${user.firstName} ${user.lastName}</p>
-    <p><strong>Timesheet</strong> : ${request.timeSheet?.name || ''}</p>
+    <p><strong>Timesheet</strong> : ${timeSheetFile?.name || ''}</p>
   </div>`
+
   let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
   let approveResult2 = mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1);
   let approveResult3 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
-  let approveResult4 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1);
+  let approveResult4 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
 
   return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
 };
@@ -117,7 +120,7 @@ exports.postJob = async (req, res) => {
       }
       const token = setToken(payload);
       console.log(token);
-      return res.status(201).json({ message: "Successfully Applied", token: token });
+      return res.status(201).json({ message: "Published successfully", token: token });
     } else {
       console.log('content', req.body)
       const request = req.body;
@@ -234,8 +237,6 @@ exports.shifts = async (req, res) => {
       }
     } else if (role === "Clinician") {
       data.map((item, index) => {
-        console.log(item.jobStatus == 'Available');
-        console.log(item.degree == user.title);
         if (item.jobStatus == 'Available' && item.degree == user.title) {
           dataArray.push({
             jobId: item.jobId,
@@ -249,8 +250,7 @@ exports.shifts = async (req, res) => {
             jobInfo: item.jobInfo,
             shiftDateAndTimes: item.shiftDateAndTimes,
             bonus: item.bonus
-          })
-          console.log("ClinicianData: ", data);
+          });
         }
       })
       const payload = {
@@ -260,12 +260,10 @@ exports.shifts = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       }
       const token = setToken(payload);
-      // console.log('token----------------------------------------------------->',token);
+      
       if (token) {
-        // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
         res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
-      }
-      else {
+      } else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     } else if (role === 'Admin') {
@@ -485,21 +483,22 @@ exports.myShift = async (req, res) => {
     if (role === "Clinician") {
       data.map((item) => {
         if (item.jobStatus !== 'Available') {
+          let file = item.timeSheet;
+          file.content = '';
           dataArray.push({
             jobId: item.jobId,
             location: item.location,
             payRate: item.payRate,
             shiftStatus: item.jobStatus,
             caregiver: item.nurse,
-            timeSheet: item.timeSheet,
+            timeSheet: file,
             unit: item.unit,
             entryDate: item.shiftDate,
             shiftDateAndTimes: item.shiftDateAndTimes,
             laborState: item.laborState,
             shiftStartTime: item.shiftStartTime,
             shiftEndTime: item.shiftEndTime
-          })
-          console.log("MyShiftData:", dataArray)
+          });
         }
       })
       const date = moment(new Date()).format("MM/DD/YYYY");
@@ -573,7 +572,18 @@ exports.myShift = async (req, res) => {
     console.log(e);
     return res.status(500).json({ message: "An Error Occured!" })
   }
-}
+};
+
+exports.getTimesheet = async (req, res) => {
+  try {
+    let result = await Job.findOne({ jobId: req.body.jobId });
+    const content = result.timeSheet.content.toString('base64');
+    
+    return res.status(200).json({ message: "Success", data: { content: content, type: result.timeSheet.type, name: result.timeSheet.name } });
+  } catch (e) {
+    return res.status(500).json({ message: "An Error Occured!" })
+  }
+};
 
 //Login Account
 exports.getAllData = async (req, res) => {

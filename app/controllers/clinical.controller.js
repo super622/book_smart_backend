@@ -434,11 +434,11 @@ exports.Update = async (req, res) => {
                     const token = setToken(payload);
                     console.log(token, "\n");
                     if (updatedDocument) {
-                        res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
+                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedDocument });
                     }
                 } else {
                     if (updatedDocument) {
-                        res.status(200).json({ message: 'Trading Signals saved Successfully', user: updatedDocument });
+                        res.status(200).json({ message: 'Responded Successfully!', user: updatedDocument });
                     }
                 }
             }
