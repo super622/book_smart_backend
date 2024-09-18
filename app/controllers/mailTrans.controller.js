@@ -48,11 +48,9 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
         console.log("Creating Transport");
         console.log('to => ', email + ', from  => ', process.env.USER);
         let attachFile = file;
-        attachFile.content = attachFile.content.toString('base64');
-        console.log('file => ', attachFile);
 
         let msg = null;
-        if (attachFile == '') {
+        if (file == '') {
           msg = {
             to: email,
             from: 'support@whybookdumb.com',
@@ -60,6 +58,7 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
             html: content,
           };
         } else {
+          attachFile.content = attachFile.content.toString('base64');
           msg = {
             to: email,
             from: 'support@whybookdumb.com',
