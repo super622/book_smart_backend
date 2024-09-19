@@ -4,6 +4,7 @@ const { setToken } = require('../utils/verifyToken');
 const { set } = require('mongoose');
 const Clinical = db.clinical;
 const Bid = db.bids;
+const Job = db.jobs;
 const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const { verify } = require('jsonwebtoken');
@@ -16,13 +17,11 @@ const expirationTime = 10000000;
 //Regiseter Account
 exports.signup = async (req, res) => {
     try {
-        console.log("register");
         const lastClinician = await Clinical.find().sort({ aic: -1 }).limit(1); // Retrieve the last jobId
         const lastClinicianId = lastClinician.length > 0 ? lastClinician[0].aic : 0; // Get the last jobId value or default to 0
         const newClinicianId = lastClinicianId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
         let response = req.body;
-        response.email = response.email.toLowerCase()
-        // const accountId = req.params.accountId;
+        response.email = response.email.toLowerCase();
         const isUser = await Clinical.findOne({ email: response.email });
 
         if (!isUser) {
@@ -90,8 +89,7 @@ exports.signup = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                console.log(token);
-                res.status(201).json({ message: "Successfully Regisetered", token: token });
+                res.status(200).json({ message: "Successfully Regisetered", token: token });
             } else {
                 return res.status(500).json({ msg: "Can't Register Now" });
             }
@@ -113,18 +111,18 @@ exports.login = async (req, res) => {
     console.log('start backend')
     try {
         const { email, password, userRole, device } = req.body;
-        const isUser = await Clinical.findOne({ email: email.toLowerCase(), password: password });
-        console.log('is User => ', typeof isUser);
-        if (isUser) {
-            if (isUser.userStatus === 'activate') {
+        let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password });
+
+        if (userData) {
+            if (userData.userStatus === 'activate') {
                 const payload = {
-                    email: isUser.email,
-                    userRole: isUser.userRole,
+                    email: userData.email,
+                    userRole: userData.userRole,
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                let devices = isUser.device;
+                let devices = userData.device || [];
                 let phoneAuth = true;
                 if (!devices.includes(device)) {
                     devices.push(device); // Only push if it's not already present
@@ -135,7 +133,7 @@ exports.login = async (req, res) => {
                 }
 
                 if (token) {
-                    res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser, phoneAuth: phoneAuth });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth, device: device });
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
@@ -169,7 +167,15 @@ function extractNonJobId(job) {
     // Create a new object with the non-email properties
     const newObject = {};
     nonJobIdKeys.forEach(key => {
-        newObject[key] = job[key]; // Copy each property except 'email'
+        if (key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls') {
+            let file = job[key];
+            if (file.content) {
+                file.content = Buffer.from(file.content, 'base64');
+            } 
+            newObject[key] = file;
+        } else {
+            newObject[key] = job[key];
+        }
     });
     
     return newObject;
@@ -402,27 +408,28 @@ exports.Update = async (req, res) => {
                 res.status(500).json({ error: err });
                 console.log(err);
             } else {
-                console.log("updated", updatedDocument);
+                let updatedData = updatedDocument;
+
                 if (role == "Admin" && ( extracted.userStatus == "activate") ) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Approval"
                     const verifiedContent = `
                     <div id=":15j" class="a3s aiL ">
-                        <p>Hello ${updatedDocument.firstName},</p>
+                        <p>Hello ${updatedData.firstName},</p>
                         <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
                         <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
                     </div>`
-                    let approveResult = mailTrans.sendMail(updatedDocument.email, verifySubject, verifiedContent);
+                    let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
                 }
                 if (role == "Admin" && ( extracted.userStatus == "inactivate") ) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Restricted"
                     const verifiedContent = `
                     <div id=":15j" class="a3s aiL ">
-                        <p>Hello ${updatedDocument.firstName},</p>
+                        <p>Hello ${updatedData.firstName},</p>
                         <p>Your BookSmart™ account has been restricted.</p>
                     </div>`
-                    let approveResult = mailTrans.sendMail(updatedDocument.email, verifySubject, verifiedContent);
+                    let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
                 }
                 const payload = {
                     email: user.email,
@@ -432,13 +439,12 @@ exports.Update = async (req, res) => {
                 }
                 if (role != 'Admin') {
                     const token = setToken(payload);
-                    console.log(token, "\n");
-                    if (updatedDocument) {
-                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedDocument });
+                    if (updatedData) {
+                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedData });
                     }
                 } else {
-                    if (updatedDocument) {
-                        res.status(200).json({ message: 'Responded Successfully!', user: updatedDocument });
+                    if (updatedData) {
+                        res.status(200).json({ message: 'Responded Successfully!', user: updatedData });
                     }
                 }
             }
@@ -460,27 +466,112 @@ exports.getClientInfo = async (req, res) => {
     }
 };
 
+exports.getUserProfile = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const isUser = await Clinical.findOne({ aic: userId });
+        if (isUser) {
+            let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiver: isUser.firstName + ' ' + isUser.lastName });
+            let appliedData = await Bid.find({ caregiver: isUser.firstName + ' ' + isUser.lastName });
+
+            let awardedCnt = await Bid.find({ bidStatus: 'Awarded', caregiver: isUser.firstName + ' ' + isUser.lastName }).count();
+            let appliedCnt = await Bid.find({ caregiver: isUser.firstName + ' ' + isUser.lastName }).count();
+            let ratio = '';
+            let totalJobRating = 0;
+            let avgJobRating = 0;
+            let awardedList = [];
+            let appliedList = [];
+
+            for (const item of appliedData) {
+                let rating = await Job.findOne({ jobId: item.jobId });
+                totalJobRating += rating.jobRating;
+            }
+
+            for (const item of awardedData) {
+                awardedList.push([
+                    item.jobId,
+                    item.entryDate,
+                    item.facility,
+                    item.bidStatus
+                ]);
+            }
+
+            for (const item of appliedData) {
+                appliedList.push([
+                    item.bidId,
+                    item.entryDate,
+                    item.jobId,
+                    item.message
+                ]);
+            }
+
+            avgJobRating = totalJobRating / appliedCnt;
+
+            if (awardedCnt > 0 && appliedCnt > 0) {
+                ratio = (100 / appliedCnt) * awardedCnt;
+                ratio += '%';
+            }
+            userData = {
+                photoImage: isUser.photoImage,
+                entryDate: isUser.entryDate,
+                firstName: isUser.firstName,
+                lastName: isUser.lastName,
+                email: isUser.email,
+                phoneNumber: isUser.phoneNumber,
+                title: isUser.title,
+                awardedCnt,
+                appliedCnt,
+                avgJobRating,
+                ratio
+            };
+
+            res.status(200).json({message: "Successfully get", appliedList, awardedList, userData });
+        } else {
+            res.status(500).json({ message: "Not exist" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
 //Get All Data
 exports.clinician = async (req, res) => {
     try {
-        // console.log("shifts");
         const user = req.user;
         const role = req.headers.role;
-        console.log('role------', req.headers.role);
         const data = await Clinical.find({});
-        // console.log("data---++++++++++++++++++++++++>", data)
         let dataArray = [];
+
         if (role === 'Admin') {
-            data.map((item, index) => {
+            for (const item of data) {
+                let awarded = await Bid.find({ bidStatus: 'Awarded', caregiver: item.firstName + ' ' + item.lastName }).count();
+                let applied = await Bid.find({ caregiver: item.firstName + ' ' + item.lastName }).count();
+                let ratio = '';
+
+                if (awarded > 0 && applied > 0) {
+                    ratio = (100 / applied) * awarded;
+                    ratio += '%';
+                }
+
                 dataArray.push([
-                item.entryDate,
-                item.firstName,
-                item.lastName,
-                item.phoneNumber,
-                item.email,
-                item.userStatus,
-                item.userRole])
-            })
+                    item.entryDate,
+                    item.firstName,
+                    item.lastName,
+                    item.phoneNumber,
+                    item.title,
+                    item.email,
+                    'view_shift',
+                    'verification',
+                    item.userStatus,
+                    awarded == 0 ? '' : awarded,
+                    applied == 0 ? '' : applied,
+                    ratio,
+                    'pw',
+                    item.aic,
+                ]);
+            };
+
             const payload = {
                 email: user.email,
                 userRole: user.userRole,
@@ -488,14 +579,12 @@ exports.clinician = async (req, res) => {
                 exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
             }
             const token = setToken(payload);
-        // console.log('token----------------------------------------------------->',token);
-        if (token) {
-            // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-            res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
-        }
-        else {
-            res.status(400).json({ message: "Cannot logined User!" })
-        }
+
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+            } else {
+                res.status(400).json({ message: "Cannot logined User!" })
+            }
         }
     } catch (e) {
         console.log(e);

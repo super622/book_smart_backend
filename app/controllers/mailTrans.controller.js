@@ -47,7 +47,6 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
     try {
         console.log("Creating Transport");
         console.log('to => ', email + ', from  => ', process.env.USER);
-        let attachFile = file;
 
         let msg = null;
         if (file == '') {
@@ -58,6 +57,7 @@ sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
             html: content,
           };
         } else {
+          let attachFile = file;
           attachFile.content = attachFile.content.toString('base64');
           msg = {
             to: email,

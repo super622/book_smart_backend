@@ -2,8 +2,6 @@ module.exports = mongoose => {
   var schema = mongoose.Schema({
     aic: {
       type: Number,
-      // required: true,
-      // unique: true
     },
     firstName: {
       type: String,
@@ -29,21 +27,17 @@ module.exports = mongoose => {
     },
     title: {
       type: String,
-      // required: true,
       default: ''
     },
     birthday: {
       type: String,
-      // required: true,
     },
     socialSecurityNumber: {
       type: String,
-      // required: true,
       default: ''
     },
     verifiedSocialSecurityNumber: {
       type: String,
-      // required: true,
       default: ''
     },
     address: {
@@ -70,7 +64,8 @@ module.exports = mongoose => {
     },
     photoImage: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     password: {
       type: String,
@@ -82,7 +77,7 @@ module.exports = mongoose => {
       default: false
     },
     signature: {
-      type: String,
+      type: Buffer,
       require: true,
       default: '',
     },
@@ -95,39 +90,48 @@ module.exports = mongoose => {
     },
     driverLicense: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     socialCard: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     physicalExam: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     ppd: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     mmr: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     healthcareLicense: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     resume: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     covidCard: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     bls: {
       type: { type: String, default: '' },
-      content: { type: String, default: '' }
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
     },
     userStatus: {
       type: String,

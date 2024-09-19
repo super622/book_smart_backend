@@ -23,6 +23,8 @@ module.exports = app => {
 
   router.post('/update', verifyUser, clinical.Update);
 
+  router.post('/getUserProfile', verifyUser, clinical.getUserProfile);
+
   router.get('/clinician', verifyUser, clinical.clinician);
 
   router.post('/getClientInfo', verifyUser, clinical.getClientInfo);

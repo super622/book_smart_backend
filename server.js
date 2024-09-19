@@ -63,6 +63,7 @@ require("./app/routes/facilities.route")(app);
 require("./app/routes/job.routes")(app);
 require("./app/routes/admin.route.js")(app);
 require('./app/routes/bid.route.js')(app);
+require('./app/routes/degree.route.js')(app);
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { log } = require("console");
 // require("./app/routes/image.routes")(app);

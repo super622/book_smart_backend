@@ -153,6 +153,34 @@ exports.verifyCode = async (req, res) => {
     }
 }
 
+exports.updatePassword = async (req, res) => {
+    try {
+        const { userId, password, tmpPassword } = req.body;
+        const isUser = await Clinical.findOne({ aic: userId });
+        if (isUser) {
+            const updateUser = await Clinical.updateOne({ aic: userId }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
+            const verifySubject8 = "Your BookSmart™ Password Has Been Reset"
+            const verifiedContent8 = `
+            <div id=":15j" class="a3s aiL ">
+                <p>${isUser.firstName} ${isUser.lastName}</p>
+                <p>Your password has been reset!</p>
+                <p><strong>--------------------</strong></p>
+                <p>Login: ${isUser.email}</p>
+                <p>Password: ${tmpPassword}</p>
+                <p><strong>--------------------</strong></p>
+                <p><strong>BOOK SMART</strong></p>
+                <p style="color: red;">(save to favorites or bookmark to Home Screen)</p>
+            </div>`
+            let approveResult8 = mailTrans.sendMail(isUser.email, verifySubject8, verifiedContent8);
+            res.status(200).json({message: "Password changed successfully."});
+        } else {
+            res.status(404).json({ message: "Password change failed." })
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
 
 exports.resetPassword = async (req, res) => {
     try {
