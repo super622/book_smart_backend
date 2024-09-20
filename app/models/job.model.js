@@ -46,7 +46,7 @@ module.exports = mongoose => {
       default: ''
     },
     jobNum: {
-      type: Number,
+      type: String,
       default: true,
     },
     degree: {

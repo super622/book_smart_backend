@@ -93,45 +93,162 @@ module.exports = mongoose => {
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
+    dirverLicenseStatus: {
+      type: Boolean,
+      default: false
+    },
     socialCard: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
+    },
+    socialCardStatus: {
+      type: Boolean,
+      default: false
     },
     physicalExam: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
+    physicalExamStatus: {
+      type: Boolean,
+      default: false
+    },
     ppd: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
+    },
+    ppdStatus: {
+      type: Boolean,
+      default: false
     },
     mmr: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
+    mmrStatus: {
+      type: Boolean,
+      default: false
+    },
     healthcareLicense: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
+    },
+    healthcareLicenseStatus: {
+      type: Boolean,
+      default: false
     },
     resume: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
+    resumeStatus: {
+      type: Boolean,
+      default: false
+    },
     covidCard: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
+    covidCardStatus: {
+      type: Boolean,
+      default: false
+    },
     bls: {
       type: { type: String, default: '' },
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
+    },
+    blsStatus: {
+      type: Boolean,
+      default: false
+    },
+    hepB: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    hepBStatus: {
+      type: Boolean,
+      default: false
+    },
+    flu: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    fluStatus: {
+      type: Boolean,
+      default: false
+    },
+    cna: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    cnaStatus: {
+      type: Boolean,
+      default: false
+    },
+    taxForm: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    taxFormStatus: {
+      type: Boolean,
+      default: false
+    },
+    chrc102: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    chrc102Status: {
+      type: Boolean,
+      default: false
+    },
+    chrc103: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    chrc103Status: {
+      type: Boolean,
+      default: false
+    },
+    drug: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    drugStatus: {
+      type: Boolean,
+      default: false
+    },
+    ssc: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    sscStatus: {
+      type: Boolean,
+      default: false
+    },
+    copyOfTB: {
+      type: { type: String, default: '' },
+      content: { type: Buffer, default: '' },
+      name: { type: String, default: '' }
+    },
+    copyOfTBStatus: {
+      type: Boolean,
+      default: false
     },
     userStatus: {
       type: String,

@@ -466,6 +466,21 @@ exports.getClientInfo = async (req, res) => {
     }
 };
 
+exports.getUserInfo = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const isUser = await Clinical.findOne({ aic: userId });
+        if (isUser) {
+            res.status(200).json({message: "Successfully get", userData: isUser });
+        } else {
+            res.status(500).json({ message: "Not exist", userData: [] });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
