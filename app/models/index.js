@@ -12,4 +12,5 @@ db.facilities = require("./facilities.model.js")(mongoose);
 db.admins = require("./admin.model.js")(mongoose);
 db.bids = require('./bidsAndOffers.modal.js')(mongoose);
 db.degree = require('./degree.model.js')(mongoose);
+db.location = require('./location.model.js')(mongoose);
 module.exports = db;

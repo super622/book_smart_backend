@@ -44,6 +44,12 @@ exports.signup = async (req, res) => {
             response.aic = newClinicianId;
             response.userStatus = "pending approval";
             response.clinicalAcknowledgeTerm = false;
+
+            if (response.photoImage.name != "") {
+                const content = Buffer.from(response.photoImage.content, 'base64');
+                response.photoImage.content = content;
+            }
+            
             const auth = new Clinical(response);
             let sendResult = mailTrans.sendMail(response.email, subject, content);
             const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
@@ -167,7 +173,7 @@ function extractNonJobId(job) {
     // Create a new object with the non-email properties
     const newObject = {};
     nonJobIdKeys.forEach(key => {
-        if (key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
+        if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             let file = job[key];
             if (file.content) {
                 file.content = Buffer.from(file.content, 'base64');

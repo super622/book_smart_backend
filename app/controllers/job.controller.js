@@ -1,7 +1,5 @@
-const jwtEncode = require('jwt-encode')
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
-const { set } = require('mongoose');
 const Job = db.jobs;
 const Bid = db.bids;
 const Facility = db.facilities;
@@ -13,10 +11,7 @@ const invoiceHTML = require('../utils/invoiceHtml.js');
 const { generatePDF } = require('../utils/pdf');
 const path = require('path');
 const cron = require('node-cron');
-const { read } = require('pdfkit');
-const { removeAllListeners } = require('process');
 const phoneSms = require('../controllers/twilio.js');
-const dotenv = require('dotenv').config();
 
 // const limitAccNum = 100;
 const expirationTime = 10000000;
@@ -102,23 +97,18 @@ exports.updateTimeSheet = async (req, res) => {
 //Regiseter Account
 exports.postJob = async (req, res) => {
   try {
-    console.log("register");
-    // const accountId = req.params.accountId;
-
     const user = req.user
     if (!req.body.jobId) {
       const lastJob = await Job.find().sort({ jobId: -1 }).limit(1); // Retrieve the last jobId
       const lastJobId = lastJob.length > 0 ? lastJob[0].jobId : 0; // Get the last jobId value or default to 0
       const newJobId = lastJobId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
-      // const isUser = await Job.findOne({ jobId: newJobId });
       const response = req.body;
-      console.log("new Id------------->", newJobId)
       response.entryDate = moment(new Date()).format("MM/DD/YYYY");
-      // response.hoursDateAndTIme = new Date();
       response.payRate = '$' + response.payRate;
       response.jobId = newJobId;
       const auth = new Job(response);
       await auth.save();
+
       const payload = {
         contactEmail: user.contactEmail,
         userRole: user.userRole,
@@ -126,8 +116,7 @@ exports.postJob = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       }
       const token = setToken(payload);
-      console.log(token);
-      return res.status(201).json({ message: "Published successfully", token: token });
+      return res.status(200).json({ message: "Published successfully", token: token });
     } else {
       console.log('content', req.body)
       const request = req.body;
@@ -750,6 +739,7 @@ const MailTransfer = async (name, subject, content) => {
     console.error('Error fetching clinician or sending email:', error);
   }
 }
+
 function convertToInternationalFormat(phoneNumber) {
   // Remove all non-digit characters
   const cleanedNumber = phoneNumber.replace(/\D/g, '');
@@ -779,6 +769,7 @@ const pushSms = async (name, message) => {
     console.error('Error fetching clinician or sending email:', error);
   }
 }
+
 function convertToDate(dateString, timeString) {
   // Parse the date string (MM/DD/YYYY)
   const [month, day, year] = dateString.split('/').map(Number);
@@ -1003,12 +994,12 @@ exports.Update = async (req, res) => {
   }
 }
 
-
 // Inovices
 let invoices = []
 const setInvoices = (invoiceList) => {
   invoices = invoiceList;
 };
+
 // Function to convert end time from "1a-5p" format to 24-hour format
 function convertEndTimeTo24Hour(shiftTime) {
   const end = shiftTime.split('-')[1]; // Extract the end time (e.g., "5p")
@@ -1027,15 +1018,14 @@ function convertTo24Hour(time) {
   }
   return hour.toString().padStart(2, '0') + ':00'; // Return in HH:MM format
 }
+
 let invoiceGenerate = false;
 const job = cron.schedule('00 18 * * Friday', () => {
-  // Your task code here
-  console.log("start");
   generateInovices();
-
 });
+
 job.start();
-console.log(new Date().toISOString())
+
 async function generateInovices () {  
   // Calculate previous Friday at 6:00 AM
   const now = new Date();
@@ -1203,7 +1193,3 @@ exports.updateTime = async (req, res) => {
     res.status(500).json({message: 'Error sending email'});
   }
 }
-
-
-
-

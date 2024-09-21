@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const { generatePDF } = require('../utils/pdf');
 const Facility = db.facilities;
+const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 
 const limitAccNum = 100;
@@ -15,7 +16,9 @@ const expirationTime = 10000000;
 //Register Account
 exports.signup = async (req, res) => {
     try {
-        console.log("register");
+        const lastFacility = await Facility.find().sort({ aic: -1 }).limit(1); // Retrieve the last jobId
+        const lastFacilityId = lastFacility.length > 0 ? lastFacility[0].aic : 0; // Get the last jobId value or default to 0
+        const newFacilityId = lastFacilityId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
         let response = req.body;
         const isUser = await Facility.findOne({ contactEmail: response.contactEmail.toLowerCase() });
 
@@ -26,8 +29,15 @@ exports.signup = async (req, res) => {
                 <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
             </div>`
             response.entryDate = new Date();
+            response.aic = newFacilityId;
             response.userStatus = "pending approval";
             response.contactEmail = response.contactEmail.toLowerCase();
+
+            if (response.avatar.name != "") {
+                const content = Buffer.from(response.avatar.content, 'base64');
+                response.avatar.content = content;
+            }
+
             const auth = new Facility(response);
 
             let sendResult = mailTrans.sendMail(response.contactEmail, subject, content);
@@ -211,12 +221,19 @@ function extractNonJobId(job) {
     
     // Filter out the key 'email'
     const nonJobIdKeys = keys.filter(key => key !== 'contactEmail');
-    console.log(nonJobIdKeys);
     
     // Create a new object with the non-email properties
     const newObject = {};
     nonJobIdKeys.forEach(key => {
-        newObject[key] = job[key]; // Copy each property except 'email'
+        if (key == 'avatar') {
+            let file = job[key];
+            if (file.content) {
+                file.content = Buffer.from(file.content, 'base64');
+            } 
+            newObject[key] = file;
+        } else {
+            newObject[key] = job[key];
+        }
     });
     
     return newObject;
@@ -277,6 +294,85 @@ exports.Update = async (req, res) => {
         } catch (err) {
             return res.status(500).json({ error: err });
         }
+    }
+};
+
+exports.getFacilityList = async (req, res) => {
+    try {
+        const user = req.user;
+        const role = req.headers.role;
+        const data = await Facility.find({});
+        let dataArray = [];
+
+        if (role === 'Admin') {
+            data.map((item, index) => {
+                dataArray.push([
+                    item.aic,
+                    moment(item.entryDate).format("MM/DD/YYYY"),
+                    item.companyName,
+                    item.firstName + " " + item.lastName,
+                    item.userStatus,
+                    item.userRole,
+                    "view_shift",
+                    "pw",
+                    item.contactEmail
+                ]);
+            });
+
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + expirationTime
+            };
+            const token = setToken(payload);
+
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+            } else {
+                res.status(400).json({ message: "Cannot logined User!" })
+            }
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
+exports.getFacilityInfo = async (req, res) => {
+    try {
+        const user = req.user;
+        const { userId } = req.body;
+        const userData = await Facility.findOne({ aic: userId });
+        const jobList = await Job.find({ facilityId: userId });
+        let jobData = [];
+
+        jobList.map((item, index) => {
+            jobData.push([
+                item.jobId,
+                item.entryDate,
+                item.jobNum,
+                item.jobStatus,
+                item.shiftDate + " " + item.shiftTime
+            ]);
+        });
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        };
+        const token = setToken(payload);
+
+        if (token) {
+            res.status(200).json({ message: "Successfully Get!", userData, jobData, token: token });
+        } else {
+            res.status(500).json({ message: "Cannot logined User!" })
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
     }
 };
 

@@ -32,6 +32,10 @@ module.exports = mongoose => {
       default: '',
       required: true,
     },
+    facilityId: {
+      type: Number,
+      default: 0
+    },
     bid_offer: {
       type: Number,
       default: 0

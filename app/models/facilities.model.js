@@ -1,5 +1,8 @@
 module.exports = mongoose => {
     var schema = mongoose.Schema({
+        aic: {
+            type: Number,
+        },
         userStatus: {
             type: String,
             default: 'inactivate'
@@ -7,9 +10,7 @@ module.exports = mongoose => {
         userRole: {
             type: String,
             default: '',
-            // required:true,
-        }
-        ,
+        },
         entryDate: {
             type: Date,
             default: Date.now,
@@ -60,7 +61,7 @@ module.exports = mongoose => {
             zip: { type: String, default: '' },
         },
         avatar: {
-            content: { type: String, default: '' },
+            content: { type: Buffer, default: '' },
             type: { type: String, default: '' },
             name: { type: String, default: '' }
         },
