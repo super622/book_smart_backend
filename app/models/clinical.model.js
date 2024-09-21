@@ -93,7 +93,7 @@ module.exports = mongoose => {
       content: { type: Buffer, default: '' },
       name: { type: String, default: '' }
     },
-    dirverLicenseStatus: {
+    driverLicenseStatus: {
       type: Boolean,
       default: false
     },

@@ -24,6 +24,8 @@ module.exports = app => {
   router.post('/updatePassword', verifyUser, admin.updatePassword);
 
   router.post('/updateUserInfo', verifyUser, admin.updateUserInfo);
+
+  router.post('/removeAccount', verifyUser, admin.removeAccount);
     
   router.get('/admin', verifyUser, admin.admin);
 

@@ -167,12 +167,14 @@ function extractNonJobId(job) {
     // Create a new object with the non-email properties
     const newObject = {};
     nonJobIdKeys.forEach(key => {
-        if (key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls') {
+        if (key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             let file = job[key];
             if (file.content) {
                 file.content = Buffer.from(file.content, 'base64');
             } 
             newObject[key] = file;
+        } else if (key == 'driverLicenseStatus' || key == 'socialCardStatus' || key == 'physicalExamStatus' || key == 'ppdStatus' || key == 'mmrStatus' || key == 'healthcareLicenseStatus' || key == 'resumeStatus' || key == 'covidCardStatus' || key == 'blsStatus' || key == 'hepBStatus' || key == 'fluStatus' || key == 'cnaStatus' || key == 'taxFormStatus' || key == 'chrc102Status' || key == 'chrc103Status' || key == 'drugStatus' || key == 'sscStatus' || key == 'copyOfTBStatus') {
+            newObject[key] = job[key] == 1 ? true : false;
         } else {
             newObject[key] = job[key];
         }
@@ -344,8 +346,7 @@ exports.verifyPhone = async (req, res) => {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyPhoneTime) {
                 res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
-            }
-            else { 
+            } else { 
                 const payload = {
                     email: email,
                     userRole: 'Clinician',
@@ -359,9 +360,8 @@ exports.verifyPhone = async (req, res) => {
                 const updateUser = await Clinical.updateOne({ email: email }, { $set: { logined: true, device: devices } });
                 res.status(200).json({message: "Success to verify code.", token: token})
             }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+        } else {
+            res.status(500).json({ message: "Verification code is not correct." })
         }
     } catch (e) {
         console.log(e);
@@ -387,6 +387,41 @@ exports.resetPassword = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" })
     }
 }
+
+exports.updateUserStatus = async (req, res) => {
+    try {
+        const { userId, status } = req.body;
+        const isUser = await Clinical.findOne({ aic: userId });
+        if (isUser) {
+            await Clinical.updateOne({ aic: userId }, { $set: { userStatus: status } });
+            if (status == 'activate') {
+                const verifySubject2 = "BookSmart™ - Your Account Approval"
+                const verifiedContent2 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${isUser.firstName},</p>
+                    <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
+                    <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
+                </div>`
+                let approveResult2 = mailTrans.sendMail(isUser.email, verifySubject2, verifiedContent2);
+            } else {
+                const verifySubject3 = "BookSmart™ - Your Account Restricted"
+                const verifiedContent3 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>Hello ${isUser.firstName},</p>
+                    <p>Your BookSmart™ account has been restricted.</p>
+                </div>`
+                let approveResult3 = mailTrans.sendMail(isUser.email, verifySubject3, verifiedContent3);
+            }
+            res.status(200).json({ message: "Status has been updated" });
+        } else {
+            res.status(404).json({ message: "Status change failed." });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+}
+
 //Update Account
 exports.Update = async (req, res) => {
     console.log('updateSignal');
@@ -400,17 +435,18 @@ exports.Update = async (req, res) => {
        extracted.email =extracted.updateEmail; // Create the new property
        delete extracted.updateEmail;
     }
+
+    const existUser = await Clinical.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
+
     if (user) {
-        console.log("items", user.email);
-        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email } ,role=="Admin" ? { $set: extracted } : { $set: request }, { new: false }, (err, updatedDocument) => {
+        console.log("items", user.email + ",   role = " + role);
+        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email }, role == "Admin" ? { $set: extracted } : { $set: request }, { new: false }, (err, updatedDocument) => {
             if (err) {
-                // Handle the error, e.g., return an error response
-                res.status(500).json({ error: err });
-                console.log(err);
+                return res.status(500).json({ error: err });
             } else {
                 let updatedData = updatedDocument;
 
-                if (role == "Admin" && ( extracted.userStatus == "activate") ) {
+                if (role == "Admin" && extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Approval"
                     const verifiedContent = `
@@ -421,7 +457,7 @@ exports.Update = async (req, res) => {
                     </div>`
                     let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
                 }
-                if (role == "Admin" && ( extracted.userStatus == "inactivate") ) {
+                if (role == "Admin" && extracted.userStatus == "inactivate" && extracted.userStatus != existUser.userStatus) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Restricted"
                     const verifiedContent = `
@@ -534,6 +570,7 @@ exports.getUserProfile = async (req, res) => {
                 email: isUser.email,
                 phoneNumber: isUser.phoneNumber,
                 title: isUser.title,
+                address: isUser.address,
                 awardedCnt,
                 appliedCnt,
                 avgJobRating,
@@ -543,6 +580,44 @@ exports.getUserProfile = async (req, res) => {
             res.status(200).json({message: "Successfully get", appliedList, awardedList, userData });
         } else {
             res.status(500).json({ message: "Not exist" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
+exports.getAllList = async (req, res) => {
+    try {
+        const user = req.user;
+        const role = req.headers.role;
+        const data = await Clinical.find({});
+        let dataArray = [];
+
+        if (role === 'Admin') {
+            for (const item of data) {
+                dataArray.push([
+                    item.firstName + " " + item.lastName,
+                    item.email,
+                    "Clinician",
+                    item.userStatus,
+                    "delete"
+                ]);
+            };
+
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000), // Issued at time
+                exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+            }
+            const token = setToken(payload);
+
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+            } else {
+                res.status(400).json({ message: "Cannot logined User!" })
+            }
         }
     } catch (e) {
         console.log(e);

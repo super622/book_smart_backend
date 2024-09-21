@@ -21,6 +21,10 @@ exports.signup = async (req, res) => {
         if (!isUser) {
             response.email = response.email.toLowerCase();
             response.entryDate = new Date();
+            if (response.photoImage.name != "") {
+                const content = Buffer.from(response.photoImage.content, 'base64');
+                response.photoImage.content = content;
+            }
             const auth = new Admin(response);
             await auth.save();
             const payload = {
@@ -30,7 +34,6 @@ exports.signup = async (req, res) => {
                 exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
             }
             const token = setToken(payload);
-            console.log(token);
             res.status(201).json({ message: "Successfully Regisetered", token: token });
         } else {
             res.status(409).json({ message: "The Email is already registered" })
@@ -200,6 +203,7 @@ exports.resetPassword = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" })
     }
 }
+
 function extractNonJobId(job) {
     const keys = Object.keys(job);
     console.log(keys);
@@ -216,66 +220,34 @@ function extractNonJobId(job) {
     
     return newObject;
 }
-//Update Account
+
 exports.Update = async (req, res) => {
-    console.log('updateSignal');
-    const request = req.body;
+    let request = req.body;
     const user = req.user;
-    const role = request.userRole || user.userRole;
-    // console.log(extracted)
-    // if (extracted.updateEmail) {
-    //    extracted.email =extracted.updateEmail; // Create the new property
-    //    delete extracted.updateEmail;
-    // }
-    console.log("user", user, request);
+
+    if (request.photoImage.name != "") {
+        const content = Buffer.from(request.photoImage.content, 'base64');
+        request.photoImage.content = content;
+    }
+
     if (user) {
-        console.log("items");
         Admin.findOneAndUpdate({ user } ,{ $set: request }, { new: false }, async (err, updatedDocument) => {
             if (err) {
-                // Handle the error, e.g., return an error response
-                res.status(500).json({ error: err });
-                console.log(err);
+                return res.status(500).json({ error: err });
             } else {
-                console.log("updated", updatedDocument);
-                // if (role == "Admin" && ( extracted.userStatus == "activate") ) {
-                //     console.log('Activated .........');
-                //     const verifySubject = "BookSmart™ - Your Account Approval"
-                //     const verifiedContent = `
-                //     <div id=":15j" class="a3s aiL ">
-                //         <p>Hello ${updatedDocument.firstName},</p>
-                //         <p>Your BookSmart™ account has been approved. To login please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw1QDW3VkX4lblO8gh8nfIYo">https://app.whybookdumb.com/<wbr>bs/#home-login</a></p>
-                //         <p>To manage your account settings, please visit the following link:<br><a href="https://app.whybookdumb.com/bs/#home-login/knack-account" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://app.whybookdumb.com/bs/%23home-login/knack-account&amp;source=gmail&amp;ust=1721895769161000&amp;usg=AOvVaw3TA8pRD_CD--MZ-ls68oIo">https://app.whybookdumb.com/<wbr>bs/#home-login/knack-account</a></p>
-                //     </div>`
-                //     let approveResult = mailTrans.sendMail(updatedDocument.email, verifySubject, verifiedContent);
-                // }
-                // if (role == "Admin" && ( extracted.userStatus == "inactivate") ) {
-                //     console.log('Activated .........');
-                //     const verifySubject = "BookSmart™ - Your Account Restricted"
-                //     const verifiedContent = `
-                //     <div id=":15j" class="a3s aiL ">
-                //         <p>Hello ${updatedDocument.firstName},</p>
-                //         <p>Your BookSmart™ account has been restricted.</p>
-                //     </div>`
-                //     let approveResult = mailTrans.sendMail(updatedDocument.email, verifySubject, verifiedContent);
-                // }
                 const payload = {
                     email: user.email,
                     userRole: user.userRole,
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
-                // if (role != 'Admin') {
-                    const token = setToken(payload);
-                    console.log(token, "\n");
-                    const users = await Admin.findOne({email: request.email})
-                    if (users) {
-                        res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
-                    }
-                // } else {
-                //     if (updatedDocument) {
-                //         res.status(200).json({ message: 'Trading Signals saved Successfully', user: updatedDocument });
-                //     }
-                // }
+                const token = setToken(payload);
+                const users = await Admin.findOne({email: request.email})
+                if (users) {
+                    return res.status(200).json({ message: 'Updated', token: token, user: users });
+                } else {
+                    return res.status(500).json({ message: 'Not Exist', token: token, user: users });
+                }
             }
         })
     }
@@ -767,3 +739,22 @@ exports.logout = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" });
     }
 }
+
+
+exports.removeAccount = async (req, res) => {
+    try {
+        const { email, role } = req.body;
+
+        if (role == 'Admin') {
+            await Admin.deleteOne({ email: email });
+        } else if (role == 'Clinician') {
+            await Clinical.deleteOne({ email: email });
+        } else if(role == 'Facilities') {
+            await Facility.deleteOne({ contactEmail: email });
+        }
+        return res.status(200).json({ message: "Success" });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};

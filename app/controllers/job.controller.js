@@ -32,6 +32,13 @@ function parseTime(timeString) {
   return new Date(year, month - 1, day, hours, minutes);
 }
 
+function getTimeFromDate(timeString) {
+  const [datePart, timePart] = timeString.split(' ');
+  const [month, day, year] = datePart.split('/').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  return hours + ":" + minutes;
+};
+
 function calculateShiftHours(shiftStartTime, shiftEndTime) {
   // Parse the start and end times using the parseTime function
   let hours = 0;
@@ -573,6 +580,46 @@ exports.myShift = async (req, res) => {
   } catch (e) {
     console.log(e);
     return res.status(500).json({ message: "An Error Occured!" })
+  }
+};
+
+exports.getCaregiverTimesheets = async (req, res) => {
+  const user = req.user;
+  const data = await Job.find({});
+  let dataArray = [];
+
+  for (const item of data) {
+    const workedHours = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
+    const startTime = item.shiftStartTime ? getTimeFromDate(item.shiftStartTime) : '';
+    const endTime = item.shiftEndTime ? getTimeFromDate(item.shiftEndTime) : '';
+    let workedHoursStr = '';
+    if (startTime != "" && endTime != "") {
+      workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+    }
+    dataArray.push([
+      item.jobId,
+      item.nurse,
+      item.shiftDate + " " + item.shiftTime,
+      item.jobStatus,
+      workedHoursStr,
+      item.preTime,
+      item.lunch,
+      item.lunchEquation.toFixed(2),
+      item.finalHoursEquation.toFixed(2)
+    ]);
+  }
+
+  const payload = {
+    contactEmail: user.contactEmail,
+    userRole: user.userRole,
+    iat: Math.floor(Date.now() / 1000), // Issued at time
+    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+  };
+  const token = setToken(payload);
+  if (token) {
+    res.status(200).json({ message: "Successfully Get!", timesheet: dataArray, token: token });
+  } else {
+    res.status(400).json({ message: "Cannot logined User!" });
   }
 };
 

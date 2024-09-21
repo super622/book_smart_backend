@@ -7,7 +7,6 @@ module.exports = mongoose => {
       userRole: {
           type: String,
           default: '',
-          // required:true,
       }
       ,
       entryDate: {
@@ -45,8 +44,8 @@ module.exports = mongoose => {
           state: { type: String, default: '' },
           zip: { type: String, default: '' },
       },
-      avatar: {
-          content: { type: String, default: '' },
+      photoImage: {
+          content: { type: Buffer, default: '' },
           type: { type: String, default: '' },
           name: { type: String, default: '' }
       },
