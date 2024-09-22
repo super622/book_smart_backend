@@ -118,10 +118,8 @@ exports.postJob = async (req, res) => {
       const token = setToken(payload);
       return res.status(200).json({ message: "Published successfully", token: token });
     } else {
-      console.log('content', req.body)
       const request = req.body;
-      // request.timeSheet._id=new ObjectId(request.timeSheet._id);
-      console.log(request.timeSheet);
+
       await Job.updateOne(
         { jobId: request.jobId },
         { $set: request },
@@ -129,29 +127,9 @@ exports.postJob = async (req, res) => {
       )
         .then(result => {
           if (result.nModified === 0) {
-            // If no documents were modified, return a 404 error
-            return res.status(404).json({ error: 'Job not found or no changes made' });
+            return res.status(500).json({ error: 'Job not found or no changes made' });
           }
-
-          // If the update was successful, fetch the updated document
-          return Job.findOne({ jobId: request.jobId });
-        })
-        .then(result => {
-          if (result.nModified === 0) {
-            // If no documents were modified, return a 404 error
-            return res.status(404).json({ error: 'Job not found or no changes made' });
-          }
-          console.log('dddddd', result);
-          // If the update was successful, fetch the updated document
-          return Job.findOne({ jobId: request.jobId });
-        })
-        .then(updatedDocument => {
-          if (!updatedDocument) {
-            // If no document was found after the update, return a 404 error
-            return res.status(404).json({ error: 'Job not found' });
-          }
-
-          console.log("updated", updatedDocument);
+          
           const payload = {
             email: user.email,
             userRole: user.userRole,
@@ -159,15 +137,39 @@ exports.postJob = async (req, res) => {
             exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
           };
           const token = setToken(payload);
-          console.log(token);
+          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
+        })
+        .then(result => {
+          if (result.nModified === 0) {
+            return res.status(500).json({ error: 'Job not found or no changes made' });
+          }
+          
+          const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+          };
+          const token = setToken(payload);
+          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
+        })
+        .then(updatedDocument => {
+          if (!updatedDocument) {
+            return res.status(500).json({ error: 'Job not found' });
+          }
 
-          // Document updated successfully, return the updated document as the response
-          res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
+          const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+          };
+          const token = setToken(payload);
+          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
         })
         .catch(err => {
-          // Handle the error, e.g., return an error response
           console.error(err);
-          res.status(500).json({ error: err.message });
+          return res.status(500).json({ error: err.message });
         });
     }
   } catch (e) {
@@ -283,7 +285,7 @@ exports.shifts = async (req, res) => {
           item.isHoursApproved ? "yes" : "no",
           item.timeSheet.name,
           "",
-          "",
+          item.noStatusExplanation,
           "delete"
         ])
       }
@@ -340,7 +342,13 @@ exports.getJob = async (req, res) => {
     };
 
     const workedHours = calculateShiftHours(jobData.shiftStartTime, jobData.shiftEndTime);
-    jobData = { ...jobData.toObject(), workedHours: workedHours };
+    const startTime = jobData.shiftStartTime ? getTimeFromDate(jobData.shiftStartTime) : '';
+    const endTime = jobData.shiftEndTime ? getTimeFromDate(jobData.shiftEndTime) : '';
+    let workedHoursStr = '';
+    if (startTime != "" && endTime != "") {
+      workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+    }
+    jobData = { ...jobData.toObject(), workedHours: workedHoursStr };
 
     // Token creation
     // const payload = {
@@ -374,7 +382,14 @@ exports.updateHoursStatus = async (req, res) => {
   const lunch = req.body.lunch;
   const jobId = req.body.jobId;
 
-  const result = await Job.updateOne({ jobId }, { $set: { isHoursApproved, lunch, shiftFromDate: moment(shiftFromDate).format("MM/DD/YYYY h:m:s"), shiftEndDate: moment(shiftEndDate).format("MM/DD/YYYY h:m:s") } });
+  let finalHoursEquation = 0;
+  if (typeof preTime == 'number' && preTime) {
+    finalHoursEquation = preTime;
+  } else if (typeof preTime != 'number' && preTime) {
+    finalHoursEquation = parseFloat(preTime);
+  }
+
+  const result = await Job.updateOne({ jobId }, { $set: { isHoursApproved, lunch, preTime, noStatusExplanation, finalHoursEquation, shiftFromDate, shiftEndDate } });
   return res.status(200).json({ message: "Success" });
 };
 

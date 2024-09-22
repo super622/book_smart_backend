@@ -29,5 +29,9 @@ module.exports = app => {
     
   router.get('/admin', verifyUser, admin.admin);
 
+  router.get('/getAllUsersName', verifyUser, admin.getAllUsersName);
+
+  router.get('/getBidIDs', verifyUser, admin.getBidIDs);
+
   app.use("/api/admin", router);
 };

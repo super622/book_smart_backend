@@ -141,6 +141,10 @@ module.exports = mongoose => {
       type: String,
       default: ''
     },
+    noStatusExplanation: {
+      type: String,
+      default: ''
+    },
     finalHours: {
       type: Number,
       default: 0,

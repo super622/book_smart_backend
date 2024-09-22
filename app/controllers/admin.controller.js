@@ -4,6 +4,7 @@ const { setToken } = require('../utils/verifyToken');
 const { set } = require('mongoose');
 const Admin = db.admins;
 const Clinical = db.clinical;
+const Bid = db.bids;
 const Facility = db.facilities;
 const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
@@ -751,6 +752,65 @@ exports.UpdateUser = async (req, res) => {
 
     }
 }
+
+exports.getBidIDs = async (req, res) => {
+    try {
+        const user = req.user;
+        
+        // Find clinical and facility data
+        const bidders = await Bid.find({});
+    
+        // Combine the names into one array
+        const bidList = [
+            ...bidders.map(item => item.bidId),
+        ];
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        }
+        const token = setToken(payload);
+    
+        return res.status(200).json({ message: "success", bidList, token });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occurred!" });
+    }
+};
+
+exports.getAllUsersName = async (req, res) => {
+    try {
+        const user = req.user;
+        
+        // Find clinical and facility data
+        const clinicals = await Clinical.find({}, { firstName: 1, lastName: 1, _id: 0 });
+        const facilities = await Facility.find({}, { firstName: 1, lastName: 1, _id: 0 });
+    
+        // Combine the names into one array
+        const combinedNames = [
+            ...clinicals.map(clinical => `${clinical.firstName} ${clinical.lastName}`),
+            ...facilities.map(facility => `${facility.firstName} ${facility.lastName}`)
+        ];
+    
+        // Sort the combined names alphabetically
+        combinedNames.sort((a, b) => a.localeCompare(b));
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        }
+        const token = setToken(payload);
+    
+        return res.status(200).json({ message: "success", userList: combinedNames, token });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occurred!" });
+    }
+};
 
 //Logout Account
 exports.logout = async (req, res) => {
