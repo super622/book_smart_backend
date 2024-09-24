@@ -46,7 +46,8 @@ exports.postBid = async (req, res) => {
       const verifySubject1 = `${user.firstName} ${user.lastName} has applied to Job #${response.jobId}`;
       const verifiedContent1 = `
         <div id=":15j" class="a3s aiL ">
-          <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+          <p><strong>Shift Date</strong> - ${facility.shiftDate}</p>
+          <p><strong>Shift Time</strong> - ${facility.shiftTime}</p>
           <p><strong>Job</strong> - ${response.jobId}</p>
           <p><strong>Submitted By</strong> : ${user.firstName} ${user.lastName}</p>
         </div>`;

@@ -137,35 +137,7 @@ exports.postJob = async (req, res) => {
             exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
           };
           const token = setToken(payload);
-          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
-        })
-        .then(result => {
-          if (result.nModified === 0) {
-            return res.status(500).json({ error: 'Job not found or no changes made' });
-          }
-          
-          const payload = {
-            email: user.email,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-          };
-          const token = setToken(payload);
-          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
-        })
-        .then(updatedDocument => {
-          if (!updatedDocument) {
-            return res.status(500).json({ error: 'Job not found' });
-          }
-
-          const payload = {
-            email: user.email,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-          };
-          const token = setToken(payload);
-          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: updatedDocument });
+          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, });
         })
         .catch(err => {
           console.error(err);
