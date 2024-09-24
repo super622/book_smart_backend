@@ -17,7 +17,7 @@ exports.postBid = async (req, res) => {
     const user = req.user
 
     if (!req.bidId) {
-      const response = req.body;
+      let response = req.body;
       const lastBid = await Bid.find().sort({ bidId: -1 }).limit(1);
       const lastBidId = lastBid.length > 0 ? lastBid[0].bidId : 0;
       const lastBidOffer = await Job.findOne({ jobId: response.jobId }).select('bid_offer');
@@ -25,15 +25,17 @@ exports.postBid = async (req, res) => {
       const newBidId = lastBidId + 1;
       const facility = await Job.findOne({ jobId: response.jobId });
       const facilityEmail = await Facility.findOne({ companyName: facility.facility });
+      console.log(facilityEmail.aic);
       
       response.entryDate = moment(new Date()).format("MM/DD/YYYY");
       response.bidId = newBidId;
       response.facility = facility.facility;
+      response.facilityId = facilityEmail.aic;
       const auth = new Bid(response);
       await auth.save();
 
       const updateJob = await Job.updateOne({ jobId: response.jobId }, { $set: { bid_offer: newBidOffer } });
-      console.log(updateJob);
+      console.log('updated');
 
       const payload = {
         email: user.email,

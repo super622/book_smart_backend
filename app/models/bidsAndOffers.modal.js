@@ -26,6 +26,10 @@ module.exports = mongoose => {
         default: '',
         required: true,
       },
+      caregiverId: {
+        type: Number,
+        default: 0
+      },
       Account: {
         type: String,
         default: ''
@@ -35,6 +39,10 @@ module.exports = mongoose => {
         default: '',
         required: true
       },
+      facilityId: {
+        type: Number,
+        default: 0
+      }
     });
   
     schema.method("toJSON", function () {
@@ -42,7 +50,6 @@ module.exports = mongoose => {
       object.id = _id;
       return object;
     });
-  
   
     const BidOffer = mongoose.model("BidOffer", schema); // Changed model name to "Master"
     return BidOffer;

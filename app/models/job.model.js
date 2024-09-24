@@ -191,6 +191,7 @@ module.exports = mongoose => {
     return object;
   });
 
+  schema.index({ jobId: 1 }); // added indexing
 
   const Jobs = mongoose.model("Jobs", schema); // Changed model name to "Master"
   return Jobs;

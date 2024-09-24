@@ -285,6 +285,8 @@ exports.shifts = async (req, res) => {
 }
 
 exports.getJob = async (req, res) => {
+  const indexes = await Job.collection.getIndexes();
+  console.log('Indexes: ', indexes);
   console.log('get job');
   try {
     // const user = req.user;
@@ -295,12 +297,13 @@ exports.getJob = async (req, res) => {
     }
 
     let jobData = await Job.findOne({ jobId });
+    console.log('got jobdata');
     const bidders = await Bid.find({ jobId });
+    console.log('got bidders');
 
-    let biddersList = [];
-    for (const item of bidders) {
-      let bidderInfo = await Clinical.findOne({ firstName: item.caregiver.split(' ')[0], lastName: item.caregiver.split(' ')[1] });
-      biddersList.push([
+    let biddersList = await Promise.all(bidders.map(async (item) => {
+      let bidderInfo = await Clinical.findOne({ aic: item.caregiverId });
+      return [
         item.entryDate,
         item.caregiver,
         "",
@@ -308,10 +311,11 @@ exports.getJob = async (req, res) => {
         item.bidStatus,
         "",
         item.bidId,
-        bidderInfo.email || '',
-        bidderInfo.phoneNumber || ''
-      ]);
-    };
+        bidderInfo?.email || '',
+        bidderInfo?.phoneNumber || '',
+      ];
+    }));
+    console.log('complete process');
 
     const workedHours = calculateShiftHours(jobData.shiftStartTime, jobData.shiftEndTime);
     const startTime = jobData.shiftStartTime ? getTimeFromDate(jobData.shiftStartTime) : '';
@@ -330,7 +334,7 @@ exports.getJob = async (req, res) => {
     //   exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
     // };
     // const token = setToken(payload);
-
+    console.log('return job');
     return res.status(200).json({
       message: "Successfully Get",
       jobData,
