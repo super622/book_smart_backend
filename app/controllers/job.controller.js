@@ -94,6 +94,44 @@ exports.updateTimeSheet = async (req, res) => {
   return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
 };
 
+exports.updateDocuments = async (req, res) => {
+  try {
+    const user = req.user;
+    const { file, type, prevFile, jobId } = req.body;
+
+    const payload = {
+      email: user.email,
+      userRole: user.userRole,
+      iat: Math.floor(Date.now() / 1000), // Issued at time
+      exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+    };
+    const token = setToken(payload);
+
+    if (type == 'timesheet') {
+      if (file.name != '') {
+        await Job.updateOne({ jobId }, { $set: {timeSheet: file, jobStatus: 'Pending Verification'} });
+      } else {
+        if (prevFile == '') {
+          await Job.updateOne({ jobId }, { $set: {timeSheet: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+        }
+      }
+      return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+    } else {
+      if (file.name != '') {
+        await Job.updateOne({ jobId }, { $set: {timeSheetTemplate: file, jobStatus: 'Pending Verification'} });
+      } else {
+        if (prevFile == '') {
+          await Job.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+        }
+      }
+      return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "An error occurred", error });
+  }
+};
+
 //Regiseter Account
 exports.postJob = async (req, res) => {
   try {
@@ -256,7 +294,7 @@ exports.shifts = async (req, res) => {
           item.isHoursSubmit ? "yes" : "no",
           item.isHoursApproved ? "yes" : "no",
           item.timeSheet.name,
-          "",
+          item.timeSheetTemplate?.name,
           item.noStatusExplanation,
           "delete"
         ])

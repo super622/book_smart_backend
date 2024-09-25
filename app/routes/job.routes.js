@@ -19,6 +19,7 @@ module.exports = app => {
   router.get("/getDashboardData", verifyUser, jobs.getAllData);
   router.get("/getCaregiverTimesheets", verifyUser, jobs.getCaregiverTimesheets);
   router.post('/update', verifyUser, jobs.Update);
+  router.post("/updateDocuments", verifyUser, jobs.updateDocuments);
   // router.get('invoices', verifyUser, facilities.invoices);
   router.get('/generateInvoice', jobs.generateInvoice);
 

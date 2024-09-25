@@ -98,8 +98,9 @@ module.exports = mongoose => {
       default: ''
     },
     timeSheetTemplate: {
-      type: String,
-      default: ''
+      content: { type: Buffer, default: '' },
+      type: { type: String, default: '' },
+      name: { type: String, default: '' },
     },
     timeSheetVerified: {
       type: Boolean,
