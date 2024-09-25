@@ -86,9 +86,9 @@ exports.updateTimeSheet = async (req, res) => {
     <p><strong>Timesheet</strong> : ${timeSheetFile?.name || ''}</p>
   </div>`
 
-  let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
-  let approveResult2 = mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1);
-  let approveResult3 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
+  let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult2 = mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult3 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1, request.timeSheet);
   let approveResult4 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
 
   return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
