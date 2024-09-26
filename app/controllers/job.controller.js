@@ -64,11 +64,11 @@ exports.updateTimeSheet = async (req, res) => {
   const user = req.user;
   const request = req.body;
   let timeSheetFile = request.timeSheet;
-  timeSheetFile.content = Buffer.from(timeSheetFile.content, 'base64');
+  const content = Buffer.from(timeSheetFile.content, 'base64');
   const jobDetail = await Job.findOne({ jobId: request.jobId });
   const facility = await Facility.findOne({ companyName: jobDetail.facility });
 
-  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: timeSheetFile, jobStatus: 'Pending Verification'} });
+  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: content, name: timeSheetFile.name, type: timeSheetFile.type }, jobStatus: 'Pending Verification'} });
 
   const payload = {
     email: user.email,
@@ -466,7 +466,8 @@ exports.updateJobTSVerify = async (req, res) => {
   }
 
   if (file?.name !== '') {
-    await Job.updateOne({ jobId }, { $set: { timeSheet: file }});
+    const content = Buffer.from(file.content, 'base64');
+    await Job.updateOne({ jobId }, { $set: { timeSheet: { name: file.name, content: content, type: file.type } }});
   }
 
   if (status == 1) {
@@ -603,41 +604,79 @@ exports.myShift = async (req, res) => {
 
 exports.getCaregiverTimesheets = async (req, res) => {
   const user = req.user;
-  const data = await Job.find({});
-  let dataArray = [];
+  const { search, page } = req.body;
+  const limit = 5; // Number of results per page
+  const skip = (page - 1) * limit;
 
-  for (const item of data) {
-    const workedHours = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
-    const startTime = item.shiftStartTime ? getTimeFromDate(item.shiftStartTime) : '';
-    const endTime = item.shiftEndTime ? getTimeFromDate(item.shiftEndTime) : '';
-    let workedHoursStr = '';
-    if (startTime != "" && endTime != "") {
-      workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+  try {
+    const query = {};
+
+    if (search) {
+      const isNumeric = !isNaN(search); // Check if the search input is a number
+    
+      query.$or = [
+        ...(isNumeric ? [{ jobId: Number(search) }] : []),
+        { nurse: { $regex: search, $options: 'i' } },
+        { shiftTime: { $regex: search, $options: 'i' } },
+        { shiftDate: { $regex: search, $options: 'i' } },
+        { lunch: { $regex: search, $options: 'i' } },
+        ...(isNumeric ? [{ lunchEquation: Number(search) }] : []),
+        ...(isNumeric ? [{ finalHoursEquation: Number(search) }] : []),
+        { preTime: { $regex: search, $options: 'i' } }
+      ];
     }
-    dataArray.push([
-      item.jobId,
-      item.nurse,
-      item.shiftDate + " " + item.shiftTime,
-      item.jobStatus,
-      workedHoursStr,
-      item.preTime,
-      item.lunch,
-      item.lunchEquation.toFixed(2),
-      item.finalHoursEquation.toFixed(2)
-    ]);
-  }
+    
+    // Fetch the jobs from the database with pagination
+    const data = await Job.find(query)
+      .skip(skip)
+      .limit(limit);
+    
+    let totalPageCnt = await Job.find(query).countDocuments(); // Use countDocuments for counting with a query
+    console.log("Total job count: ", totalPageCnt);
 
-  const payload = {
-    contactEmail: user.contactEmail,
-    userRole: user.userRole,
-    iat: Math.floor(Date.now() / 1000), // Issued at time
-    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-  };
-  const token = setToken(payload);
-  if (token) {
-    res.status(200).json({ message: "Successfully Get!", timesheet: dataArray, token: token });
-  } else {
-    res.status(400).json({ message: "Cannot logined User!" });
+    totalPageCnt = Math.ceil(totalPageCnt / limit);
+    console.log("Total pages: ", totalPageCnt);
+
+    let dataArray = [];
+
+    for (const item of data) {
+      const workedHours = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
+      const startTime = item.shiftStartTime ? getTimeFromDate(item.shiftStartTime) : '';
+      const endTime = item.shiftEndTime ? getTimeFromDate(item.shiftEndTime) : '';
+      let workedHoursStr = '';
+
+      if (startTime != "" && endTime != "") {
+        workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+      }
+
+      dataArray.push([
+        item.jobId,
+        item.nurse,
+        item.shiftDate + " " + item.shiftTime,
+        item.jobStatus,
+        workedHoursStr,
+        item.preTime,
+        item.lunch,
+        item.lunchEquation.toFixed(2),
+        item.finalHoursEquation.toFixed(2)
+      ]);
+    }
+
+    const payload = {
+      email: user.email,
+      userRole: user.userRole,
+      iat: Math.floor(Date.now() / 1000), // Issued at time
+      exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+    };
+    const token = setToken(payload);
+    if (token) {
+      res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token: token });
+    } else {
+      res.status(400).json({ message: "Cannot logined User!" });
+    }
+  } catch (e) {
+    console.log(e);
+    return res.status(500).json({ message: "An Error Occured!" })
   }
 };
 
@@ -646,7 +685,7 @@ exports.getTimesheet = async (req, res) => {
     let result = await Job.findOne({ jobId: req.body.jobId });
     const content = result.timeSheet.content.toString('base64');
     
-    return res.status(200).json({ message: "Success", data: { content: content, type: result.timeSheet.type, name: result.timeSheet.name } });
+    return res.status(200).json({ message: "Success", data: { name: result.timeSheet.name, type: result.timeSheet.type, content: content } });
   } catch (e) {
     return res.status(500).json({ message: "An Error Occured!" })
   }

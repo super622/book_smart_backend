@@ -624,6 +624,24 @@ exports.getAllList = async (req, res) => {
             } else {
                 res.status(400).json({ message: "Cannot logined User!" })
             }
+        } else if (role === 'Clinical') {
+            for (const item of data) {
+                dataArray.push(item.firstName + " " + item.lastName);
+            };
+
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000), // Issued at time
+                exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+            }
+            const token = setToken(payload);
+
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+            } else {
+                res.status(400).json({ message: "Cannot logined User!" })
+            }
         }
     } catch (e) {
         console.log(e);
