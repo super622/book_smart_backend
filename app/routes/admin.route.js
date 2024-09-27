@@ -33,5 +33,7 @@ module.exports = app => {
 
   router.get('/getBidIDs', verifyUser, admin.getBidIDs);
 
+  router.post('/getAllUsersList', verifyUser, admin.getAllUsersList);
+
   app.use("/api/admin", router);
 };

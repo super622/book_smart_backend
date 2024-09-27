@@ -604,81 +604,123 @@ exports.myShift = async (req, res) => {
 
 exports.getCaregiverTimesheets = async (req, res) => {
   const user = req.user;
-  const { search, page } = req.body;
+  const { search = '', page = 1, filters = [] } = req.body; // Include filters from the request body
   const limit = 5; // Number of results per page
-  const skip = (page - 1) * limit;
+  const skip = (page - 1) * limit; // Calculate number of items to skip
 
   try {
+    console.log(search, page, filters);
+    // Initialize query object
     const query = {};
 
+    // Handle the filter functionality
+    filters.forEach(filter => {
+      const { field, condition, value } = filter;
+      console.log(field, condition, value);
+      
+      switch (condition) {
+        case 'is':
+          query[field] = value;
+          break;
+        case 'is not':
+          query[field] = { $ne: value };
+          break;
+        case 'contains':
+          query[field] = { $regex: value, $options: 'i' }; // Case-insensitive search
+          break;
+        case 'higher than':
+          query[field] = { $gt: value }; // Greater than
+          break;
+        case 'lower than':
+          query[field] = { $lt: value }; // Less than
+          break;
+        case 'is blank':
+          query[field] = { $exists: false }; // Field does not exist
+          break;
+        case 'is not blank':
+          query[field] = { $exists: true, $ne: null }; // Field exists and is not null
+          break;
+        default:
+          break;
+      }
+    });
+
+    // Handle the search functionality
     if (search) {
-      const isNumeric = !isNaN(search); // Check if the search input is a number
-    
+      const isNumeric = !isNaN(search); // Check if the search input is numeric
+
+      // Add search across fields to the query
       query.$or = [
-        ...(isNumeric ? [{ jobId: Number(search) }] : []),
-        { nurse: { $regex: search, $options: 'i' } },
-        { shiftTime: { $regex: search, $options: 'i' } },
-        { shiftDate: { $regex: search, $options: 'i' } },
-        { lunch: { $regex: search, $options: 'i' } },
-        ...(isNumeric ? [{ lunchEquation: Number(search) }] : []),
-        ...(isNumeric ? [{ finalHoursEquation: Number(search) }] : []),
-        { preTime: { $regex: search, $options: 'i' } }
+        ...(isNumeric ? [{ jobId: Number(search) }] : []), // Numeric search for jobId
+        { nurse: { $regex: search, $options: 'i' } }, // Text search for nurse
+        { shiftTime: { $regex: search, $options: 'i' } }, // Text search for shiftTime
+        { shiftDate: { $regex: search, $options: 'i' } }, // Text search for shiftDate
+        { lunch: { $regex: search, $options: 'i' } }, // Text search for lunch
+        ...(isNumeric ? [{ lunchEquation: Number(search) }] : []), // Numeric search for lunchEquation
+        ...(isNumeric ? [{ finalHoursEquation: Number(search) }] : []), // Numeric search for finalHoursEquation
+        { preTime: { $regex: search, $options: 'i' } } // Text search for preTime
       ];
     }
-    
-    // Fetch the jobs from the database with pagination
-    const data = await Job.find(query)
-      .skip(skip)
-      .limit(limit);
-    
-    let totalPageCnt = await Job.find(query).countDocuments(); // Use countDocuments for counting with a query
-    console.log("Total job count: ", totalPageCnt);
 
-    totalPageCnt = Math.ceil(totalPageCnt / limit);
-    console.log("Total pages: ", totalPageCnt);
+    // Fetch jobs from the database with pagination and filtering
+    const jobs = await Job.find(query)
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Use lean for performance improvement
+
+    // Count total number of documents matching the query
+    const totalRecords = await Job.countDocuments(query);
+    const totalPageCnt = Math.ceil(totalRecords / limit); // Calculate total pages
 
     let dataArray = [];
 
-    for (const item of data) {
-      const workedHours = calculateShiftHours(item.shiftStartTime, item.shiftEndTime);
-      const startTime = item.shiftStartTime ? getTimeFromDate(item.shiftStartTime) : '';
-      const endTime = item.shiftEndTime ? getTimeFromDate(item.shiftEndTime) : '';
+    // Prepare the response array
+    for (const job of jobs) {
+      const workedHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
+      const startTime = job.shiftStartTime ? getTimeFromDate(job.shiftStartTime) : '';
+      const endTime = job.shiftEndTime ? getTimeFromDate(job.shiftEndTime) : '';
       let workedHoursStr = '';
 
-      if (startTime != "" && endTime != "") {
-        workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+      if (startTime !== '' && endTime !== '') {
+        workedHoursStr = `${startTime} to ${endTime} = ${workedHours}`;
       }
 
+      // Push each job details to the response array
       dataArray.push([
-        item.jobId,
-        item.nurse,
-        item.shiftDate + " " + item.shiftTime,
-        item.jobStatus,
+        job.jobId,
+        job.nurse,
+        `${job.shiftDate} ${job.shiftTime}`,
+        job.jobStatus,
         workedHoursStr,
-        item.preTime,
-        item.lunch,
-        item.lunchEquation.toFixed(2),
-        item.finalHoursEquation.toFixed(2)
+        job.preTime,
+        job.lunch,
+        job.lunchEquation ? job.lunchEquation.toFixed(2) : '0.00',
+        job.finalHoursEquation ? job.finalHoursEquation.toFixed(2) : '0.00'
       ]);
     }
 
+    // Generate JWT token
     const payload = {
       email: user.email,
       userRole: user.userRole,
       iat: Math.floor(Date.now() / 1000), // Issued at time
-      exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+      exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time (e.g., 1 hour)
     };
+    
     const token = setToken(payload);
+
     if (token) {
-      res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token: token });
+      // Successful response
+      res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
     } else {
       res.status(400).json({ message: "Cannot logined User!" });
     }
-  } catch (e) {
-    console.log(e);
-    return res.status(500).json({ message: "An Error Occured!" })
+  } catch (error) {
+    console.error('Error occurred while fetching timesheets:', error);
+    res.status(500).json({ message: "An error occurred!" });
   }
 };
+
 
 exports.getTimesheet = async (req, res) => {
   try {

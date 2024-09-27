@@ -649,7 +649,82 @@ exports.getAllList = async (req, res) => {
     }
 };
 
-//Get All Data
+exports.allCaregivers = async (req, res) => {
+    try {
+        const user = req.user;
+        const { search = '', page = 1 } = req.body;
+        const limit = 5;
+        const skip = (page - 1) * limit;
+        const query = {};
+
+        if (search) {
+            query.$or = [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { phoneNumber: { $regex: search, $options: 'i' } },
+                { title: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const data = await Clinical.find(query)
+            .skip(skip)
+            .limit(limit)
+            .lean();
+  
+        // Count total number of documents matching the query
+        const totalRecords = await Clinical.countDocuments(query);
+        const totalPageCnt = Math.ceil(totalRecords / limit);
+      
+        let dataArray = [];
+
+        for (const item of data) {
+            let awarded = await Bid.find({ bidStatus: 'Awarded', caregiver: item.firstName + ' ' + item.lastName }).count();
+            let applied = await Bid.find({ caregiver: item.firstName + ' ' + item.lastName }).count();
+            let ratio = '';
+
+            if (awarded > 0 && applied > 0) {
+                ratio = (100 / applied) * awarded;
+                ratio += '%';
+            }
+
+            dataArray.push([
+                item.entryDate,
+                item.firstName,
+                item.lastName,
+                item.phoneNumber,
+                item.title,
+                item.email,
+                'view_shift',
+                'verification',
+                item.userStatus,
+                awarded == 0 ? '' : awarded,
+                applied == 0 ? '' : applied,
+                ratio,
+                'pw',
+                item.aic,
+            ]);
+        };
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        };
+        const token = setToken(payload);
+
+        if (token) {
+            res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
+        } else {
+            res.status(400).json({ message: "Cannot logined User!" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
 exports.clinician = async (req, res) => {
     try {
         const user = req.user;

@@ -33,6 +33,8 @@ module.exports = app => {
 
   router.post('/getUserInfo', verifyUser, clinical.getUserInfo);
 
+  router.post('/allCaregivers', verifyUser, clinical.allCaregivers);
+
   router.post('/updateUserStatus', verifyUser, clinical.updateUserStatus);
 
   app.use("/api/clinical", router);
