@@ -1,18 +1,12 @@
-const jwtEncode = require('jwt-encode')
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
-const { set } = require('mongoose');
 const Clinical = db.clinical;
 const Bid = db.bids;
 const Job = db.jobs;
-const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
-const { verify } = require('jsonwebtoken');
 const moment = require('moment');
-const twilios = require('../controllers/twilio.js');
 const phoneSms = require('../controllers/twilio.js');
 
-const limitAccNum = 100;
 const expirationTime = 10000000;
 //Regiseter Account
 exports.signup = async (req, res) => {
@@ -114,10 +108,10 @@ exports.signup = async (req, res) => {
 
 //Login Account
 exports.login = async (req, res) => {
-    console.log('start backend')
     try {
         const { email, password, userRole, device } = req.body;
-        let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password });
+        let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password }, 
+                                            { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, clinicalAcknowledgeTerm: 1, password: 1 });
 
         if (userData) {
             if (userData.userStatus === 'activate') {
@@ -135,7 +129,7 @@ exports.login = async (req, res) => {
                     phoneAuth = true;
                 } else {
                     phoneAuth = false;
-                    const updateUser = await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
+                    await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
                 }
 
                 if (token) {
@@ -479,14 +473,14 @@ exports.Update = async (req, res) => {
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
-                if (role != 'Admin') {
-                    const token = setToken(payload);
+                const token = setToken(payload);
+                if (role != 'Clinician') {
                     if (updatedData) {
                         res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedData });
                     }
                 } else {
                     if (updatedData) {
-                        res.status(200).json({ message: 'Responded Successfully!', user: updatedData });
+                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: [] });
                     }
                 }
             }
