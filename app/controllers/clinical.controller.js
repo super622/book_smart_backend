@@ -646,10 +646,80 @@ exports.getAllList = async (req, res) => {
 exports.allCaregivers = async (req, res) => {
     try {
         const user = req.user;
-        const { search = '', page = 1 } = req.body;
+        const { search = '', page = 1, filters = [] } = req.body;
         const limit = 5;
         const skip = (page - 1) * limit;
         const query = {};
+
+        filters.forEach(filter => {
+            const { logic = 'and', field, condition, value } = filter;
+        
+            let fieldNames = [];
+        
+            // For Name, use both firstName and lastName in an OR condition
+            if (field === 'Name') {
+                fieldNames = ['firstName', 'lastName']; 
+            } else if (field === 'Email') {
+                fieldNames = ['email']; 
+            } else if (field === 'User Roles') {
+                fieldNames = ['userRole'];
+            } else if (field === 'User Status') {
+                fieldNames = ['userStatus'];
+            }
+        
+            const conditions = [];
+        
+            fieldNames.forEach(fieldName => {
+                let conditionObj = {};
+                switch (condition) {
+                    case 'is':
+                        conditionObj[fieldName] = value;
+                        break;
+                    case 'is not':
+                        conditionObj[fieldName] = { $ne: value };
+                        break;
+                    case 'contains':
+                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
+                        break;
+                    case 'does not contain':
+                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+                        break;
+                    case 'starts with':
+                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+                        break;
+                    case 'ends with':
+                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+                        break;
+                    case 'is blank':
+                        conditionObj[fieldName] = { $exists: false };
+                        break;
+                    case 'is not blank':
+                        conditionObj[fieldName] = { $exists: true, $ne: null };
+                        break;
+                    case 'higher than':
+                        conditionObj[fieldName] = { $gt: value };
+                        break;
+                    case 'lower than':
+                        conditionObj[fieldName] = { $lt: value };
+                        break;
+                    default:
+                        break;
+                }
+                conditions.push(conditionObj); // Collect conditions for the field
+            });
+        
+            // If the field is Name, apply OR logic between firstName and lastName
+            if (field === 'Name') {
+                query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+            } else {
+                // Apply AND or OR logic for other fields based on the `logic` parameter
+                if (logic === 'or') {
+                    query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+                } else {
+                    query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+                }
+            }
+        });
 
         if (search) {
             query.$or = [
@@ -657,6 +727,7 @@ exports.allCaregivers = async (req, res) => {
                 { lastName: { $regex: search, $options: 'i' } },
                 { phoneNumber: { $regex: search, $options: 'i' } },
                 { title: { $regex: search, $options: 'i' } },
+                { entryDate: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } }
             ];
         }

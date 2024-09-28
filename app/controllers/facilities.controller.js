@@ -297,6 +297,133 @@ exports.Update = async (req, res) => {
     }
 };
 
+exports.getAllFacility = async (req, res) => {
+    console.log('start');
+    try {
+        const user = req.user;
+        const { search = '', page = 1, filters = [] } = req.body;
+        const limit = 5;
+        const skip = (page - 1) * limit;
+        const query = {};
+
+        filters.forEach(filter => {
+            const { logic = 'and', field, condition, value } = filter;
+        
+            let fieldNames = [];
+        
+            if (field === 'Contact Name') {
+                fieldNames = ['firstName', 'lastName']; 
+            } else if (field === 'AIC-ID') {
+                fieldNames = ['aic']; 
+            } else if (field === 'User Roles') {
+                fieldNames = ['userRole'];
+            } else if (field === 'User Status') {
+                fieldNames = ['userStatus'];
+            } else if (field === 'Company Name') {
+                fieldNames = ['companyName'];
+            }
+        
+            const conditions = [];
+        
+            fieldNames.forEach(fieldName => {
+                let conditionObj = {};
+                switch (condition) {
+                    case 'is':
+                        conditionObj[fieldName] = value;
+                        break;
+                    case 'is not':
+                        conditionObj[fieldName] = { $ne: value };
+                        break;
+                    case 'contains':
+                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
+                        break;
+                    case 'does not contain':
+                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+                        break;
+                    case 'starts with':
+                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+                        break;
+                    case 'ends with':
+                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+                        break;
+                    case 'is blank':
+                        conditionObj[fieldName] = { $exists: false };
+                        break;
+                    case 'is not blank':
+                        conditionObj[fieldName] = { $exists: true, $ne: null };
+                        break;
+                    default:
+                        break;
+                }
+                conditions.push(conditionObj); // Collect conditions for the field
+            });
+        
+            // If the field is Name, apply OR logic between firstName and lastName
+            if (field === 'Name') {
+                query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+            } else {
+                // Apply AND or OR logic for other fields based on the `logic` parameter
+                if (logic === 'or') {
+                    query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+                } else {
+                    query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+                }
+            }
+        });
+
+        console.log(query);
+
+        if (search) {
+            query.$or = [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { userRole: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const data = await Facility.find(query)
+            .skip(skip)
+            .limit(limit)
+            .lean();
+        console.log('got data');
+        const totalRecords = await Facility.countDocuments(query);
+        const totalPageCnt = Math.ceil(totalRecords / limit);
+
+        let dataArray = [];
+        data.map((item, index) => {
+            dataArray.push([
+                item.aic,
+                moment(item.entryDate).format("MM/DD/YYYY"),
+                item.companyName,
+                item.firstName + " " + item.lastName,
+                item.userStatus,
+                item.userRole,
+                "view_shift",
+                "pw",
+                item.contactEmail
+            ]);
+        });
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        };
+        const token = setToken(payload);
+
+        if (token) {
+            return res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
+        } else {
+            return res.status(400).json({ message: "Cannot logined User!" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};
+
 exports.getFacilityList = async (req, res) => {
     try {
         const user = req.user;

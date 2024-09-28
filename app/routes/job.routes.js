@@ -5,7 +5,7 @@ module.exports = app => {
   var router = require("express").Router();
 
   // Create a new Spot
-  router.get("/shifts", verifyUser, jobs.shifts);
+  router.post("/shifts", verifyUser, jobs.shifts);
   router.post("/postJob", verifyUser, jobs.postJob);
   router.post("/updateHoursStatus", verifyUser, jobs.updateHoursStatus);
   router.post("/removeJob", verifyUser, jobs.removeJob);

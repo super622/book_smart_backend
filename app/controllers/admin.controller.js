@@ -446,6 +446,8 @@ exports.getAllUsersList = async (req, res) => {
         const facilityData = await Facility.find(fQuery);
         const clinicalData = await Clinical.find(query);
 
+        console.log('got all list');
+
         adminData.forEach(item => {
             adminDataArr.push([
                 `${item.firstName} ${item.lastName}`,
