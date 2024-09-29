@@ -19,7 +19,7 @@ module.exports = app => {
 
   router.get('/getFacilityList', verifyUser, facilities.getFacilityList);
 
-  router.post('/getAllFacility', verifyUser, facilities.getAllFacility);
+  router.post('/getAllFacilities', verifyUser, facilities.getAllFacilities);
 
   router.post('/getFacilityInfo', verifyUser, facilities.getFacilityInfo);
 

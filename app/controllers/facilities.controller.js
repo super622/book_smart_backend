@@ -297,14 +297,14 @@ exports.Update = async (req, res) => {
     }
 };
 
-exports.getAllFacility = async (req, res) => {
-    console.log('start');
+exports.getAllFacilities = async (req, res) => {
     try {
         const user = req.user;
         const { search = '', page = 1, filters = [] } = req.body;
         const limit = 5;
         const skip = (page - 1) * limit;
         const query = {};
+        console.log(search, page, filters);
 
         filters.forEach(filter => {
             const { logic = 'and', field, condition, value } = filter;
@@ -359,7 +359,7 @@ exports.getAllFacility = async (req, res) => {
             });
         
             // If the field is Name, apply OR logic between firstName and lastName
-            if (field === 'Name') {
+            if (field === 'Contact Name') {
                 query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
             } else {
                 // Apply AND or OR logic for other fields based on the `logic` parameter
@@ -371,17 +371,17 @@ exports.getAllFacility = async (req, res) => {
             }
         });
 
-        console.log(query);
-
         if (search) {
             query.$or = [
                 { firstName: { $regex: search, $options: 'i' } },
                 { lastName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { userRole: { $regex: search, $options: 'i' } }
+                { contactEmail: { $regex: search, $options: 'i' } },
+                { companyName: { $regex: search, $options: 'i' } },
+                { contactPhone: { $regex: search, $options: 'i' } }
             ];
         }
 
+        console.log(query);
         const data = await Facility.find(query)
             .skip(skip)
             .limit(limit)

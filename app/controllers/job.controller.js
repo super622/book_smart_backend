@@ -240,7 +240,7 @@ exports.shifts = async (req, res) => {
       const token = setToken(payload);
       if (token) {
         // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-        res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+        res.status(200).json({ message: "Successfully Get!", dataArray, token });
       } else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
@@ -274,7 +274,7 @@ exports.shifts = async (req, res) => {
       const token = setToken(payload);
       
       if (token) {
-        res.status(200).json({ message: "Successfully Get!", jobData: dataArray, token: token });
+        res.status(200).json({ message: "Successfully Get!", dataArray, token });
       } else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
@@ -653,11 +653,10 @@ exports.myShift = async (req, res) => {
 
       for (const job of jobs) {
         if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-          const payRate = job.payRate? parseFloat(job.payRate.replace('$', '')) : 0;
+          const payRate = job.payRate != '$' ? parseFloat(job.payRate.replace('$', '')) : 0;
           const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
-          const bonus = job.bonus ? parseFloat(job.bonus) : 0;
+          const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
           totalPay += payRate * shiftHours + bonus;
-          console.log(payRate, shiftHours, bonus, totalPay);
         }
       }
 
@@ -680,9 +679,9 @@ exports.myShift = async (req, res) => {
 
       for (const job of weekly) {
         if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-          const payRate = job.payRate? parseFloat(job.payRate.replace('$', '')) : 0;
+          const payRate = job.payRate != '$' ? parseFloat(job.payRate.replace('$', '')) : 0;
           const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
-          const bonus = job.bonus ? parseFloat(job.bonus) : 0;
+          const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
           weeklyPay += payRate * shiftHours + bonus;
         }
       }
