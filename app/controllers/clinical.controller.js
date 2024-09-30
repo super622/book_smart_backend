@@ -823,75 +823,75 @@ exports.allCaregivers = async (req, res) => {
         const skip = (page - 1) * limit;
         const query = {};
 
-        filters.forEach(filter => {
-            const { logic = 'and', field, condition, value } = filter;
+        // filters.forEach(filter => {
+        //     const { logic = 'and', field, condition, value } = filter;
         
-            let fieldNames = [];
+        //     let fieldNames = [];
         
-            // For Name, use both firstName and lastName in an OR condition
-            if (field === 'Name') {
-                fieldNames = ['firstName', 'lastName']; 
-            } else if (field === 'Email') {
-                fieldNames = ['email']; 
-            } else if (field === 'User Roles') {
-                fieldNames = ['userRole'];
-            } else if (field === 'User Status') {
-                fieldNames = ['userStatus'];
-            }
+        //     // For Name, use both firstName and lastName in an OR condition
+        //     if (field === 'Name') {
+        //         fieldNames = ['firstName', 'lastName']; 
+        //     } else if (field === 'Email') {
+        //         fieldNames = ['email']; 
+        //     } else if (field === 'User Roles') {
+        //         fieldNames = ['userRole'];
+        //     } else if (field === 'User Status') {
+        //         fieldNames = ['userStatus'];
+        //     }
         
-            const conditions = [];
+        //     const conditions = [];
         
-            fieldNames.forEach(fieldName => {
-                let conditionObj = {};
-                switch (condition) {
-                    case 'is':
-                        conditionObj[fieldName] = value;
-                        break;
-                    case 'is not':
-                        conditionObj[fieldName] = { $ne: value };
-                        break;
-                    case 'contains':
-                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
-                        break;
-                    case 'does not contain':
-                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-                        break;
-                    case 'starts with':
-                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-                        break;
-                    case 'ends with':
-                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-                        break;
-                    case 'is blank':
-                        conditionObj[fieldName] = { $exists: false };
-                        break;
-                    case 'is not blank':
-                        conditionObj[fieldName] = { $exists: true, $ne: null };
-                        break;
-                    case 'higher than':
-                        conditionObj[fieldName] = { $gt: value };
-                        break;
-                    case 'lower than':
-                        conditionObj[fieldName] = { $lt: value };
-                        break;
-                    default:
-                        break;
-                }
-                conditions.push(conditionObj); // Collect conditions for the field
-            });
+        //     fieldNames.forEach(fieldName => {
+        //         let conditionObj = {};
+        //         switch (condition) {
+        //             case 'is':
+        //                 conditionObj[fieldName] = value;
+        //                 break;
+        //             case 'is not':
+        //                 conditionObj[fieldName] = { $ne: value };
+        //                 break;
+        //             case 'contains':
+        //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
+        //                 break;
+        //             case 'does not contain':
+        //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+        //                 break;
+        //             case 'starts with':
+        //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+        //                 break;
+        //             case 'ends with':
+        //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+        //                 break;
+        //             case 'is blank':
+        //                 conditionObj[fieldName] = { $exists: false };
+        //                 break;
+        //             case 'is not blank':
+        //                 conditionObj[fieldName] = { $exists: true, $ne: null };
+        //                 break;
+        //             case 'higher than':
+        //                 conditionObj[fieldName] = { $gt: value };
+        //                 break;
+        //             case 'lower than':
+        //                 conditionObj[fieldName] = { $lt: value };
+        //                 break;
+        //             default:
+        //                 break;
+        //         }
+        //         conditions.push(conditionObj); // Collect conditions for the field
+        //     });
         
-            // If the field is Name, apply OR logic between firstName and lastName
-            if (field === 'Name') {
-                query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-            } else {
-                // Apply AND or OR logic for other fields based on the `logic` parameter
-                if (logic === 'or') {
-                    query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-                } else {
-                    query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-                }
-            }
-        });
+        //     // If the field is Name, apply OR logic between firstName and lastName
+        //     if (field === 'Name') {
+        //         query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //     } else {
+        //         // Apply AND or OR logic for other fields based on the `logic` parameter
+        //         if (logic === 'or') {
+        //             query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //         } else {
+        //             query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+        //         }
+        //     }
+        // });
 
         if (search) {
             query.$or = [
@@ -904,7 +904,7 @@ exports.allCaregivers = async (req, res) => {
             ];
         }
 
-        const data = await Clinical.find(query)
+        const data = await Clinical.find(query, { firstName: 1, lastName: 1, aic: 1, entryDate: 1, phoneNumber: 1, title: 1, email: 1, userStatus: 1 })
             .skip(skip)
             .limit(limit)
             .lean();
@@ -916,8 +916,8 @@ exports.allCaregivers = async (req, res) => {
         let dataArray = [];
 
         for (const item of data) {
-            let awarded = await Bid.find({ bidStatus: 'Awarded', caregiver: item.firstName + ' ' + item.lastName }).count();
-            let applied = await Bid.find({ caregiver: item.firstName + ' ' + item.lastName }).count();
+            let awarded = await Bid.find({ bidStatus: 'Awarded', caregiverId: item.aic }).count();
+            let applied = await Bid.find({ caregiverId: item.aic }).count();
             let ratio = '';
 
             if (awarded > 0 && applied > 0) {

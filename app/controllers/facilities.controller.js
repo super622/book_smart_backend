@@ -307,70 +307,70 @@ exports.getAllFacilities = async (req, res) => {
         const query = {};
         console.log(search, page, filters);
 
-        filters.forEach(filter => {
-            const { logic = 'and', field, condition, value } = filter;
+        // filters.forEach(filter => {
+        //     const { logic = 'and', field, condition, value } = filter;
         
-            let fieldNames = [];
+        //     let fieldNames = [];
         
-            if (field === 'Contact Name') {
-                fieldNames = ['firstName', 'lastName']; 
-            } else if (field === 'AIC-ID') {
-                fieldNames = ['aic']; 
-            } else if (field === 'User Roles') {
-                fieldNames = ['userRole'];
-            } else if (field === 'User Status') {
-                fieldNames = ['userStatus'];
-            } else if (field === 'Company Name') {
-                fieldNames = ['companyName'];
-            }
+        //     if (field === 'Contact Name') {
+        //         fieldNames = ['firstName', 'lastName']; 
+        //     } else if (field === 'AIC-ID') {
+        //         fieldNames = ['aic']; 
+        //     } else if (field === 'User Roles') {
+        //         fieldNames = ['userRole'];
+        //     } else if (field === 'User Status') {
+        //         fieldNames = ['userStatus'];
+        //     } else if (field === 'Company Name') {
+        //         fieldNames = ['companyName'];
+        //     }
         
-            const conditions = [];
+        //     const conditions = [];
         
-            fieldNames.forEach(fieldName => {
-                let conditionObj = {};
-                switch (condition) {
-                    case 'is':
-                        conditionObj[fieldName] = value;
-                        break;
-                    case 'is not':
-                        conditionObj[fieldName] = { $ne: value };
-                        break;
-                    case 'contains':
-                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
-                        break;
-                    case 'does not contain':
-                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-                        break;
-                    case 'starts with':
-                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-                        break;
-                    case 'ends with':
-                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-                        break;
-                    case 'is blank':
-                        conditionObj[fieldName] = { $exists: false };
-                        break;
-                    case 'is not blank':
-                        conditionObj[fieldName] = { $exists: true, $ne: null };
-                        break;
-                    default:
-                        break;
-                }
-                conditions.push(conditionObj); // Collect conditions for the field
-            });
+        //     fieldNames.forEach(fieldName => {
+        //         let conditionObj = {};
+        //         switch (condition) {
+        //             case 'is':
+        //                 conditionObj[fieldName] = value;
+        //                 break;
+        //             case 'is not':
+        //                 conditionObj[fieldName] = { $ne: value };
+        //                 break;
+        //             case 'contains':
+        //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
+        //                 break;
+        //             case 'does not contain':
+        //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+        //                 break;
+        //             case 'starts with':
+        //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+        //                 break;
+        //             case 'ends with':
+        //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+        //                 break;
+        //             case 'is blank':
+        //                 conditionObj[fieldName] = { $exists: false };
+        //                 break;
+        //             case 'is not blank':
+        //                 conditionObj[fieldName] = { $exists: true, $ne: null };
+        //                 break;
+        //             default:
+        //                 break;
+        //         }
+        //         conditions.push(conditionObj); // Collect conditions for the field
+        //     });
         
-            // If the field is Name, apply OR logic between firstName and lastName
-            if (field === 'Contact Name') {
-                query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-            } else {
-                // Apply AND or OR logic for other fields based on the `logic` parameter
-                if (logic === 'or') {
-                    query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-                } else {
-                    query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-                }
-            }
-        });
+        //     // If the field is Name, apply OR logic between firstName and lastName
+        //     if (field === 'Contact Name') {
+        //         query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //     } else {
+        //         // Apply AND or OR logic for other fields based on the `logic` parameter
+        //         if (logic === 'or') {
+        //             query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //         } else {
+        //             query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+        //         }
+        //     }
+        // });
 
         if (search) {
             query.$or = [
@@ -382,8 +382,7 @@ exports.getAllFacilities = async (req, res) => {
             ];
         }
 
-        console.log(query);
-        const data = await Facility.find(query)
+        const data = await Facility.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, userRole: 1, contactEmail: 1 })
             .skip(skip)
             .limit(limit)
             .lean();

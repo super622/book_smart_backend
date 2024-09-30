@@ -321,133 +321,133 @@ exports.getAllUsersList = async (req, res) => {
 
         console.log(filters);
 
-        filters.forEach(filter => {
-            const { logic = 'and', field, condition, value } = filter;
+        // filters.forEach(filter => {
+        //     const { logic = 'and', field, condition, value } = filter;
         
-            let fieldNames = [];
+        //     let fieldNames = [];
         
-            // For Name, use both firstName and lastName in an OR condition
-            if (field === 'Name') {
-                fieldNames = ['firstName', 'lastName']; 
-            } else if (field === 'Email') {
-                fieldNames = ['email']; 
-            } else if (field === 'User Roles') {
-                fieldNames = ['userRole'];
-            } else if (field === 'User Status') {
-                fieldNames = ['userStatus'];
-            }
+        //     // For Name, use both firstName and lastName in an OR condition
+        //     if (field === 'Name') {
+        //         fieldNames = ['firstName', 'lastName']; 
+        //     } else if (field === 'Email') {
+        //         fieldNames = ['email']; 
+        //     } else if (field === 'User Roles') {
+        //         fieldNames = ['userRole'];
+        //     } else if (field === 'User Status') {
+        //         fieldNames = ['userStatus'];
+        //     }
         
-            const conditions = [];
+        //     const conditions = [];
         
-            fieldNames.forEach(fieldName => {
-                let conditionObj = {};
-                switch (condition) {
-                    case 'is':
-                        conditionObj[fieldName] = value;
-                        break;
-                    case 'is not':
-                        conditionObj[fieldName] = { $ne: value };
-                        break;
-                    case 'contains':
-                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
-                        break;
-                    case 'does not contain':
-                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-                        break;
-                    case 'starts with':
-                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-                        break;
-                    case 'ends with':
-                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-                        break;
-                    case 'is blank':
-                        conditionObj[fieldName] = { $exists: false };
-                        break;
-                    case 'is not blank':
-                        conditionObj[fieldName] = { $exists: true, $ne: null };
-                        break;
-                    default:
-                        break;
-                }
-                conditions.push(conditionObj); // Collect conditions for the field
-            });
+        //     fieldNames.forEach(fieldName => {
+        //         let conditionObj = {};
+        //         switch (condition) {
+        //             case 'is':
+        //                 conditionObj[fieldName] = value;
+        //                 break;
+        //             case 'is not':
+        //                 conditionObj[fieldName] = { $ne: value };
+        //                 break;
+        //             case 'contains':
+        //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
+        //                 break;
+        //             case 'does not contain':
+        //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+        //                 break;
+        //             case 'starts with':
+        //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+        //                 break;
+        //             case 'ends with':
+        //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+        //                 break;
+        //             case 'is blank':
+        //                 conditionObj[fieldName] = { $exists: false };
+        //                 break;
+        //             case 'is not blank':
+        //                 conditionObj[fieldName] = { $exists: true, $ne: null };
+        //                 break;
+        //             default:
+        //                 break;
+        //         }
+        //         conditions.push(conditionObj); // Collect conditions for the field
+        //     });
         
-            // If the field is Name, apply OR logic between firstName and lastName
-            if (field === 'Name') {
-                query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-            } else {
-                // Apply AND or OR logic for other fields based on the `logic` parameter
-                if (logic === 'or') {
-                    query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-                } else {
-                    query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-                }
-            }
-        });
+        //     // If the field is Name, apply OR logic between firstName and lastName
+        //     if (field === 'Name') {
+        //         query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //     } else {
+        //         // Apply AND or OR logic for other fields based on the `logic` parameter
+        //         if (logic === 'or') {
+        //             query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+        //         } else {
+        //             query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+        //         }
+        //     }
+        // });
         
-        filters.forEach(filter => {
-            const { logic = 'and', field, condition, value } = filter;
+        // filters.forEach(filter => {
+        //     const { logic = 'and', field, condition, value } = filter;
         
-            let fieldNames = [];
+        //     let fieldNames = [];
         
-            // For Name, use both firstName and lastName in an OR condition
-            if (field === 'Name') {
-                fieldNames = ['firstName', 'lastName'];
-            } else if (field === 'Email') {
-                fieldNames = ['contactEmail']; // For contactEmail
-            } else if (field === 'User Roles') {
-                fieldNames = ['userRole'];
-            } else if (field === 'User Status') {
-                fieldNames = ['userStatus'];
-            }
+        //     // For Name, use both firstName and lastName in an OR condition
+        //     if (field === 'Name') {
+        //         fieldNames = ['firstName', 'lastName'];
+        //     } else if (field === 'Email') {
+        //         fieldNames = ['contactEmail']; // For contactEmail
+        //     } else if (field === 'User Roles') {
+        //         fieldNames = ['userRole'];
+        //     } else if (field === 'User Status') {
+        //         fieldNames = ['userStatus'];
+        //     }
         
-            const conditions = [];
+        //     const conditions = [];
         
-            fieldNames.forEach(fieldName => {
-                let conditionObj = {};
-                switch (condition) {
-                    case 'is':
-                        conditionObj[fieldName] = value;
-                        break;
-                    case 'is not':
-                        conditionObj[fieldName] = { $ne: value };
-                        break;
-                    case 'contains':
-                        conditionObj[fieldName] = { $regex: value, $options: 'i' };
-                        break;
-                    case 'does not contain':
-                        conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-                        break;
-                    case 'starts with':
-                        conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-                        break;
-                    case 'ends with':
-                        conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-                        break;
-                    case 'is blank':
-                        conditionObj[fieldName] = { $exists: false };
-                        break;
-                    case 'is not blank':
-                        conditionObj[fieldName] = { $exists: true, $ne: null };
-                        break;
-                    default:
-                        break;
-                }
-                conditions.push(conditionObj);
-            });
+        //     fieldNames.forEach(fieldName => {
+        //         let conditionObj = {};
+        //         switch (condition) {
+        //             case 'is':
+        //                 conditionObj[fieldName] = value;
+        //                 break;
+        //             case 'is not':
+        //                 conditionObj[fieldName] = { $ne: value };
+        //                 break;
+        //             case 'contains':
+        //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
+        //                 break;
+        //             case 'does not contain':
+        //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+        //                 break;
+        //             case 'starts with':
+        //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+        //                 break;
+        //             case 'ends with':
+        //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+        //                 break;
+        //             case 'is blank':
+        //                 conditionObj[fieldName] = { $exists: false };
+        //                 break;
+        //             case 'is not blank':
+        //                 conditionObj[fieldName] = { $exists: true, $ne: null };
+        //                 break;
+        //             default:
+        //                 break;
+        //         }
+        //         conditions.push(conditionObj);
+        //     });
         
-            // If the field is Name, apply OR logic between firstName and lastName
-            if (field === 'Name') {
-                fQuery.$or = fQuery.$or ? [...fQuery.$or, ...conditions] : conditions;
-            } else {
-                // Apply AND or OR logic for other fields based on the `logic` parameter
-                if (logic === 'or') {
-                    fQuery.$or = fQuery.$or ? [...fQuery.$or, ...conditions] : conditions;
-                } else {
-                    fQuery.$and = fQuery.$and ? [...fQuery.$and, ...conditions] : conditions;
-                }
-            }
-        });
+        //     // If the field is Name, apply OR logic between firstName and lastName
+        //     if (field === 'Name') {
+        //         fQuery.$or = fQuery.$or ? [...fQuery.$or, ...conditions] : conditions;
+        //     } else {
+        //         // Apply AND or OR logic for other fields based on the `logic` parameter
+        //         if (logic === 'or') {
+        //             fQuery.$or = fQuery.$or ? [...fQuery.$or, ...conditions] : conditions;
+        //         } else {
+        //             fQuery.$and = fQuery.$and ? [...fQuery.$and, ...conditions] : conditions;
+        //         }
+        //     }
+        // });
         
         // Check the final queries
         console.log(query);
@@ -469,9 +469,9 @@ exports.getAllUsersList = async (req, res) => {
             ];
         }
 
-        const adminData = await Admin.find(query);
-        const facilityData = await Facility.find(fQuery);
-        const clinicalData = await Clinical.find(query);
+        const adminData = await Admin.find(query, { firstName: 1, lastName: 1, email: 1, userRole: 1, userStatus: 1 });
+        const facilityData = await Facility.find(fQuery, { firstName: 1, lastName: 1, contactEmail: 1, userRole: 1, userStatus: 1 });
+        const clinicalData = await Clinical.find(query, { firstName: 1, lastName: 1, email: 1, userRole: 1, userStatus: 1 });
 
         console.log('got all list');
 
@@ -1034,8 +1034,8 @@ exports.getAllUsersName = async (req, res) => {
         const user = req.user;
         
         // Find clinical and facility data
-        const clinicals = await Clinical.find({}, { firstName: 1, lastName: 1, _id: 0 });
-        const facilities = await Facility.find({}, { firstName: 1, lastName: 1, _id: 0 });
+        const clinicals = await Clinical.find({}, { firstName: 1, lastName: 1 });
+        const facilities = await Facility.find({}, { firstName: 1, lastName: 1 });
     
         // Combine the names into one array
         const combinedNames = [

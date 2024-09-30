@@ -287,86 +287,86 @@ exports.shifts = async (req, res) => {
       const query = {};
       console.log(search, page, filters);
 
-      filters.forEach(filter => {
-        const { logic = 'and', field, condition, value } = filter;
+      // filters.forEach(filter => {
+      //   const { logic = 'and', field, condition, value } = filter;
     
-        let fieldNames = [];
+      //   let fieldNames = [];
     
-        if (field === 'Job Status') {
-          fieldNames = ['jobStatus']; 
-        } else if (field === 'Facility') {
-          fieldNames = ['facility']; 
-        } else if (field === 'Job-ID') {
-          fieldNames = ['jobId'];
-        } else if (field === 'Job Bum #') {
-          fieldNames = ['jobNum'];
-        } else if (field === 'Location') {
-          fieldNames = ['location'];
-        } else if (field === 'Count - BDA') {
-          fieldNames = ['countBDA'];
-        } else if (field === 'Nurse') {
-          fieldNames = ['nurse'];
-        } else if (field === 'Degree/Discipline') {
-          fieldNames = ['degree'];
-        } else if (field === 'Bids / Offers') {
-          fieldNames = ['bid_offer'];
-        } else if (field === 'Hours Submitted?') {
-          fieldNames = ['isHoursSubmit'];
-        } else if (field === 'Hours Approved?') {
-          fieldNames = ['isHoursApproved'];
-        } else if (field === 'Timesheet Template') {
-          fieldNames = ['timeSheetTemplate'];
-        } else if (field === 'Timesheet Upload') {
-          fieldNames = ['timeSheet'];
-        } else if (field === 'No Status Explanation') {
-          fieldNames = ['noStatusExplanation'];
-        }
+      //   if (field === 'Job Status') {
+      //     fieldNames = ['jobStatus']; 
+      //   } else if (field === 'Facility') {
+      //     fieldNames = ['facility']; 
+      //   } else if (field === 'Job-ID') {
+      //     fieldNames = ['jobId'];
+      //   } else if (field === 'Job Bum #') {
+      //     fieldNames = ['jobNum'];
+      //   } else if (field === 'Location') {
+      //     fieldNames = ['location'];
+      //   } else if (field === 'Count - BDA') {
+      //     fieldNames = ['countBDA'];
+      //   } else if (field === 'Nurse') {
+      //     fieldNames = ['nurse'];
+      //   } else if (field === 'Degree/Discipline') {
+      //     fieldNames = ['degree'];
+      //   } else if (field === 'Bids / Offers') {
+      //     fieldNames = ['bid_offer'];
+      //   } else if (field === 'Hours Submitted?') {
+      //     fieldNames = ['isHoursSubmit'];
+      //   } else if (field === 'Hours Approved?') {
+      //     fieldNames = ['isHoursApproved'];
+      //   } else if (field === 'Timesheet Template') {
+      //     fieldNames = ['timeSheetTemplate'];
+      //   } else if (field === 'Timesheet Upload') {
+      //     fieldNames = ['timeSheet'];
+      //   } else if (field === 'No Status Explanation') {
+      //     fieldNames = ['noStatusExplanation'];
+      //   }
     
-        const conditions = [];
+      //   const conditions = [];
     
-        fieldNames.forEach(fieldName => {
-          let conditionObj = {};
-          switch (condition) {
-            case 'is':
-              conditionObj[fieldName] = value;
-              break;
-            case 'is not':
-              conditionObj[fieldName] = { $ne: value };
-              break;
-            case 'contains':
-              conditionObj[fieldName] = { $regex: value, $options: 'i' };
-              break;
-            case 'does not contain':
-              conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-              break;
-            case 'starts with':
-              conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-              break;
-            case 'ends with':
-              conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-              break;
-            case 'is blank':
-              conditionObj[fieldName] = { $exists: false };
-              break;
-            case 'is not blank':
-              conditionObj[fieldName] = { $exists: true, $ne: null };
-              break;
-            default:
-              break;
-          }
-          conditions.push(conditionObj);
-        });
+      //   fieldNames.forEach(fieldName => {
+      //     let conditionObj = {};
+      //     switch (condition) {
+      //       case 'is':
+      //         conditionObj[fieldName] = value;
+      //         break;
+      //       case 'is not':
+      //         conditionObj[fieldName] = { $ne: value };
+      //         break;
+      //       case 'contains':
+      //         conditionObj[fieldName] = { $regex: value, $options: 'i' };
+      //         break;
+      //       case 'does not contain':
+      //         conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+      //         break;
+      //       case 'starts with':
+      //         conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+      //         break;
+      //       case 'ends with':
+      //         conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+      //         break;
+      //       case 'is blank':
+      //         conditionObj[fieldName] = { $exists: false };
+      //         break;
+      //       case 'is not blank':
+      //         conditionObj[fieldName] = { $exists: true, $ne: null };
+      //         break;
+      //       default:
+      //         break;
+      //     }
+      //     conditions.push(conditionObj);
+      //   });
     
-        if (field === 'Name') {
-          query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-        } else {
-          if (logic === 'or') {
-            query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-          } else {
-            query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-          }
-        } 
-      });
+      //   if (field === 'Name') {
+      //     query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+      //   } else {
+      //     if (logic === 'or') {
+      //       query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+      //     } else {
+      //       query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+      //     }
+      //   } 
+      // });
 
 
       if (search) {
@@ -383,11 +383,11 @@ exports.shifts = async (req, res) => {
       }
       console.log(query);
 
-      const data = await Job.find(query)
+      const data = await Job.find(query, { jobId: 1, entryDate: 1, facility: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, degree: 1, jobStatus: 1, bid_offer: 1, isHoursApproved: 1, isHoursSubmit: 1, timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' }, noStatusExplanation: 1 })
                               .skip(skip)
                               .limit(limit)
                               .lean();
-console.log(data.length);
+
       const totalRecords = await Job.countDocuments(query);
       const totalPageCnt = Math.ceil(totalRecords / limit);
       let dataArray = [];
@@ -730,77 +730,77 @@ exports.getCaregiverTimesheets = async (req, res) => {
     // Initialize query object
     const query = {};
 
-    // Handle the filter functionality
-    filters.forEach(filter => {
-      const { logic = 'and', field, condition, value } = filter;
+  //   // Handle the filter functionality
+  //   filters.forEach(filter => {
+  //     const { logic = 'and', field, condition, value } = filter;
   
-      let fieldNames = [];
+  //     let fieldNames = [];
   
-      if (field === 'Nurse') {
-        fieldNames = ['firstName', 'lastName']; 
-      } else if (field === 'Job-ID') {
-        fieldNames = ['jobId']; 
-      } else if (field === 'Job Shift & Time') {
-        fieldNames = ['shiftDate', 'shiftTime'];
-      } else if (field === 'Job Status') {
-        fieldNames = ['jobStatus'];
-      } else if (field === 'Pre Time') {
-        fieldNames = ['preTime'];
-      } else if (field === 'Lunch') {
-        fieldNames = ['lunch'];
-      } else if (field === 'Lunch Equation') {
-        fieldNames = ['lunchEquation'];
-      } else if (field === 'Final Hours Equation') {
-        fieldNames = ['finalHoursEquation'];
-      }
+  //     if (field === 'Nurse') {
+  //       fieldNames = ['firstName', 'lastName']; 
+  //     } else if (field === 'Job-ID') {
+  //       fieldNames = ['jobId']; 
+  //     } else if (field === 'Job Shift & Time') {
+  //       fieldNames = ['shiftDate', 'shiftTime'];
+  //     } else if (field === 'Job Status') {
+  //       fieldNames = ['jobStatus'];
+  //     } else if (field === 'Pre Time') {
+  //       fieldNames = ['preTime'];
+  //     } else if (field === 'Lunch') {
+  //       fieldNames = ['lunch'];
+  //     } else if (field === 'Lunch Equation') {
+  //       fieldNames = ['lunchEquation'];
+  //     } else if (field === 'Final Hours Equation') {
+  //       fieldNames = ['finalHoursEquation'];
+  //     }
   
-      const conditions = [];
+  //     const conditions = [];
   
-      fieldNames.forEach(fieldName => {
-          let conditionObj = {};
-          switch (condition) {
-              case 'is':
-                  conditionObj[fieldName] = value;
-                  break;
-              case 'is not':
-                  conditionObj[fieldName] = { $ne: value };
-                  break;
-              case 'contains':
-                  conditionObj[fieldName] = { $regex: value, $options: 'i' };
-                  break;
-              case 'does not contain':
-                  conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-                  break;
-              case 'starts with':
-                  conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-                  break;
-              case 'ends with':
-                  conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-                  break;
-              case 'is blank':
-                  conditionObj[fieldName] = { $exists: false };
-                  break;
-              case 'is not blank':
-                  conditionObj[fieldName] = { $exists: true, $ne: null };
-                  break;
-              default:
-                  break;
-          }
-          conditions.push(conditionObj); // Collect conditions for the field
-      });
+  //     fieldNames.forEach(fieldName => {
+  //         let conditionObj = {};
+  //         switch (condition) {
+  //             case 'is':
+  //                 conditionObj[fieldName] = value;
+  //                 break;
+  //             case 'is not':
+  //                 conditionObj[fieldName] = { $ne: value };
+  //                 break;
+  //             case 'contains':
+  //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
+  //                 break;
+  //             case 'does not contain':
+  //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
+  //                 break;
+  //             case 'starts with':
+  //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
+  //                 break;
+  //             case 'ends with':
+  //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
+  //                 break;
+  //             case 'is blank':
+  //                 conditionObj[fieldName] = { $exists: false };
+  //                 break;
+  //             case 'is not blank':
+  //                 conditionObj[fieldName] = { $exists: true, $ne: null };
+  //                 break;
+  //             default:
+  //                 break;
+  //         }
+  //         conditions.push(conditionObj); // Collect conditions for the field
+  //     });
   
-      // If the field is Name, apply OR logic between firstName and lastName
-      if (field === 'Nurse') {
-          query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-      } else {
-          // Apply AND or OR logic for other fields based on the `logic` parameter
-          if (logic === 'or') {
-              query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-          } else {
-              query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-          }
-      }
-  });
+  //     // If the field is Name, apply OR logic between firstName and lastName
+  //     if (field === 'Nurse') {
+  //         query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+  //     } else {
+  //         // Apply AND or OR logic for other fields based on the `logic` parameter
+  //         if (logic === 'or') {
+  //             query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
+  //         } else {
+  //             query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
+  //         }
+  //     }
+  // });
 
     // Handle the search functionality
     if (search) {
@@ -820,7 +820,7 @@ exports.getCaregiverTimesheets = async (req, res) => {
     }
 
     // Fetch jobs from the database with pagination and filtering
-    const jobs = await Job.find(query)
+    const jobs = await Job.find(query, { shiftStartTime: 1, shiftEndTime: 1, jobId: 1, nurse: 1, shiftDate: 1, shiftTime: 1, jobStatus: 1, preTime: 1, lunch: 1, lunchEquation: 1, finalHoursEquation: 1 })
       .skip(skip)
       .limit(limit)
       .lean(); // Use lean for performance improvement
