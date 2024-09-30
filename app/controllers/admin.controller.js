@@ -1007,7 +1007,7 @@ exports.getBidIDs = async (req, res) => {
         const user = req.user;
         
         // Find clinical and facility data
-        const bidders = await Bid.find({});
+        const bidders = await Bid.find({}, { bidId: 1 });
     
         // Combine the names into one array
         const bidList = [
