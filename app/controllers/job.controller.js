@@ -206,11 +206,13 @@ exports.shifts = async (req, res) => {
     const role = req.headers.role;
 
     if (role === 'Facilities') {
-      const data = await Job.find({});
+      console.log('started');
+      const data = await Job.find({}, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
       let dataArray = [];
-
+      console.log(data.length);
       for (const item of data) {
-        const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
+        const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' }, { caregiver: 1 });
+        console.log(user.companyName, item.facility);
         if (user.companyName === item.facility) {
           dataArray.push([
             item.degree,
@@ -230,6 +232,7 @@ exports.shifts = async (req, res) => {
           ]);
         }
       }
+      console.log(dataArray.length);
 
       const payload = {
         contactEmail: user.contactEmail,
@@ -245,10 +248,12 @@ exports.shifts = async (req, res) => {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     } else if (role === "Clinician") {
-      const data = await Job.find({});
+      console.log('started');
+      const data = await Job.find({}, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 });
       let dataArray = [];
-
+      console.log('all data', data);
       data.map((item, index) => {
+        console.log(user.title);
         if (item.jobStatus == 'Available' && item.degree == user.title) {
           dataArray.push({
             jobId: item.jobId,
@@ -260,7 +265,6 @@ exports.shifts = async (req, res) => {
             jobNum: item.jobNum,
             payRate: item.payRate,
             jobInfo: item.jobInfo,
-            shiftDateAndTimes: item.shiftDateAndTimes,
             bonus: item.bonus
           });
         }
@@ -272,7 +276,7 @@ exports.shifts = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       }
       const token = setToken(payload);
-      
+      console.log('return value');
       if (token) {
         res.status(200).json({ message: "Successfully Get!", dataArray, token });
       } else {

@@ -169,10 +169,14 @@ function extractNonJobId(job) {
     nonJobIdKeys.forEach(key => {
         if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             let file = job[key];
-            if (file.content) {
-                file.content = Buffer.from(file.content, 'base64');
-            } 
-            newObject[key] = file;
+            if (file.name) {
+                if (file.content) {
+                    file.content = Buffer.from(file.content, 'base64');
+                    newObject[key] = file;
+                }
+            } else {
+                newObject[key] = { content: '', type: '', name: '' };
+            }
         } else if (key == 'driverLicenseStatus' || key == 'socialCardStatus' || key == 'physicalExamStatus' || key == 'ppdStatus' || key == 'mmrStatus' || key == 'healthcareLicenseStatus' || key == 'resumeStatus' || key == 'covidCardStatus' || key == 'blsStatus' || key == 'hepBStatus' || key == 'fluStatus' || key == 'cnaStatus' || key == 'taxFormStatus' || key == 'chrc102Status' || key == 'chrc103Status' || key == 'drugStatus' || key == 'sscStatus' || key == 'copyOfTBStatus') {
             newObject[key] = job[key] == 1 ? true : false;
         } else {
@@ -488,6 +492,32 @@ exports.Update = async (req, res) => {
     }
 };
 
+exports.getUserImage = async (req, res) => {
+    try {
+        const { userId, filename } = req.body;
+        const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
+
+        const payload = {
+            email: isUser.email,
+            userRole: isUser.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        };
+        const token = setToken(payload);
+
+        const content = isUser[filename].content.toString('base64');
+
+        if (token) {
+            res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content }, token });
+        } else {
+            res.status(400).json({ message: "Cannot logined User!" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
 exports.getClientInfo = async (req, res) => {
     const bidId = req.body.bidId;
     const bidder = await Bid.findOne({ bidId });
@@ -505,11 +535,68 @@ exports.getClientInfo = async (req, res) => {
 exports.getUserInfo = async (req, res) => {
     try {
         const { userId } = req.body;
-        const isUser = await Clinical.findOne({ aic: userId });
+        console.log('started');
+        let isUser = await Clinical.findOne({ aic: userId });
+        console.log('get list');
         if (isUser) {
-            res.status(200).json({message: "Successfully get", userData: isUser });
+            if (isUser.photoImage?.content) {
+                isUser.photoImage.content = '';
+            }
+            if (isUser.socialCard?.content) {
+                isUser.socialCard.content = '';
+            }
+            if (isUser.physicalExam?.content) {
+                isUser.physicalExam.content = '';
+            }
+            if (isUser.ppd?.content) {
+                isUser.ppd.content = '';
+            }
+            if (isUser.mmr?.content) {
+                isUser.mmr.content = '';
+            }
+            if (isUser.healthcareLicense?.content) {
+                isUser.healthcareLicense.content = '';
+            }
+            if (isUser.resume?.content) {
+                isUser.resume.content = '';
+            }
+            if (isUser.covidCard?.content) {
+                isUser.covidCard.content = '';
+            }
+            if (isUser.bls?.content) {
+                isUser.bls.content = '';
+            }
+            if (isUser.hepB?.content) {
+                isUser.hepB.content = '';
+            }
+            if (isUser.flu?.content) {
+                isUser.flu.content = '';
+            }
+            if (isUser.cna?.content) {
+                isUser.cna.content = '';
+            }
+            if (isUser.taxForm?.content) {
+                isUser.taxForm.content = '';
+            }
+            if (isUser.chrc102?.content) {
+                isUser.chrc102.content = '';
+            }
+            if (isUser.chrc103?.content) {
+                isUser.chrc103.content = '';
+            }
+            if (isUser.drug?.content) {
+                isUser.drug.content = '';
+            }
+            if (isUser.ssc?.content) {
+                isUser.ssc.content = '';
+            }
+            if (isUser.copyOfTB?.content) {
+                isUser.copyOfTB.content = '';
+            }
+            
+            return res.status(200).json({ message: "Successfully retrieved", userData: isUser });
         } else {
-            res.status(500).json({ message: "Not exist", userData: [] });
+            return res.status(404).json({ message: "User does not exist", userData: [] });
         }
     } catch (e) {
         console.log(e);
