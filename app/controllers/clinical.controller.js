@@ -6,6 +6,7 @@ const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const moment = require('moment');
 const phoneSms = require('../controllers/twilio.js');
+const { resume } = require("pdfkit");
 
 const expirationTime = 10000000;
 //Regiseter Account
@@ -494,12 +495,13 @@ exports.Update = async (req, res) => {
 
 exports.getUserImage = async (req, res) => {
     try {
+        const user = req.user;
         const { userId, filename } = req.body;
         const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
 
         const payload = {
-            email: isUser.email,
-            userRole: isUser.userRole,
+            email: user.email,
+            userRole: user.userRole,
             iat: Math.floor(Date.now() / 1000), // Issued at time
             exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
         };
@@ -519,14 +521,21 @@ exports.getUserImage = async (req, res) => {
 };
 
 exports.getClientInfo = async (req, res) => {
+    const user = req.user;
     const bidId = req.body.bidId;
     const bidder = await Bid.findOne({ bidId });
 
     if (bidder) {
         const [firstName, lastName] = bidder.caregiver.split(' ');
         const UserInfo = await Clinical.findOne({ firstName, lastName });
-        console.log(UserInfo);
-        return res.status(200).json({ message: "success", userData: UserInfo });
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        };
+        const token = setToken(payload);
+        return res.status(200).json({ message: "success", userData: UserInfo, token });
     } else {
         return res.status(500).json({ message: "Not exist" });
     }
@@ -534,13 +543,17 @@ exports.getClientInfo = async (req, res) => {
 
 exports.getUserInfo = async (req, res) => {
     try {
+        const user = req.user;
         const { userId } = req.body;
         console.log('started');
-        let isUser = await Clinical.findOne({ aic: userId });
+        let isUser = await Clinical.findOne({ aic: userId }, { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, photoImage: 1, driverLicense: 1, socialCard: 1, physicalExam: 1, ppd: 1, mmr: 1, healthcareLicense: 1, resume: 1, covidCard: 1, bls: 1 });
         console.log('get list');
         if (isUser) {
             if (isUser.photoImage?.content) {
                 isUser.photoImage.content = '';
+            }
+            if (isUser.driverLicense?.content) {
+                isUser.driverLicense.content = '';
             }
             if (isUser.socialCard?.content) {
                 isUser.socialCard.content = '';
@@ -566,35 +579,15 @@ exports.getUserInfo = async (req, res) => {
             if (isUser.bls?.content) {
                 isUser.bls.content = '';
             }
-            if (isUser.hepB?.content) {
-                isUser.hepB.content = '';
-            }
-            if (isUser.flu?.content) {
-                isUser.flu.content = '';
-            }
-            if (isUser.cna?.content) {
-                isUser.cna.content = '';
-            }
-            if (isUser.taxForm?.content) {
-                isUser.taxForm.content = '';
-            }
-            if (isUser.chrc102?.content) {
-                isUser.chrc102.content = '';
-            }
-            if (isUser.chrc103?.content) {
-                isUser.chrc103.content = '';
-            }
-            if (isUser.drug?.content) {
-                isUser.drug.content = '';
-            }
-            if (isUser.ssc?.content) {
-                isUser.ssc.content = '';
-            }
-            if (isUser.copyOfTB?.content) {
-                isUser.copyOfTB.content = '';
-            }
-            
-            return res.status(200).json({ message: "Successfully retrieved", userData: isUser });
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000), // Issued at time
+                exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+            };
+            const token = setToken(payload);
+            console.log('result')
+            return res.status(200).json({ message: "Successfully retrieved", userData: isUser, token });
         } else {
             return res.status(404).json({ message: "User does not exist", userData: [] });
         }
