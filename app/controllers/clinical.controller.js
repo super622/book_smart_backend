@@ -545,9 +545,50 @@ exports.getUserInfo = async (req, res) => {
     try {
         const user = req.user;
         const { userId } = req.body;
-        console.log('started');
-        let isUser = await Clinical.findOne({ aic: userId }, { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, photoImage: 1, driverLicense: 1, socialCard: 1, physicalExam: 1, ppd: 1, mmr: 1, healthcareLicense: 1, resume: 1, covidCard: 1, bls: 1 });
-        console.log('get list');
+        let isUser = await Clinical.findOne({ aic: userId }, 
+            { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
+                photoImage: {
+                    content: '',
+                    name: '$photoImage.name',
+                    type: '$photoImage.type'
+                }, driverLicense: {
+                    content: '',
+                    name: '$driverLicense.name',
+                    type: '$driverLicense.type'
+                }, socialCard: {
+                    content: '',
+                    name: '$socialCard.name',
+                    type: '$socialCard.type'
+                }, physicalExam: {
+                    content: '',
+                    name: '$physicalExam.name',
+                    type: '$physicalExam.type'
+                }, ppd: {
+                    content: '',
+                    name: '$ppd.name',
+                    type: '$ppd.type'
+                }, mmr: {
+                    content: '',
+                    name: '$mmr.name',
+                    type: '$mmr.type'
+                }, healthcareLicense: {
+                    content: '',
+                    name: '$healthcareLicense.name',
+                    type: '$healthcareLicense.type'
+                }, resume: {
+                    content: '',
+                    name: '$resume.name',
+                    type: '$resume.type'
+                }, covidCard: {
+                    content: '',
+                    name: '$covidCard.name',
+                    type: '$covidCard.type'
+                }, bls: {
+                    content: '',
+                    name: '$bls.name',
+                    type: '$bls.type'
+                } });
+
         if (isUser) {
             if (isUser.photoImage?.content) {
                 isUser.photoImage.content = '';
