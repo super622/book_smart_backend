@@ -50,7 +50,7 @@ exports.login = async (req, res) => {
     try {
         console.log("LogIn");
         const { email, password, userRole } = req.body;
-        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole });
+        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole }, { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1 });
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
@@ -84,6 +84,31 @@ exports.login = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" })
     }
 }
+
+exports.getAdminInfo = async (req, res) => {
+    try {
+        const user = req.user;
+        console.log('started');
+        const { email } = req.body;
+
+        const users = await Admin.findOne({ email });
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        }
+        const token = setToken(payload);
+        if (users) {
+            return res.status(200).json({ message: 'Updated', token: token, user: users });
+        } else {
+            return res.status(500).json({ message: 'Not Exist', token: token, user: users });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};
 
 function generateVerificationCode(length = 6) {
     let code = "";
@@ -255,6 +280,8 @@ exports.Update = async (req, res) => {
         const content = Buffer.from(request.photoImage.content, 'base64');
         request.photoImage.content = content;
     }
+
+    console.log(request);
 
     if (user) {
         Admin.findOneAndUpdate({ user } ,{ $set: request }, { new: false }, async (err, updatedDocument) => {

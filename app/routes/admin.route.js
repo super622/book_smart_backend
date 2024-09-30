@@ -35,5 +35,7 @@ module.exports = app => {
 
   router.post('/getAllUsersList', verifyUser, admin.getAllUsersList);
 
+  router.post('/getAdminInfo', verifyUser, admin.getAdminInfo);
+
   app.use("/api/admin", router);
 };

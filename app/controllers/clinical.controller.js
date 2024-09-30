@@ -496,27 +496,11 @@ exports.Update = async (req, res) => {
 
 exports.getUserImage = async (req, res) => {
     try {
-        const user = req.user;
         const { userId, filename } = req.body;
         const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
-
-        const payload = {
-            contactEmail: user.contactEmail,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-        };
-        const token = setToken(payload);
-
         const content = isUser[filename].content.toString('base64');
 
-        console.log(content);
-
-        if (token) {
-            res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content }, token });
-        } else {
-            res.status(400).json({ message: "Cannot logined User!" });
-        }
+        res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content } });
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occured!" })
