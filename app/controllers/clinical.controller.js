@@ -170,10 +170,11 @@ function extractNonJobId(job) {
     nonJobIdKeys.forEach(key => {
         if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             let file = job[key];
-            if (file.name) {
-                if (file.content) {
-                    file.content = Buffer.from(file.content, 'base64');
-                    newObject[key] = file;
+            console.log(file.name);
+            if (file.name != "") {
+                if (file.content != '') {
+                    const content = Buffer.from(file.content, 'base64');
+                    newObject[key] = { name: file.name, type: file.type, content: content };
                 }
             } else {
                 newObject[key] = { content: '', type: '', name: '' };
@@ -500,7 +501,7 @@ exports.getUserImage = async (req, res) => {
         const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
 
         const payload = {
-            email: user.email,
+            contactEmail: user.contactEmail,
             userRole: user.userRole,
             iat: Math.floor(Date.now() / 1000), // Issued at time
             exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
@@ -508,6 +509,8 @@ exports.getUserImage = async (req, res) => {
         const token = setToken(payload);
 
         const content = isUser[filename].content.toString('base64');
+
+        console.log(content);
 
         if (token) {
             res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content }, token });
@@ -526,16 +529,79 @@ exports.getClientInfo = async (req, res) => {
     const bidder = await Bid.findOne({ bidId });
 
     if (bidder) {
-        const [firstName, lastName] = bidder.caregiver.split(' ');
-        const UserInfo = await Clinical.findOne({ firstName, lastName });
+        const userInfo = await Clinical.findOne({ aic: bidder.caregiverId },
+            { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, address: 1, photoImage: 1,
+                driverLicense: {
+                    content: '',
+                    name: '$driverLicense.name',
+                    type: '$driverLicense.type'
+                }, ssc: {
+                    content: '',
+                    name: '$ssc.name',
+                    type: '$ssc.type'
+                }, physicalExam: {
+                    content: '',
+                    name: '$physicalExam.name',
+                    type: '$physicalExam.type'
+                }, ppd: {
+                    content: '',
+                    name: '$ppd.name',
+                    type: '$ppd.type'
+                }, mmr: {
+                    content: '',
+                    name: '$mmr.name',
+                    type: '$mmr.type'
+                }, healthcareLicense: {
+                    content: '',
+                    name: '$healthcareLicense.name',
+                    type: '$healthcareLicense.type'
+                }, flu: {
+                    content: '',
+                    name: '$flu.name',
+                    type: '$flu.type'
+                }, cna: {
+                    content: '',
+                    name: '$cna.name',
+                    type: '$cna.type'
+                }, hepB: {
+                    content: '',
+                    name: '$hepB.name',
+                    type: '$hepB.type'
+                }, covidCard: {
+                    content: '',
+                    name: '$covidCard.name',
+                    type: '$covidCard.type'
+                }, bls: {
+                    content: '',
+                    name: '$bls.name',
+                    type: '$bls.type'
+                } });
+
+        let awardedCnt = await Bid.find({ bidStatus: 'Awarded', bidId: bidId }).count();
+        let appliedCnt = await Bid.find({ bidId: bidId }).count();
+        let ratio = '';
+        if (awardedCnt > 0 && appliedCnt > 0) {
+            ratio = (100 / appliedCnt) * awardedCnt;
+            ratio += '%';
+        }
+
+        let userData = {
+            ...userInfo._doc,
+            totalBid: appliedCnt,
+            totalAward: awardedCnt,
+            AwardRatio: ratio
+        };
+
+        console.log('user => ', user);
+
         const payload = {
-            email: user.email,
+            contactEmail: user.contactEmail,
             userRole: user.userRole,
             iat: Math.floor(Date.now() / 1000), // Issued at time
             exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
         };
         const token = setToken(payload);
-        return res.status(200).json({ message: "success", userData: UserInfo, token });
+        return res.status(200).json({ message: "success", userData: userData, token: token });
     } else {
         return res.status(500).json({ message: "Not exist" });
     }
@@ -620,6 +686,7 @@ exports.getUserInfo = async (req, res) => {
             if (isUser.bls?.content) {
                 isUser.bls.content = '';
             }
+            console.log(user);
             const payload = {
                 email: user.email,
                 userRole: user.userRole,
@@ -628,7 +695,7 @@ exports.getUserInfo = async (req, res) => {
             };
             const token = setToken(payload);
             console.log('result')
-            return res.status(200).json({ message: "Successfully retrieved", userData: isUser, token });
+            return res.status(200).json({ message: "Successfully retrieved", userData: isUser, token: token });
         } else {
             return res.status(404).json({ message: "User does not exist", userData: [] });
         }

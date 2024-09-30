@@ -204,16 +204,15 @@ exports.shifts = async (req, res) => {
   try {
     const user = req.user;
     const role = req.headers.role;
+    console.log(user, role);
 
     if (role === 'Facilities') {
       console.log('started');
-      const data = await Job.find({}, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
+      const data = await Job.find({ facility: user.companyName }, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
       let dataArray = [];
-      console.log(data.length);
       for (const item of data) {
         const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' }, { caregiver: 1 });
-        console.log(user.companyName, item.facility);
-        if (user.companyName === item.facility) {
+        // if (user.companyName === item.facility) {
           dataArray.push([
             item.degree,
             item.entryDate,
@@ -230,7 +229,7 @@ exports.shifts = async (req, res) => {
             item.jobRating,
             "delete"
           ]);
-        }
+        // }
       }
       console.log(dataArray.length);
 
@@ -251,7 +250,6 @@ exports.shifts = async (req, res) => {
       console.log('started');
       const data = await Job.find({}, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 });
       let dataArray = [];
-      console.log('all data', data);
       data.map((item, index) => {
         console.log(user.title);
         if (item.jobStatus == 'Available' && item.degree == user.title) {
@@ -443,8 +441,8 @@ console.log(data.length);
 }
 
 exports.getJob = async (req, res) => {
-  const indexes = await Job.collection.getIndexes();
-  console.log('Indexes: ', indexes);
+  const user = req.user;
+  console.log(user);
   console.log('get job');
   try {
     // const user = req.user;
@@ -454,13 +452,13 @@ exports.getJob = async (req, res) => {
       return res.status(500).json({ message: "JobId not exist" });
     }
 
-    let jobData = await Job.findOne({ jobId });
+    let jobData = await Job.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, bid_offer: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
     console.log('got jobdata');
-    const bidders = await Bid.find({ jobId });
+    const bidders = await Bid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1 });
     console.log('got bidders');
 
     let biddersList = await Promise.all(bidders.map(async (item) => {
-      let bidderInfo = await Clinical.findOne({ aic: item.caregiverId });
+      let bidderInfo = await Clinical.findOne({ aic: item.caregiverId }, { email: 1, phoneNumber: 1 });
       return [
         item.entryDate,
         item.caregiver,
@@ -485,19 +483,19 @@ exports.getJob = async (req, res) => {
     jobData = { ...jobData.toObject(), workedHours: workedHoursStr };
 
     // Token creation
-    // const payload = {
-    //   contactEmail: user.contactEmail,
-    //   userRole: user.userRole,
-    //   iat: Math.floor(Date.now() / 1000), // Issued at time
-    //   exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
-    // };
-    // const token = setToken(payload);
+    const payload = {
+      contactEmail: user.contactEmail,
+      userRole: user.userRole,
+      iat: Math.floor(Date.now() / 1000), // Issued at time
+      exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
+    };
+    const token = setToken(payload);
     console.log('return job');
     return res.status(200).json({
       message: "Successfully Get",
       jobData,
       bidders: biddersList,
-      // token
+      token
     });
 
   } catch (error) {

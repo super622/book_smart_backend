@@ -41,22 +41,19 @@ const verifyUser = (req, res, next) => {
     verifyToken(req, res, async () => {
         let isUser = {};
         if (req.user.userRole === "Facilities") {
-            console.log('Facilities------------------------');
             isUser = await Facility.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
         } else if(req.user.userRole === "Clinician") {
-            console.log('Clinician');
             isUser = await Clinical.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
         } else if(req.user.userRole === "Admin") {
             isUser = await Admin.findOne({email: req.user.email, userRole: req.user.userRole})
         }
         
-        // console.log(isUser, req.user)
+        console.log(req.user);
         if (isUser) {
             const currentDate = Math.floor(Date.now() / 1000);
-            // console.log(currentDate);
+            console.log(currentDate);
             if (currentDate < req.user.exp){
                 req.user = isUser;
-                // console.log('user', req.user)
                 next();
             } else {
                 res.status(401).json({success: false, message: "Token is expired"})

@@ -9,7 +9,7 @@ module.exports = app => {
   router.post("/postJob", verifyUser, jobs.postJob);
   router.post("/updateHoursStatus", verifyUser, jobs.updateHoursStatus);
   router.post("/removeJob", verifyUser, jobs.removeJob);
-  router.post("/getJob", jobs.getJob);
+  router.post("/getJob", verifyUser, jobs.getJob);
   router.post("/setAwarded", verifyUser, jobs.setAwarded);
   router.post("/updateTimeSheet", verifyUser, jobs.updateTimeSheet);
   router.post("/updateJobRatings", verifyUser, jobs.updateJobRatings);
