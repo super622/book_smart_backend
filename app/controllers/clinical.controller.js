@@ -508,7 +508,6 @@ exports.getUserImage = async (req, res) => {
 };
 
 exports.getClientInfo = async (req, res) => {
-    const user = req.user;
     const bidId = req.body.bidId;
     const bidder = await Bid.findOne({ bidId });
 
@@ -576,16 +575,7 @@ exports.getClientInfo = async (req, res) => {
             AwardRatio: ratio
         };
 
-        console.log('user => ', user);
-
-        const payload = {
-            contactEmail: user.contactEmail,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-        };
-        const token = setToken(payload);
-        return res.status(200).json({ message: "success", userData: userData, token: token });
+        return res.status(200).json({ message: "success", userData: userData });
     } else {
         return res.status(500).json({ message: "Not exist" });
     }

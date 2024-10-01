@@ -29,7 +29,7 @@ module.exports = app => {
 
   router.get('/getAllList', verifyUser, clinical.getAllList);
 
-  router.post('/getClientInfo', verifyUser, clinical.getClientInfo);
+  router.post('/getClientInfo', clinical.getClientInfo);
 
   router.post('/getUserInfo', verifyUser, clinical.getUserInfo);
 
