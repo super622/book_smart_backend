@@ -692,22 +692,31 @@ exports.getUserInfo = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
-        const isUser = await Clinical.findOne({ aic: userId });
+        console.log('started', userId);
+        const isUser = await Clinical.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: 1 });
+        console.log('got user data');
         if (isUser) {
-            let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiver: isUser.firstName + ' ' + isUser.lastName });
-            let appliedData = await Bid.find({ caregiver: isUser.firstName + ' ' + isUser.lastName });
-
-            let awardedCnt = await Bid.find({ bidStatus: 'Awarded', caregiver: isUser.firstName + ' ' + isUser.lastName }).count();
-            let appliedCnt = await Bid.find({ caregiver: isUser.firstName + ' ' + isUser.lastName }).count();
+            let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiverId: userId }, { jobId: 1, entryDate: 1, facility: 1, bidStatus: 1 });
+            let appliedData = await Bid.find({ caregiverId: userId }, { bidId: 1, entryDate: 1, jobId: 1, message: 1 });
+            console.log('got bid data');
+            let awardedCnt = await Bid.countDocuments({ bidStatus: 'Awarded', caregiverId: userId });
+            let appliedCnt = await Bid.countDocuments({ caregiverId: userId });
+            console.log('got bid countdata')
             let ratio = '';
             let totalJobRating = 0;
             let avgJobRating = 0;
             let awardedList = [];
             let appliedList = [];
 
+            const jobIds = appliedData.map(item => item.jobId);
+            const jobRatings = await Job.find({ jobId: { $in: jobIds } }, { jobId: 1, jobRating: 1 });
+            const jobRatingMap = jobRatings.reduce((acc, job) => {
+                acc[job.jobId] = job.jobRating;
+                return acc;
+            }, {});
+
             for (const item of appliedData) {
-                let rating = await Job.findOne({ jobId: item.jobId });
-                totalJobRating += rating.jobRating;
+                totalJobRating += jobRatingMap[item.jobId] || 0;
             }
 
             for (const item of awardedData) {
@@ -745,9 +754,10 @@ exports.getUserProfile = async (req, res) => {
                 address: isUser.address,
                 awardedCnt,
                 appliedCnt,
-                avgJobRating,
+                avgJobRating: avgJobRating ? avgJobRating : 0,
                 ratio
             };
+            console.log('complete processing');
 
             res.status(200).json({message: "Successfully get", appliedList, awardedList, userData });
         } else {

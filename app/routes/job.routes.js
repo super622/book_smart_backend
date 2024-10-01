@@ -6,11 +6,11 @@ module.exports = app => {
 
   // Create a new Spot
   router.post("/shifts", verifyUser, jobs.shifts);
-  router.post("/postJob", verifyUser, jobs.postJob);
+  router.post("/postJob", jobs.postJob);
   router.post("/updateHoursStatus", verifyUser, jobs.updateHoursStatus);
-  router.post("/removeJob", verifyUser, jobs.removeJob);
-  router.post("/getJob", verifyUser, jobs.getJob);
-  router.post("/setAwarded", verifyUser, jobs.setAwarded);
+  router.post("/removeJob", jobs.removeJob);
+  router.post("/getJob", jobs.getJob);
+  router.post("/setAwarded", jobs.setAwarded);
   router.post("/updateTimeSheet", verifyUser, jobs.updateTimeSheet);
   router.post("/updateJobRatings", verifyUser, jobs.updateJobRatings);
   router.get("/myShift", verifyUser, jobs.myShift);

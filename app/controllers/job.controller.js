@@ -135,26 +135,17 @@ exports.updateDocuments = async (req, res) => {
 //Regiseter Account
 exports.postJob = async (req, res) => {
   try {
-    const user = req.user
     if (!req.body.jobId) {
       const lastJob = await Job.find().sort({ jobId: -1 }).limit(1); // Retrieve the last jobId
       const lastJobId = lastJob.length > 0 ? lastJob[0].jobId : 0; // Get the last jobId value or default to 0
       const newJobId = lastJobId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
       const response = req.body;
       response.entryDate = moment(new Date()).format("MM/DD/YYYY");
-      response.payRate = '$' + response.payRate;
+      response.payRate = response.payRate;
       response.jobId = newJobId;
       const auth = new Job(response);
       await auth.save();
-
-      const payload = {
-        contactEmail: user.contactEmail,
-        userRole: user.userRole,
-        iat: Math.floor(Date.now() / 1000), // Issued at time
-        exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-      }
-      const token = setToken(payload);
-      return res.status(200).json({ message: "Published successfully", token: token });
+      return res.status(200).json({ message: "Published successfully" });
     } else {
       const request = req.body;
 
@@ -167,15 +158,7 @@ exports.postJob = async (req, res) => {
           if (result.nModified === 0) {
             return res.status(500).json({ error: 'Job not found or no changes made' });
           }
-          
-          const payload = {
-            email: user.email,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-          };
-          const token = setToken(payload);
-          return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, });
+          return res.status(200).json({ message: 'Updated' });
         })
         .catch(err => {
           console.error(err);
@@ -394,6 +377,7 @@ exports.shifts = async (req, res) => {
 
       for (const item of data) {
         const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
+        const totalBidderCnt = await Bid.countDocuments({ jobId: item.jobId });
         dataArray.push([
           item.entryDate,
           item.facility,
@@ -406,7 +390,7 @@ exports.shifts = async (req, res) => {
           item.degree,
           item.jobStatus,
           hiredUser ? hiredUser.caregiver : '',
-          item.bid_offer,
+          totalBidderCnt,
           "view_hours",
           item.isHoursSubmit ? "yes" : "no",
           item.isHoursApproved ? "yes" : "no",
@@ -441,8 +425,6 @@ exports.shifts = async (req, res) => {
 }
 
 exports.getJob = async (req, res) => {
-  const user = req.user;
-  console.log(user);
   console.log('get job');
   try {
     // const user = req.user;
@@ -452,7 +434,7 @@ exports.getJob = async (req, res) => {
       return res.status(500).json({ message: "JobId not exist" });
     }
 
-    let jobData = await Job.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, bid_offer: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
+    let jobData = await Job.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
     console.log('got jobdata');
     const bidders = await Bid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1 });
     console.log('got bidders');
@@ -480,22 +462,13 @@ exports.getJob = async (req, res) => {
     if (startTime != "" && endTime != "") {
       workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
     }
-    jobData = { ...jobData.toObject(), workedHours: workedHoursStr };
+    jobData = { ...jobData.toObject(), workedHours: workedHoursStr, bid_offer: bidders.length };
 
-    // Token creation
-    const payload = {
-      contactEmail: user.contactEmail,
-      userRole: user.userRole,
-      iat: Math.floor(Date.now() / 1000), // Issued at time
-      exp: Math.floor(Date.now() / 1000) + (expirationTime || 3600) // Default expiration time 1 hour
-    };
-    const token = setToken(payload);
     console.log('return job');
     return res.status(200).json({
       message: "Successfully Get",
       jobData,
-      bidders: biddersList,
-      token
+      bidders: biddersList
     });
 
   } catch (error) {

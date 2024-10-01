@@ -95,7 +95,7 @@ module.exports = mongoose => {
     },
     payRate: {
       type: String,
-      default: ''
+      default: '0'
     },
     timeSheetTemplate: {
       content: { type: Buffer, default: '' },
