@@ -683,7 +683,11 @@ exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
         console.log('started', userId);
-        const isUser = await Clinical.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: 1 });
+        const isUser = await Clinical.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: {
+            content: '',
+            name: '$photoImage.name',
+            type: '$photoImage.type'
+        } });
         console.log('got user data');
         if (isUser) {
             let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiverId: userId }, { jobId: 1, entryDate: 1, facility: 1, bidStatus: 1 });
