@@ -470,10 +470,9 @@ exports.getFacilityInfo = async (req, res) => {
     try {
         const user = req.user;
         const { userId } = req.body;
-        const userData = await Facility.findOne({ aic: userId });
-        const jobList = await Job.find({ facilityId: userId });
+        const userData = await Facility.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, aic: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1, contactPhone: 1, address: 1 });
+        const jobList = await Job.find({ facilityId: userId }, { jobId: 1, entryDate: 1, jobNum: 1, jobStatus: 1, shiftDate: 1, shiftTime: 1 });
         let jobData = [];
-
         jobList.map((item, index) => {
             jobData.push([
                 item.jobId,
