@@ -136,7 +136,7 @@ exports.login = async (req, res) => {
                 }
                 const token = setToken(payload);
                 if (token) {
-                    res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth, device: device });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth });
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
