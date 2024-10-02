@@ -65,8 +65,8 @@ exports.updateTimeSheet = async (req, res) => {
   const request = req.body;
   let timeSheetFile = request.timeSheet;
   const content = Buffer.from(timeSheetFile.content, 'base64');
-  const jobDetail = await Job.findOne({ jobId: request.jobId });
-  const facility = await Facility.findOne({ companyName: jobDetail.facility });
+  const jobDetail = await Job.findOne({ jobId: request.jobId }, { facilityId: 1 });
+  const facility = await Facility.findOne({ aic: jobDetail.facilityId }, { contactEmail: 1 });
 
   await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: content, name: timeSheetFile.name, type: timeSheetFile.type }, jobStatus: 'Pending Verification'} });
 
@@ -191,7 +191,7 @@ exports.shifts = async (req, res) => {
 
     if (role === 'Facilities') {
       console.log('started');
-      const data = await Job.find({ facility: user.companyName }, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
+      const data = await Job.find({ facilityId: user.aic }, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
       let dataArray = [];
       for (const item of data) {
         const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' }, { caregiver: 1 });
@@ -503,8 +503,7 @@ exports.setAwarded = async (req, res) => {
   const bidId = req.body.bidderId;
   const status = req.body.status;
   const nurse = await Bid.findOne({ bidId });
-  const facility = req.user;
-  const user = await Clinical.findOne({ firstName: nurse?.caregiver.split(' ')[0], lastName: nurse?.caregiver.split(' ')[1] });
+  const user = await Clinical.findOne({ aic: nurse.caregiverId }, { email: 1 } );
 
   if (status === 1) {
     await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
@@ -556,7 +555,7 @@ exports.updateJobTSVerify = async (req, res) => {
     await Job.updateOne({ jobId }, { $set: { timeSheetVerified: false }});
   }
 
-  if (file?.name !== '') {
+  if (file?.content) {
     const content = Buffer.from(file.content, 'base64');
     await Job.updateOne({ jobId }, { $set: { timeSheet: { name: file.name, content: content, type: file.type } }});
   }
@@ -592,7 +591,7 @@ exports.myShift = async (req, res) => {
     const user = req.user;
     const role = req.headers.role;
     const nurse = user.firstName + ' ' + user.lastName;
-    const data = await Job.find({ nurse: nurse });
+    const data = await Job.find({ nurse: nurse }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, shiftStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 });
 
     console.log(role);
 

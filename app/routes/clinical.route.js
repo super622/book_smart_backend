@@ -37,7 +37,7 @@ module.exports = app => {
 
   router.post('/updateUserStatus', verifyUser, clinical.updateUserStatus);
 
-  router.post('/getUserImage', verifyUser, clinical.getUserImage);
+  router.post('/getUserImage', clinical.getUserImage);
 
   app.use("/api/clinical", router);
 };

@@ -1,33 +1,24 @@
-const jwtEncode = require('jwt-encode')
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
-const { set } = require('mongoose');
-const { generateInvoice } = require('../utils/pdfGenerator');
-const cron = require('node-cron');
-const nodemailer = require('nodemailer');
-const path = require('path');
-const { generatePDF } = require('../utils/pdf');
 const Facility = db.facilities;
 const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
-
-const limitAccNum = 100;
 const expirationTime = 10000000;
-//Register Account
+
 exports.signup = async (req, res) => {
     try {
-        const lastFacility = await Facility.find().sort({ aic: -1 }).limit(1); // Retrieve the last jobId
-        const lastFacilityId = lastFacility.length > 0 ? lastFacility[0].aic : 0; // Get the last jobId value or default to 0
-        const newFacilityId = lastFacilityId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
+        const lastFacility = await Facility.find().sort({ aic: -1 }).limit(1);
+        const lastFacilityId = lastFacility.length > 0 ? lastFacility[0].aic : 0;
+        const newFacilityId = lastFacilityId + 1;
         let response = req.body;
         const isUser = await Facility.findOne({ contactEmail: response.contactEmail.toLowerCase() });
 
         if (!isUser) {
-            const subject = `Welcome to BookSmart™`
+            const subject = `Welcome to BookSmart™`;
             const content = `<div id=":18t" class="a3s aiL ">
                 <p>Thank you for registering as a Facility User!</p>
                 <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
-            </div>`
+            </div>`;
             response.entryDate = new Date();
             response.aic = newFacilityId;
             response.userStatus = "pending approval";

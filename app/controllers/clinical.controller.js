@@ -110,19 +110,14 @@ exports.signup = async (req, res) => {
 //Login Account
 exports.login = async (req, res) => {
     try {
+        console.log('started');
         const { email, password, userRole, device } = req.body;
         let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password }, 
                                             { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, clinicalAcknowledgeTerm: 1, password: 1 });
-
+        console.log('got userdata');
         if (userData) {
             if (userData.userStatus === 'activate') {
-                const payload = {
-                    email: userData.email,
-                    userRole: userData.userRole,
-                    iat: Math.floor(Date.now() / 1000), // Issued at time
-                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-                }
-                const token = setToken(payload);
+
                 let devices = userData.device || [];
                 let phoneAuth = true;
                 if (!devices.includes(device)) {
@@ -132,7 +127,14 @@ exports.login = async (req, res) => {
                     phoneAuth = false;
                     await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
                 }
-
+                console.log('check device');
+                const payload = {
+                    email: userData.email,
+                    userRole: userData.userRole,
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+                }
+                const token = setToken(payload);
                 if (token) {
                     res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth, device: device });
                 } else {
@@ -142,7 +144,7 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Clinical.findOne({ email: email.toLowerCase() });
+            const isExist = await Clinical.findOne({ email: email.toLowerCase() }, { email: 1 });
             console.log('isExist => ', typeof isExist);
 
             if (isExist) {
@@ -170,13 +172,10 @@ function extractNonJobId(job) {
     nonJobIdKeys.forEach(key => {
         if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             let file = job[key];
-            console.log(file.name);
-            if (file.name != "") {
-                if (file.content != '') {
-                    const content = Buffer.from(file.content, 'base64');
-                    newObject[key] = { name: file.name, type: file.type, content: content };
-                }
-            } else {
+            if (file.content) {
+                const content = Buffer.from(file.content, 'base64');
+                newObject[key] = { name: file.name, type: file.type, content: content };
+            } else if (!file.name) {
                 newObject[key] = { content: '', type: '', name: '' };
             }
         } else if (key == 'driverLicenseStatus' || key == 'socialCardStatus' || key == 'physicalExamStatus' || key == 'ppdStatus' || key == 'mmrStatus' || key == 'healthcareLicenseStatus' || key == 'resumeStatus' || key == 'covidCardStatus' || key == 'blsStatus' || key == 'hepBStatus' || key == 'fluStatus' || key == 'cnaStatus' || key == 'taxFormStatus' || key == 'chrc102Status' || key == 'chrc103Status' || key == 'drugStatus' || key == 'sscStatus' || key == 'copyOfTBStatus') {
@@ -274,43 +273,27 @@ function convertToInternationalFormat(phoneNumber) {
     }
 }
   
-exports.phoneSms = async (req, res) => {
-    // try {
-    //     console.log("forgotPassword");
-    //     const { phoneNumber } = req.body;
-    //     console.log(phoneNumber);
-    //     const verifyPhone = convertToInternationalFormat(phoneNumber);
-    //     console.log(verifyPhone);
-    //     console.log(device, 'dddd');
-    //     let verify = await twilios.createVerification(verifyPhone);
-    //     res.status(200).json({ message: "Sucess" });
-    // } catch (e) {
-    //     console.log(e);
-    //     return res.status(500).json({ message: "An Error Occured!" })
-    // }    
+exports.phoneSms = async (req, res) => {   
     try {
         console.log("phoneNumber");
         const { phoneNumber, email } = req.body;
-        // console.log(device, 'dddd');
         const verifyPhone = convertToInternationalFormat(phoneNumber);
-        const isUser = await Clinical.findOne({ email: email });
+        const isUser = await Clinical.findOne({ email: email }, { firstName: 1 });
         if (isUser) {
             const verifyPhoneCode = generateVerificationCode();
             const verifyPhoneTime = Math.floor(Date.now() / 1000) + 600;
+            console.log(verifyPhoneCode);
             if (verifyPhoneCode && verifyPhoneTime) {
                 const verifiedContent = `${isUser.firstName},Your verifyPhoneCode is here: \n ${verifyPhoneCode}`
                 
                 let approveResult = phoneSms.pushNotification(verifiedContent, verifyPhone);
                 const updateUser = await Clinical.updateOne({ email: email }, { $set: { verifyPhoneCode: verifyPhoneCode, verifyPhoneTime: verifyPhoneTime } });
-                console.log(updateUser);
-                res.status(200).json({ message: "Sucess" });
+                return res.status(200).json({ message: "Sucess" });
+            } else {
+                return res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
             }
-            else {
-                res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
-            }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+        } else {
+            return res.status(404).json({ message: "User Not Found! Please Register First." })
         }
     } catch (e) {
         console.log(e);
@@ -318,36 +301,12 @@ exports.phoneSms = async (req, res) => {
     }
 }
 
-// const testVerifyCode = '123156'
 exports.verifyPhone = async (req, res) => {
-    // try {
-    //     console.log("verfyCode");
-    //     const { verifyCode, phoneNumber, device, email } = req.body;
-    //     console.log(verifyCode);
-    //     console.log(phoneNumber);
-    //     const verifyPhone = convertToInternationalFormat(phoneNumber);
-    //     console.log(verifyPhone);
-    //     let checkVerify = await twilios.createVerificationCheck(verifyPhone, verifyCode);
-        
-    //     // if (verifyCode === testVerifyCode) {
-    //         res.status(200).json({message: 'success'})
-    //         const isUser = await Clinical.findOne({ email: email, userRole: 'Clinician' });
-    //         if (isUser) {
-    //             const devices = isUser.device;
-                // devices.push(device);
-    //             const updateUser = await Clinical.updateOne({ email: email, userRole: userRole }, { $set: { logined: true, device: devices } });
-    //             
-    //         }
-    //     // }
-    // } catch (e) {
-    //     console.log(e);
-    //     return res.status(500).json({ message: "An Error Occured!" })
-    // }    
     try {
         console.log("verfyCode");
         const { verifyCode, phoneNumber, device, email } = req.body;
         console.log(verifyCode);
-        const isUser = await Clinical.findOne({ verifyPhoneCode: verifyCode, email: email });
+        const isUser = await Clinical.findOne({ verifyPhoneCode: verifyCode, email: email }, { device: 1, verifyPhoneTime: 1 });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyPhoneTime) {
@@ -379,7 +338,7 @@ exports.resetPassword = async (req, res) => {
     try {
         console.log("verfyCode");
         const { email, password } = req.body;
-        const isUser = await Clinical.findOne({ email: email });
+        const isUser = await Clinical.findOne({ email: email }, { email: 1 });
         if (isUser) {
             const updateUser = await Clinical.updateOne({ email: email }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
             console.log(updateUser);
@@ -397,7 +356,7 @@ exports.resetPassword = async (req, res) => {
 exports.updateUserStatus = async (req, res) => {
     try {
         const { userId, status } = req.body;
-        const isUser = await Clinical.findOne({ aic: userId });
+        const isUser = await Clinical.findOne({ aic: userId }, { firstName: 1, lastName: 1, email: 1 });
         if (isUser) {
             await Clinical.updateOne({ aic: userId }, { $set: { userStatus: status } });
             if (status == 'activate') {
@@ -434,6 +393,7 @@ exports.Update = async (req, res) => {
     const request = req.body;
     // console.log(request, req.headers, req.headers.userrole);
     const user = req.user;
+    console.log(user);
     const role = req.headers.userrole ? req.headers.userrole : user.userRole;
     const extracted = extractNonJobId(request);
     // console.log(extracted)
@@ -446,7 +406,7 @@ exports.Update = async (req, res) => {
 
     if (user) {
         console.log("items", user.email + ",   role = " + role);
-        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email }, role == "Admin" ? { $set: extracted } : { $set: request }, { new: false }, (err, updatedDocument) => {
+        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email }, { $set: extracted }, { new: false }, (err, updatedDocument) => {
             if (err) {
                 return res.status(500).json({ error: err });
             } else {
@@ -498,9 +458,9 @@ exports.getUserImage = async (req, res) => {
     try {
         const { userId, filename } = req.body;
         const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
-        const content = isUser[filename].content.toString('base64');
+        const content = isUser[filename]?.content.toString('base64');
 
-        res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content } });
+        return res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content } });
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occured!" })
@@ -586,7 +546,7 @@ exports.getUserInfo = async (req, res) => {
         const user = req.user;
         const { userId } = req.body;
         let isUser = await Clinical.findOne({ aic: userId }, 
-            { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
+            { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
                 photoImage: {
                     content: '',
                     name: '$photoImage.name',
@@ -630,40 +590,9 @@ exports.getUserInfo = async (req, res) => {
                 } });
 
         if (isUser) {
-            if (isUser.photoImage?.content) {
-                isUser.photoImage.content = '';
-            }
-            if (isUser.driverLicense?.content) {
-                isUser.driverLicense.content = '';
-            }
-            if (isUser.socialCard?.content) {
-                isUser.socialCard.content = '';
-            }
-            if (isUser.physicalExam?.content) {
-                isUser.physicalExam.content = '';
-            }
-            if (isUser.ppd?.content) {
-                isUser.ppd.content = '';
-            }
-            if (isUser.mmr?.content) {
-                isUser.mmr.content = '';
-            }
-            if (isUser.healthcareLicense?.content) {
-                isUser.healthcareLicense.content = '';
-            }
-            if (isUser.resume?.content) {
-                isUser.resume.content = '';
-            }
-            if (isUser.covidCard?.content) {
-                isUser.covidCard.content = '';
-            }
-            if (isUser.bls?.content) {
-                isUser.bls.content = '';
-            }
-            console.log(user);
             const payload = {
-                email: user.email,
-                userRole: user.userRole,
+                email: isUser.email,
+                userRole: isUser.userRole,
                 iat: Math.floor(Date.now() / 1000), // Issued at time
                 exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
             };

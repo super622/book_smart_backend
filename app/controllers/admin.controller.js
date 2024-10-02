@@ -1,18 +1,12 @@
-const jwtEncode = require('jwt-encode')
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
-const { set } = require('mongoose');
 const Admin = db.admins;
 const Clinical = db.clinical;
 const Bid = db.bids;
 const Facility = db.facilities;
-const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
-const e = require('cors');
-
-const limitAccNum = 100;
 const expirationTime = 10000000;
-//Register Account
+
 exports.signup = async (req, res) => {
     try {
         console.log("register");
@@ -45,7 +39,6 @@ exports.signup = async (req, res) => {
     }
 }
 
-//Login Account
 exports.login = async (req, res) => {
     try {
         console.log("LogIn");
@@ -156,7 +149,6 @@ exports.forgotPassword = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" })
     }
 }
-
 
 exports.verifyCode = async (req, res) => {
     try {
@@ -280,8 +272,6 @@ exports.Update = async (req, res) => {
         const content = Buffer.from(request.photoImage.content, 'base64');
         request.photoImage.content = content;
     }
-
-    console.log(request);
 
     if (user) {
         Admin.findOneAndUpdate({ user } ,{ $set: request }, { new: false }, async (err, updatedDocument) => {
