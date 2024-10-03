@@ -29,7 +29,7 @@ exports.postBid = async (req, res) => {
       const token = setToken(payload);
 
       const isExist = await Bid.find({ jobId: response.jobId, caregiverId: response.caregiverId }, { bidId: 1 });
-      if (isExist) {
+      if (isExist.length > 0) {
         return res.status(200).json({ message: "Already applied", token: token });
       }
 
