@@ -16,15 +16,17 @@ exports.postBid = async (req, res) => {
     console.log("register");
     const user = req.user
 
+    console.log(req.body);
+
     if (!req.bidId) {
       let response = req.body;
       const lastBid = await Bid.find().sort({ bidId: -1 }).limit(1);
       const lastBidId = lastBid.length > 0 ? lastBid[0].bidId : 0;
-      const lastBidOffer = await Job.findOne({ jobId: response.jobId }).select('bid_offer');
+      const lastBidOffer = await Job.findOne({ jobId: response.jobId }, { bid_offer: 1 });
       const newBidOffer = parseInt(lastBidOffer.bid_offer) + 1;
       const newBidId = lastBidId + 1;
-      const facility = await Job.findOne({ jobId: response.jobId });
-      const facilityEmail = await Facility.findOne({ companyName: facility.facility });
+      const facility = await Job.findOne({ jobId: response.jobId }, { facilityId: 1, facility: 1, aic: 1, shiftDate: 1, shiftTime: 1 });
+      const facilityEmail = await Facility.findOne({ aic: facility.facilityId }, { contactEmail: 1, aic: 1 });
       console.log(facilityEmail.aic);
       
       response.entryDate = moment(new Date()).format("MM/DD/YYYY");
@@ -44,7 +46,7 @@ exports.postBid = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       };
       const token = setToken(payload);
-
+      res.status(200).json({ message: "Successfully Applied", token: token });
       const verifySubject1 = `${user.firstName} ${user.lastName} has applied to Job #${response.jobId}`;
       const verifiedContent1 = `
         <div id=":15j" class="a3s aiL ">
@@ -54,9 +56,9 @@ exports.postBid = async (req, res) => {
           <p><strong>Submitted By</strong> : ${user.firstName} ${user.lastName}</p>
         </div>`;
       
-      let approveResult = mailTrans.sendMail(facilityEmail?.contactEmail, verifySubject1, verifiedContent1);
-      let approveResult2 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
-      let approveResult1 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
+      let approveResult = await mailTrans.sendMail(facilityEmail?.contactEmail, verifySubject1, verifiedContent1);
+      let approveResult2 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
+      let approveResult1 = await mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
 
       const verifySubject3 = `Thank you for your interest in shift - ${response.jobId}`
       const verifiedContent3 = `
@@ -65,9 +67,7 @@ exports.postBid = async (req, res) => {
         <p>-----------------------</p>
       </div>`
       
-      let approveResult3 = mailTrans.sendMail(user?.email, verifySubject3, verifiedContent3);
-
-      return res.status(201).json({ message: "Successfully Applied", token: token });
+      let approveResult3 = await mailTrans.sendMail(user?.email, verifySubject3, verifiedContent3);
     } else {
       console.log('content', req.body.content)
       const id = { jobId: req.body.jobId }

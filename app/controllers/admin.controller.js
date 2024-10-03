@@ -460,7 +460,7 @@ exports.getAllUsersList = async (req, res) => {
         }
 
         const adminData = await Admin.find(query, { firstName: 1, lastName: 1, email: 1, userRole: 1, userStatus: 1 });
-        const facilityData = await Facility.find(fQuery, { firstName: 1, lastName: 1, contactEmail: 1, userRole: 1, userStatus: 1 });
+        const facilityData = await Facility.find(fQuery, { firstName: 1, lastName: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1 });
         const clinicalData = await Clinical.find(query, { firstName: 1, lastName: 1, email: 1, userRole: 1, userStatus: 1 });
 
         console.log('got all list');
@@ -470,6 +470,7 @@ exports.getAllUsersList = async (req, res) => {
                 `${item.firstName} ${item.lastName}`,
                 item.email,
                 item.userRole,
+                "",
                 item.userStatus,
                 "delete"
             ]);
@@ -480,6 +481,7 @@ exports.getAllUsersList = async (req, res) => {
                 `${item.firstName} ${item.lastName}`,
                 item.contactEmail,
                 item.userRole,
+                item.companyName,
                 item.userStatus,
                 "delete"
             ]);
@@ -490,6 +492,7 @@ exports.getAllUsersList = async (req, res) => {
                 `${item.firstName} ${item.lastName}`,
                 item.email,
                 item.userRole,
+                "",
                 item.userStatus,
                 "delete"
             ]);

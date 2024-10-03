@@ -231,7 +231,13 @@ exports.shifts = async (req, res) => {
       }
     } else if (role === "Clinician") {
       console.log('started');
-      const data = await Job.find({}, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 });
+      const today = moment(new Date()).format("MM/DD/YYYY");
+      console.log(today);
+      const data = await Job.find({ 
+        entryDate: { 
+          $gte: today
+        }
+      }, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 }).sort({ entryDate: 1 });
       let dataArray = [];
       data.map((item, index) => {
         console.log(user.title);
@@ -249,7 +255,8 @@ exports.shifts = async (req, res) => {
             bonus: item.bonus
           });
         }
-      })
+      });
+
       const payload = {
         email: user.email,
         userRole: user.userRole,
@@ -257,7 +264,7 @@ exports.shifts = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       }
       const token = setToken(payload);
-      console.log('return value');
+      console.log('return value', dataArray.length);
       if (token) {
         res.status(200).json({ message: "Successfully Get!", dataArray, token });
       } else {
@@ -627,7 +634,7 @@ exports.myShift = async (req, res) => {
 
       for (const job of jobs) {
         if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-          const payRate = job.payRate != '$' ? parseFloat(job.payRate.replace('$', '')) : 0;
+          const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
           const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
           const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
           totalPay += payRate * shiftHours + bonus;
@@ -653,7 +660,7 @@ exports.myShift = async (req, res) => {
 
       for (const job of weekly) {
         if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-          const payRate = job.payRate != '$' ? parseFloat(job.payRate.replace('$', '')) : 0;
+          const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
           const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
           const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
           weeklyPay += payRate * shiftHours + bonus;

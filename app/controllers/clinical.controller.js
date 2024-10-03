@@ -120,9 +120,11 @@ exports.login = async (req, res) => {
 
                 let devices = userData.device || [];
                 let phoneAuth = true;
+                console.log(devices, device, devices.includes(device));
                 if (!devices.includes(device)) {
-                    devices.push(device); // Only push if it's not already present
                     phoneAuth = true;
+                    devices.push(device);
+                    await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { device: devices } });
                 } else {
                     phoneAuth = false;
                     await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
@@ -241,17 +243,15 @@ exports.verifyCode = async (req, res) => {
         console.log("verfyCode");
         const { verifyCode } = req.body;
         console.log(verifyCode);
-        const isUser = await Clinical.findOne({ verifyCode: verifyCode });
+        const isUser = await Clinical.findOne({ verifyCode: verifyCode }, { verifyTime: 1 });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
-                res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
+                return res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
+            } else {
+                return res.status(200).json({message: "Success to verify code."})
             }
-            else {
-                res.status(200).json({message: "Success to verify code."})
-            }
-        }
-        else {
+        } else {
             res.status(404).json({ message: "User Not Found! Please Register First." })
         }
     } catch (e) {
@@ -284,7 +284,7 @@ exports.phoneSms = async (req, res) => {
             const verifyPhoneTime = Math.floor(Date.now() / 1000) + 600;
             console.log(verifyPhoneCode);
             if (verifyPhoneCode && verifyPhoneTime) {
-                const verifiedContent = `${isUser.firstName},Your verifyPhoneCode is here: \n ${verifyPhoneCode}`
+                const verifiedContent = `${isUser.firstName}, your verification code is here: \n ${verifyPhoneCode}`
                 
                 let approveResult = phoneSms.pushNotification(verifiedContent, verifyPhone);
                 const updateUser = await Clinical.updateOne({ email: email }, { $set: { verifyPhoneCode: verifyPhoneCode, verifyPhoneTime: verifyPhoneTime } });
@@ -319,18 +319,16 @@ exports.verifyPhone = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                
-                const devices = isUser.device;
-                devices.push(device)
-                const updateUser = await Clinical.updateOne({ email: email }, { $set: { logined: true, device: devices } });
-                res.status(200).json({message: "Success to verify code.", token: token})
+
+                const updateUser = await Clinical.updateOne({ email: email }, { $set: { logined: true } });
+                return res.status(200).json({message: "Success to verify code.", token: token});
             }
         } else {
-            res.status(500).json({ message: "Verification code is not correct." })
+            return res.status(500).json({ message: "Verification code is not correct." });
         }
     } catch (e) {
         console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" })
+        return res.status(500).json({ message: "An Error Occured!" });
     }
 }
 
