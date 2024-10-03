@@ -46,7 +46,6 @@ exports.postBid = async (req, res) => {
         exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
       };
       const token = setToken(payload);
-      res.status(200).json({ message: "Successfully Applied", token: token });
       const verifySubject1 = `${user.firstName} ${user.lastName} has applied to Job #${response.jobId}`;
       const verifiedContent1 = `
         <div id=":15j" class="a3s aiL ">
@@ -68,6 +67,7 @@ exports.postBid = async (req, res) => {
       </div>`
       
       let approveResult3 = await mailTrans.sendMail(user?.email, verifySubject3, verifiedContent3);
+      return res.status(200).json({ message: "Successfully Applied", token: token });
     } else {
       console.log('content', req.body.content)
       const id = { jobId: req.body.jobId }
