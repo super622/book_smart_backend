@@ -597,38 +597,37 @@ exports.myShift = async (req, res) => {
   try {
     const user = req.user;
     const role = req.headers.role;
-    const nurse = user.firstName + ' ' + user.lastName;
-    const data = await Job.find({ nurse: nurse }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, shiftStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 });
 
-    console.log(role);
+    const jobIds = await Bid.find({ caregiverId: user?.aic, bidStatus: { $ne: 'Not Awarded' }  }, { jobId: 1 }).lean();
+    const jobIdArray = jobIds.map(bid => bid.jobId);
+    console.log(jobIdArray)
+    const data = await Job.find({ jobId: { $in: jobIdArray } }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, shiftStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 });
 
     let dataArray = [];
     if (role === "Clinician") {
       data.map((item) => {
-        if (item.jobStatus !== 'Available') {
-          let file = item.timeSheet;
-          file.content = '';
-          dataArray.push({
-            jobId: item.jobId,
-            location: item.location,
-            payRate: item.payRate,
-            shiftStatus: item.jobStatus,
-            caregiver: item.nurse,
-            timeSheet: file,
-            unit: item.unit,
-            entryDate: item.entryDate,
-            shiftDate: item.shiftDate,
-            shiftTime: item.shiftTime,
-            shiftDateAndTimes: item.shiftDateAndTimes,
-            laborState: item.laborState,
-            shiftStartTime: item.shiftStartTime,
-            shiftEndTime: item.shiftEndTime
-          });
-        }
+        let file = item.timeSheet;
+        file.content = '';
+        dataArray.push({
+          jobId: item.jobId,
+          location: item.location,
+          payRate: item.payRate,
+          shiftStatus: item.jobStatus,
+          caregiver: item.nurse,
+          timeSheet: file,
+          unit: item.unit,
+          entryDate: item.entryDate,
+          shiftDate: item.shiftDate,
+          shiftTime: item.shiftTime,
+          shiftDateAndTimes: item.shiftDateAndTimes,
+          laborState: item.laborState,
+          shiftStartTime: item.shiftStartTime,
+          shiftEndTime: item.shiftEndTime
+        });
       })
       const date = moment(new Date()).format("MM/DD/YYYY");
       // const date = "04/03/2024"
-      const jobs = await Job.find({ nurse: (user.firstName + ' ' + user.lastName), shiftDate: date });
+      const jobs = await Job.find({ jobId: { $in: jobIdArray }, shiftDate: date }, { payRate: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1, jobStatus: 1 });
       console.log(jobs);
       let totalPay = 0;
 
@@ -654,7 +653,7 @@ exports.myShift = async (req, res) => {
           $gte: moment(monday).format("MM/DD/YYYY"), // Convert to YYYY-MM-DD
           $lte: moment(today).format("MM/DD/YYYY"),
         },
-      });
+      }, { payRate: 1, jobStatus: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1 });
 
       let weeklyPay = 0;
 
@@ -677,7 +676,7 @@ exports.myShift = async (req, res) => {
       // console.log('token----------------------------------------------------->',token);
       if (token) {
         // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-        res.status(200).json({
+        return res.status(200).json({
           message: "Successfully Get!",
           jobData: {
             reportData: dataArray,
@@ -687,9 +686,8 @@ exports.myShift = async (req, res) => {
           token: token
         }
         );
-      }
-      else {
-        res.status(400).json({ message: "Cannot logined User!" })
+      } else {
+        return res.status(400).json({ message: "Cannot logined User!" })
       }
     }
   } catch (e) {
