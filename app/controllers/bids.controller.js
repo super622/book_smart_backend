@@ -20,6 +20,19 @@ exports.postBid = async (req, res) => {
 
     if (!req.bidId) {
       let response = req.body;
+      const payload = {
+        email: user.email,
+        userRole: user.userRole,
+        iat: Math.floor(Date.now() / 1000), // Issued at time
+        exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+      };
+      const token = setToken(payload);
+
+      const isExist = await Bid.find({ jobId: response.jobId, caregiverId: response.caregiverId }, { bidId: 1 });
+      if (isExist) {
+        return res.status(200).json({ message: "Already applied", token: token });
+      }
+
       const lastBid = await Bid.find().sort({ bidId: -1 }).limit(1);
       const lastBidId = lastBid.length > 0 ? lastBid[0].bidId : 0;
       const lastBidOffer = await Job.findOne({ jobId: response.jobId }, { bid_offer: 1 });
@@ -39,13 +52,6 @@ exports.postBid = async (req, res) => {
       const updateJob = await Job.updateOne({ jobId: response.jobId }, { $set: { bid_offer: newBidOffer } });
       console.log('updated');
 
-      const payload = {
-        email: user.email,
-        userRole: user.userRole,
-        iat: Math.floor(Date.now() / 1000), // Issued at time
-        exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-      };
-      const token = setToken(payload);
       const verifySubject1 = `${user.firstName} ${user.lastName} has applied to Job #${response.jobId}`;
       const verifiedContent1 = `
         <div id=":15j" class="a3s aiL ">
