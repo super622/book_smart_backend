@@ -601,7 +601,7 @@ exports.myShift = async (req, res) => {
     const jobIds = await Bid.find({ caregiverId: user?.aic, bidStatus: { $ne: 'Not Awarded' }  }, { jobId: 1 }).lean();
     const jobIdArray = jobIds.map(bid => bid.jobId);
     console.log(jobIdArray)
-    const data = await Job.find({ jobId: { $in: jobIdArray } }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, shiftStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 }).sort({ entryDate: -1, shiftDate: -1 });
+    const data = await Job.find({ jobId: { $in: jobIdArray } }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, jobStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 }).sort({ entryDate: -1, shiftDate: -1 });
 
     let dataArray = [];
     if (role === "Clinician") {
