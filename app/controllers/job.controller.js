@@ -86,10 +86,10 @@ exports.updateTimeSheet = async (req, res) => {
     <p><strong>Timesheet</strong> : ${timeSheetFile?.name || ''}</p>
   </div>`
 
-  let approveResult1 = mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult2 = mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult3 = mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult4 = mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult1 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult2 = await mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult3 = await mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1, request.timeSheet);
+  let approveResult4 = await mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
 
   return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
 };
@@ -443,7 +443,7 @@ exports.getJob = async (req, res) => {
 
     let jobData = await Job.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
     console.log('got jobdata');
-    const bidders = await Bid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1 });
+    const bidders = await Bid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1, caregiverId: 1 });
     console.log('got bidders');
 
     let biddersList = await Promise.all(bidders.map(async (item) => {

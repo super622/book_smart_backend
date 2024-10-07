@@ -68,7 +68,7 @@ exports.postBid = async (req, res) => {
       const verifySubject3 = `Thank you for your interest in shift - ${response.jobId}`
       const verifiedContent3 = `
       <div id=":15j" class="a3s aiL ">
-        <p><span style="color: #0000ff;"><strong>You will be notified via email, if this shift is awarded to you!</strong></span></p>
+        <p><span style="color: #0000ff;"><strong>You will be notified via email if this shift is awarded to you!</strong></span></p>
         <p>-----------------------</p>
       </div>`
       
