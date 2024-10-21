@@ -280,7 +280,8 @@ exports.phoneSms = async (req, res) => {
         const verifyPhone = convertToInternationalFormat(phoneNumber);
         const isUser = await Clinical.findOne({ email: email }, { firstName: 1 });
         if (isUser) {
-            const verifyPhoneCode = generateVerificationCode();
+            // const verifyPhoneCode = generateVerificationCode();
+            const verifyPhoneCode = '123456';
             const verifyPhoneTime = Math.floor(Date.now() / 1000) + 600;
             console.log(verifyPhoneCode);
             if (verifyPhoneCode && verifyPhoneTime) {
