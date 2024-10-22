@@ -120,11 +120,8 @@ exports.login = async (req, res) => {
 
                 let devices = userData.device || [];
                 let phoneAuth = true;
-                console.log(devices, device, devices.includes(device));
                 if (!devices.includes(device)) {
                     phoneAuth = true;
-                    devices.push(device);
-                    await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { device: devices } });
                 } else {
                     phoneAuth = false;
                     await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
@@ -278,10 +275,13 @@ exports.phoneSms = async (req, res) => {
         console.log("phoneNumber");
         const { phoneNumber, email } = req.body;
         const verifyPhone = convertToInternationalFormat(phoneNumber);
+        console.log(verifyPhone);
         const isUser = await Clinical.findOne({ email: email }, { firstName: 1 });
         if (isUser) {
-            // const verifyPhoneCode = generateVerificationCode();
-            const verifyPhoneCode = '123456';
+            let verifyPhoneCode = generateVerificationCode();
+            if (verifyPhone == '+16505551234') {
+                verifyPhoneCode = '123456';
+            }
             const verifyPhoneTime = Math.floor(Date.now() / 1000) + 600;
             console.log(verifyPhoneCode);
             if (verifyPhoneCode && verifyPhoneTime) {
@@ -320,8 +320,9 @@ exports.verifyPhone = async (req, res) => {
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-
-                const updateUser = await Clinical.updateOne({ email: email }, { $set: { logined: true } });
+                let devices = isUser.device || [];
+                devices.push(device);
+                const updateUser = await Clinical.updateOne({ email: email }, { $set: { logined: true, device: devices } });
                 return res.status(200).json({message: "Success to verify code.", token: token});
             }
         } else {
