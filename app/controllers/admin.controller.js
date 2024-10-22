@@ -268,7 +268,7 @@ exports.Update = async (req, res) => {
     let request = req.body;
     const user = req.user;
 
-    if (request.photoImage.name != "") {
+    if (request?.photoImage?.name) {
         const content = Buffer.from(request.photoImage.content, 'base64');
         request.photoImage.content = content;
     }
