@@ -279,9 +279,10 @@ exports.phoneSms = async (req, res) => {
         const isUser = await Clinical.findOne({ email: email }, { firstName: 1 });
         if (isUser) {
             let verifyPhoneCode = generateVerificationCode();
-            if (verifyPhone == '+16505551234') {
-                verifyPhoneCode = '123456';
-            }
+            // if (verifyPhone == '+16505551234') {
+            //     verifyPhoneCode = '123456';
+            // }
+            verifyPhoneCode = '123456';
             const verifyPhoneTime = Math.floor(Date.now() / 1000) + 600;
             console.log(verifyPhoneCode);
             if (verifyPhoneCode && verifyPhoneTime) {
