@@ -409,6 +409,7 @@ exports.Update = async (req, res) => {
         console.log("items", user.email + ",   role = " + role);
         Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email }, { $set: extracted }, { new: false }, (err, updatedDocument) => {
             if (err) {
+                console.log(err);
                 return res.status(500).json({ error: err });
             } else {
                 let updatedData = updatedDocument;
