@@ -159,31 +159,26 @@ exports.login = async (req, res) => {
 }
 
 function extractNonJobId(job) {
-    const keys = Object.keys(job);
-    // console.log(keys);
-    
-    // Filter out the key 'email'
-    const nonJobIdKeys = keys.filter(key => key !== 'email');
-    // console.log(nonJobIdKeys);
-    
-    // Create a new object with the non-email properties
     const newObject = {};
-    nonJobIdKeys.forEach(key => {
+    for (const [key, value] of Object.entries(job)) {
+        if (key === 'email') continue;
+
         if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
-            let file = job[key];
-            if (file.content) {
-                const content = Buffer.from(file.content, 'base64');
-                newObject[key] = { name: file.name, type: file.type, content: content };
-            } else if (!file.name) {
+            if (value.content) {
+                newObject[key] = {
+                    name: value.name,
+                    type: value.type,
+                    content: Buffer.from(value.content, 'base64')
+                };
+            } else if (!value.name) {
                 newObject[key] = { content: '', type: '', name: '' };
             }
         } else if (key == 'driverLicenseStatus' || key == 'socialCardStatus' || key == 'physicalExamStatus' || key == 'ppdStatus' || key == 'mmrStatus' || key == 'healthcareLicenseStatus' || key == 'resumeStatus' || key == 'covidCardStatus' || key == 'blsStatus' || key == 'hepBStatus' || key == 'fluStatus' || key == 'cnaStatus' || key == 'taxFormStatus' || key == 'chrc102Status' || key == 'chrc103Status' || key == 'drugStatus' || key == 'sscStatus' || key == 'copyOfTBStatus') {
-            newObject[key] = job[key] == 1 ? true : false;
+            newObject[key] = Boolean(value);
         } else {
-            newObject[key] = job[key];
+            newObject[key] = value;
         }
-    });
-    
+    }
     return newObject;
 }
 
@@ -390,24 +385,26 @@ exports.updateUserStatus = async (req, res) => {
 
 //Update Account
 exports.Update = async (req, res) => {
-    console.log('updateSignal');
     const request = req.body;
-    // console.log(request, req.headers, req.headers.userrole);
     const user = req.user;
+    const role = req.headers.userrole || user.userRole;
     console.log(user);
-    const role = req.headers.userrole ? req.headers.userrole : user.userRole;
+
     const extracted = extractNonJobId(request);
-    // console.log(extracted)
+
     if (extracted.updateEmail) {
-       extracted.email =extracted.updateEmail; // Create the new property
+       extracted.email = extracted.updateEmail;
        delete extracted.updateEmail;
     }
 
     const existUser = await Clinical.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
 
+    if (!existUser) {
+        return res.status(404).json({ error: "User not found" });
+    }
+
     if (user) {
-        console.log("items", user.email + ",   role = " + role);
-        Clinical.findOneAndUpdate(role=="Admin" ? { email: request.email, userRole: 'Clinician' } : { email: user.email }, { $set: extracted }, { new: false }, (err, updatedDocument) => {
+        Clinical.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: false }, (err, updatedDocument) => {
             if (err) {
                 console.log(err);
                 return res.status(500).json({ error: err });
