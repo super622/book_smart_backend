@@ -586,7 +586,45 @@ exports.getUserInfo = async (req, res) => {
                     content: '',
                     name: '$bls.name',
                     type: '$bls.type'
-                } });
+                }, flu: {
+                    content: '',
+                    name: '$flu.name',
+                    type: '$flu.type'
+                }, cna: {
+                    content: '',
+                    name: '$cna.name',
+                    type: '$cna.type'
+                }, taxForm: {
+                    content: '',
+                    name: '$taxForm.name',
+                    type: '$taxForm.type'
+                }, chrc102: {
+                    content: '',
+                    name: '$chrc102.name',
+                    type: '$chrc102.type'
+                }, chrc103: {
+                    content: '',
+                    name: '$chrc103.name',
+                    type: '$chrc103.type'
+                }, drug: {
+                    content: '',
+                    name: '$drug.name',
+                    type: '$drug.type'
+                }, ssc: {
+                    content: '',
+                    name: '$ssc.name',
+                    type: '$ssc.type'
+                }, copyOfTB: {
+                    content: '',
+                    name: '$copyOfTB.name',
+                    type: '$copyOfTB.type'
+                }, hepB: {
+                    content: '',
+                    name: '$hepB.name',
+                    type: '$hepB.type'
+                },
+                driverLicenseStatus: 1, socialCardStatus: 1, physicalExamStatus: 1, ppdStatus: 1, mmrStatus: 1, healthcareLicenseStatus: 1, resumeStatus: 1, covidCardStatus: 1, blsStatus: 1, hepBStatus: 1, fluStatus: 1, cnaStatus: 1, taxFormStatus: 1, chrc102Status: 1, chrc103Status: 1, drugStatus: 1, sscStatus: 1, copyOfTBStatus: 1
+            });
 
         if (isUser) {
             const payload = {
@@ -752,80 +790,10 @@ exports.allCaregivers = async (req, res) => {
         const user = req.user;
         const { search = '', page = 1, filters = [] } = req.body;
         const limit = 5;
-        const skip = (page - 1) * limit;
+        let perPage = page;
         const query = {};
 
-        // filters.forEach(filter => {
-        //     const { logic = 'and', field, condition, value } = filter;
-        
-        //     let fieldNames = [];
-        
-        //     // For Name, use both firstName and lastName in an OR condition
-        //     if (field === 'Name') {
-        //         fieldNames = ['firstName', 'lastName']; 
-        //     } else if (field === 'Email') {
-        //         fieldNames = ['email']; 
-        //     } else if (field === 'User Roles') {
-        //         fieldNames = ['userRole'];
-        //     } else if (field === 'User Status') {
-        //         fieldNames = ['userStatus'];
-        //     }
-        
-        //     const conditions = [];
-        
-        //     fieldNames.forEach(fieldName => {
-        //         let conditionObj = {};
-        //         switch (condition) {
-        //             case 'is':
-        //                 conditionObj[fieldName] = value;
-        //                 break;
-        //             case 'is not':
-        //                 conditionObj[fieldName] = { $ne: value };
-        //                 break;
-        //             case 'contains':
-        //                 conditionObj[fieldName] = { $regex: value, $options: 'i' };
-        //                 break;
-        //             case 'does not contain':
-        //                 conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-        //                 break;
-        //             case 'starts with':
-        //                 conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-        //                 break;
-        //             case 'ends with':
-        //                 conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-        //                 break;
-        //             case 'is blank':
-        //                 conditionObj[fieldName] = { $exists: false };
-        //                 break;
-        //             case 'is not blank':
-        //                 conditionObj[fieldName] = { $exists: true, $ne: null };
-        //                 break;
-        //             case 'higher than':
-        //                 conditionObj[fieldName] = { $gt: value };
-        //                 break;
-        //             case 'lower than':
-        //                 conditionObj[fieldName] = { $lt: value };
-        //                 break;
-        //             default:
-        //                 break;
-        //         }
-        //         conditions.push(conditionObj); // Collect conditions for the field
-        //     });
-        
-        //     // If the field is Name, apply OR logic between firstName and lastName
-        //     if (field === 'Name') {
-        //         query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-        //     } else {
-        //         // Apply AND or OR logic for other fields based on the `logic` parameter
-        //         if (logic === 'or') {
-        //             query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-        //         } else {
-        //             query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-        //         }
-        //     }
-        // });
-
-        if (search) {
+        if (search.trim()) {
             query.$or = [
                 { firstName: { $regex: search, $options: 'i' } },
                 { lastName: { $regex: search, $options: 'i' } },
@@ -834,17 +802,25 @@ exports.allCaregivers = async (req, res) => {
                 { entryDate: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } }
             ];
+            perPage = 1;
         }
 
-        const data = await Clinical.find(query, { firstName: 1, lastName: 1, aic: 1, entryDate: 1, phoneNumber: 1, title: 1, email: 1, userStatus: 1 })
+        const skip = (perPage - 1) * limit;
+
+        console.log("Search Query:", search, "Page:", perPage, "Skip: ", skip, "Query Object:", JSON.stringify(query));
+
+        // Fetching data with pagination and allowing disk use for sorting
+        const data = await Clinical.find(query, { 
+                firstName: 1, lastName: 1, aic: 1, entryDate: 1, phoneNumber: 1, title: 1, email: 1, userStatus: 1 
+            })
+            .sort({ aic: -1 })
             .skip(skip)
             .limit(limit)
             .lean();
-  
-        // Count total number of documents matching the query
+
         const totalRecords = await Clinical.countDocuments(query);
         const totalPageCnt = Math.ceil(totalRecords / limit);
-      
+
         let dataArray = [];
 
         for (const item of data) {
@@ -867,13 +843,13 @@ exports.allCaregivers = async (req, res) => {
                 'view_shift',
                 'verification',
                 item.userStatus,
-                awarded == 0 ? '' : awarded,
-                applied == 0 ? '' : applied,
+                awarded === 0 ? '' : awarded,
+                applied === 0 ? '' : applied,
                 ratio,
                 'pw',
                 item.aic,
             ]);
-        };
+        }
 
         const payload = {
             email: user.email,
@@ -886,11 +862,11 @@ exports.allCaregivers = async (req, res) => {
         if (token) {
             res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
         } else {
-            res.status(400).json({ message: "Cannot logined User!" });
+            res.status(400).json({ message: "Cannot log in User!" });
         }
     } catch (e) {
-        console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" })
+        console.error(e);
+        return res.status(500).json({ message: "An Error Occurred!" });
     }
 };
 

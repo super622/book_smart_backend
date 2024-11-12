@@ -281,6 +281,7 @@ module.exports = mongoose => {
     return object;
   });
 
+  schema.index({ aic: 1 });
 
   const Clinical = mongoose.model("Clinical", schema); // Changed model name to "Master"
   return Clinical;
