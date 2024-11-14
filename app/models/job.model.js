@@ -85,7 +85,7 @@ module.exports = mongoose => {
       default: ''
     },
     timeSheet: {
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       type: { type: String, default: '' },
       name: { type: String, default: '' },
     },
@@ -98,7 +98,7 @@ module.exports = mongoose => {
       default: '0'
     },
     timeSheetTemplate: {
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       type: { type: String, default: '' },
       name: { type: String, default: '' },
     },

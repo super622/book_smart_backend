@@ -7,6 +7,35 @@ const Facility = db.facilities;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const expirationTime = 10000000;
 
+var dotenv = require('dotenv');
+dotenv.config()
+
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+
+const s3 = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+});
+
+async function uploadToS3(file) {
+    const { content, name, type } = file;
+  
+    const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `${uuidv4()}_${name}`,
+        Body: Buffer.from(content, 'base64'),
+        ContentType: type
+    };
+  
+    const command = new PutObjectCommand(params);
+    const upload = await s3.send(command);
+    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+}
+
 exports.signup = async (req, res) => {
     try {
         console.log("register");
@@ -269,8 +298,8 @@ exports.Update = async (req, res) => {
     const user = req.user;
 
     if (request?.photoImage?.name) {
-        const content = Buffer.from(request.photoImage.content, 'base64');
-        request.photoImage.content = content;
+        const s2FileUrl = await uploadToS3(request?.photoImage);
+        request.photoImage.content = s2FileUrl;
     }
 
     if (user) {

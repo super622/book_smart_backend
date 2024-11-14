@@ -3,7 +3,36 @@ const { setToken } = require('../utils/verifyToken');
 const Facility = db.facilities;
 const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
+var dotenv = require('dotenv');
+dotenv.config()
+
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
+
 const expirationTime = 10000000;
+
+async function uploadToS3(file) {
+    const { content, name, type } = file;
+  
+    const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `${uuidv4()}_${name}`,
+        Body: Buffer.from(content, 'base64'),
+        ContentType: type
+    };
+  
+    const command = new PutObjectCommand(params);
+    const upload = await s3.send(command);
+    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+}
 
 exports.signup = async (req, res) => {
     try {
@@ -25,8 +54,8 @@ exports.signup = async (req, res) => {
             response.contactEmail = response.contactEmail.toLowerCase();
 
             if (response.avatar.name != "") {
-                const content = Buffer.from(response.avatar.content, 'base64');
-                response.avatar.content = content;
+                const s3FileUrl = await uploadToS3(value);
+                response.avatar.content = s3FileUrl;
             }
 
             const auth = new Facility(response);
@@ -207,7 +236,7 @@ exports.resetPassword = async (req, res) => {
     }
 }
 
-function extractNonJobId(job) {
+async function extractNonJobId(job) {
     const keys = Object.keys(job);
     console.log(keys);
     
@@ -216,12 +245,13 @@ function extractNonJobId(job) {
     
     // Create a new object with the non-email properties
     const newObject = {};
-    nonJobIdKeys.forEach(key => {
+    nonJobIdKeys.forEach(async key => {
         if (key == 'avatar') {
             let file = job[key];
             if (file.content) {
-                file.content = Buffer.from(file.content, 'base64');
-            } 
+                const s3FileUrl = await uploadToS3(file);
+                file.content = s3FileUrl;
+            }
             newObject[key] = file;
         } else {
             newObject[key] = job[key];

@@ -64,7 +64,7 @@ module.exports = mongoose => {
     },
     photoImage: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     password: {
@@ -90,7 +90,7 @@ module.exports = mongoose => {
     },
     driverLicense: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     driverLicenseStatus: {
@@ -99,7 +99,7 @@ module.exports = mongoose => {
     },
     socialCard: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     socialCardStatus: {
@@ -108,7 +108,7 @@ module.exports = mongoose => {
     },
     physicalExam: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     physicalExamStatus: {
@@ -117,7 +117,7 @@ module.exports = mongoose => {
     },
     ppd: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     ppdStatus: {
@@ -126,7 +126,7 @@ module.exports = mongoose => {
     },
     mmr: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     mmrStatus: {
@@ -135,7 +135,7 @@ module.exports = mongoose => {
     },
     healthcareLicense: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     healthcareLicenseStatus: {
@@ -144,7 +144,7 @@ module.exports = mongoose => {
     },
     resume: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     resumeStatus: {
@@ -153,7 +153,7 @@ module.exports = mongoose => {
     },
     covidCard: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     covidCardStatus: {
@@ -162,7 +162,7 @@ module.exports = mongoose => {
     },
     bls: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     blsStatus: {
@@ -171,7 +171,7 @@ module.exports = mongoose => {
     },
     hepB: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     hepBStatus: {
@@ -180,7 +180,7 @@ module.exports = mongoose => {
     },
     flu: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     fluStatus: {
@@ -189,7 +189,7 @@ module.exports = mongoose => {
     },
     cna: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     cnaStatus: {
@@ -198,7 +198,7 @@ module.exports = mongoose => {
     },
     taxForm: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     taxFormStatus: {
@@ -207,7 +207,7 @@ module.exports = mongoose => {
     },
     chrc102: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     chrc102Status: {
@@ -216,7 +216,7 @@ module.exports = mongoose => {
     },
     chrc103: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     chrc103Status: {
@@ -225,7 +225,7 @@ module.exports = mongoose => {
     },
     drug: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     drugStatus: {
@@ -234,7 +234,7 @@ module.exports = mongoose => {
     },
     ssc: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     sscStatus: {
@@ -243,7 +243,7 @@ module.exports = mongoose => {
     },
     copyOfTB: {
       type: { type: String, default: '' },
-      content: { type: Buffer, default: '' },
+      content: { type: String, default: '' },
       name: { type: String, default: '' }
     },
     copyOfTBStatus: {

@@ -6,9 +6,37 @@ const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const moment = require('moment');
 const phoneSms = require('../controllers/twilio.js');
-const { resume } = require("pdfkit");
+var dotenv = require('dotenv');
+dotenv.config()
+
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
 
 const expirationTime = 10000000;
+
+async function uploadToS3(file) {
+    const { content, name, type } = file;
+  
+    const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `${uuidv4()}_${name}`,
+        Body: Buffer.from(content, 'base64'),
+        ContentType: type
+    };
+  
+    const command = new PutObjectCommand(params);
+    const upload = await s3.send(command);
+    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+}
+
 //Regiseter Account
 exports.signup = async (req, res) => {
     try {
@@ -41,8 +69,8 @@ exports.signup = async (req, res) => {
             response.clinicalAcknowledgeTerm = false;
 
             if (response.photoImage.name != "") {
-                const content = Buffer.from(response.photoImage.content, 'base64');
-                response.photoImage.content = content;
+                const s3FileUrl = await uploadToS3(response.photoImage);
+                response.photoImage.content = s3FileUrl;
             }
             
             const auth = new Clinical(response);
@@ -158,17 +186,18 @@ exports.login = async (req, res) => {
     }
 }
 
-function extractNonJobId(job) {
+async function extractNonJobId(job) {
     const newObject = {};
     for (const [key, value] of Object.entries(job)) {
         if (key === 'email') continue;
 
         if (key == 'photoImage' || key == 'driverLicense' || key == 'socialCard' || key == 'physicalExam' || key == 'ppd' || key == 'mmr' || key == 'healthcareLicense' || key == 'resume' || key == 'covidCard' || key == 'bls' || key == 'hepB' || key == 'flu' || key == 'cna' || key == 'taxForm' || key == 'chrc102' || key == 'chrc103' || key == 'drug' || key == 'ssc' || key == 'copyOfTB') {
             if (value.content) {
+                const s3FileUrl = await uploadToS3(value);
                 newObject[key] = {
                     name: value.name,
                     type: value.type,
-                    content: Buffer.from(value.content, 'base64')
+                    content: s3FileUrl
                 };
             } else if (!value.name) {
                 newObject[key] = { content: '', type: '', name: '' };

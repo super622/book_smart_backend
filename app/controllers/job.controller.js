@@ -12,6 +12,19 @@ const { generatePDF } = require('../utils/pdf');
 const path = require('path');
 const cron = require('node-cron');
 const phoneSms = require('../controllers/twilio.js');
+var dotenv = require('dotenv');
+dotenv.config()
+
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
 
 // const limitAccNum = 100;
 const expirationTime = 10000000;
@@ -60,16 +73,24 @@ function parseTime(timeStr) {
   return new Date(0, 0, 0, hours, minutes || 0); // Create a date object for time
 }
 
+async function uploadToS3(file) {
+  const { content, name, type } = file;
+
+  const params = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: `${uuidv4()}_${name}`,
+    Body: Buffer.from(content, 'base64'),
+    ContentType: type
+  };
+
+  const command = new PutObjectCommand(params);
+  const upload = await s3.send(command);
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+}
+
 exports.updateTimeSheet = async (req, res) => {
   const user = req.user;
   const request = req.body;
-  let timeSheetFile = request.timeSheet;
-  const content = Buffer.from(timeSheetFile.content, 'base64');
-  const jobDetail = await Job.findOne({ jobId: request.jobId }, { facilityId: 1 });
-  const facility = await Facility.findOne({ aic: jobDetail.facilityId }, { contactEmail: 1 });
-
-  await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: content, name: timeSheetFile.name, type: timeSheetFile.type }, jobStatus: 'Pending Verification'} });
-
   const payload = {
     email: user.email,
     userRole: user.userRole,
@@ -78,20 +99,33 @@ exports.updateTimeSheet = async (req, res) => {
   };
   const token = setToken(payload);
 
-  const verifySubject1 = `${user.firstName} ${user.lastName} has uploaded a timesheet for Shift ID # ${request.jobId}`
-  const verifiedContent1 = `
-  <div id=":15j" class="a3s aiL ">
-    <p><strong>Shift ID</strong> : ${request.jobId}</p>
-    <p><strong>Name</strong> : ${user.firstName} ${user.lastName}</p>
-    <p><strong>Timesheet</strong> : ${timeSheetFile?.name || ''}</p>
-  </div>`
+  let timeSheetFile = request.timeSheet;
+  if (timeSheetFile == "" || !timeSheetFile) {
+    await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: '', name: '', type: '' }, jobStatus: 'Pending'} });
+    return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+  } else {
+    const jobDetail = await Job.findOne({ jobId: request.jobId }, { facilityId: 1 });
+    const facility = await Facility.findOne({ aic: jobDetail.facilityId }, { contactEmail: 1 });
 
-  let approveResult1 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult2 = await mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult3 = await mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1, request.timeSheet);
-  let approveResult4 = await mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
+    const s3FileUrl = await uploadToS3(timeSheetFile);
 
-  return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+    await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: s3FileUrl, name: timeSheetFile.name, type: timeSheetFile.type }, jobStatus: 'Pending Verification'} });
+
+    const verifySubject1 = `${user.firstName} ${user.lastName} has uploaded a timesheet for Shift ID # ${request.jobId}`
+    const verifiedContent1 = `
+    <div id=":15j" class="a3s aiL ">
+      <p><strong>Shift ID</strong> : ${request.jobId}</p>
+      <p><strong>Name</strong> : ${user.firstName} ${user.lastName}</p>
+      <p><strong>Timesheet</strong> : ${timeSheetFile?.name || ''}</p>
+    </div>`
+
+    let approveResult1 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+    let approveResult2 = await mailTrans.sendMail('getpaid@whybookdumb.com', verifySubject1, verifiedContent1, request.timeSheet);
+    let approveResult3 = await mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1, request.timeSheet);
+    let approveResult4 = await mailTrans.sendMail(facility?.contactEmail, verifySubject1, verifiedContent1, request.timeSheet);
+
+    return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+  }
 };
 
 exports.updateDocuments = async (req, res) => {
@@ -109,7 +143,8 @@ exports.updateDocuments = async (req, res) => {
 
     if (type == 'timesheet') {
       if (file.name != '') {
-        await Job.updateOne({ jobId }, { $set: {timeSheet: file, jobStatus: 'Pending Verification'} });
+        const s3FileUrl = await uploadToS3(timeSheetFile);
+        await Job.updateOne({ jobId }, { $set: {timeSheet: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
       } else {
         if (prevFile == '') {
           await Job.updateOne({ jobId }, { $set: {timeSheet: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
@@ -118,7 +153,8 @@ exports.updateDocuments = async (req, res) => {
       return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
     } else {
       if (file.name != '') {
-        await Job.updateOne({ jobId }, { $set: {timeSheetTemplate: file, jobStatus: 'Pending Verification'} });
+        const s3FileUrl = await uploadToS3(timeSheetFile);
+        await Job.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
       } else {
         if (prevFile == '') {
           await Job.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
@@ -563,8 +599,8 @@ exports.updateJobTSVerify = async (req, res) => {
   }
 
   if (file?.content) {
-    const content = Buffer.from(file.content, 'base64');
-    await Job.updateOne({ jobId }, { $set: { timeSheet: { name: file.name, content: content, type: file.type } }});
+    const s3FileUrl = await uploadToS3(file);
+    await Job.updateOne({ jobId }, { $set: { timeSheet: { name: file.name, content: s3FileUrl, type: file.type } }});
   }
 
   if (status == 1) {
@@ -859,9 +895,8 @@ exports.getCaregiverTimesheets = async (req, res) => {
 exports.getTimesheet = async (req, res) => {
   try {
     let result = await Job.findOne({ jobId: req.body.jobId });
-    const content = result.timeSheet.content.toString('base64');
     
-    return res.status(200).json({ message: "Success", data: { name: result.timeSheet.name, type: result.timeSheet.type, content: content } });
+    return res.status(200).json({ message: "Success", data: result.timeSheet });
   } catch (e) {
     return res.status(500).json({ message: "An Error Occured!" })
   }

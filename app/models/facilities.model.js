@@ -61,7 +61,7 @@ module.exports = mongoose => {
             zip: { type: String, default: '' },
         },
         avatar: {
-            content: { type: Buffer, default: '' },
+            content: { type: String, default: '' },
             type: { type: String, default: '' },
             name: { type: String, default: '' }
         },
