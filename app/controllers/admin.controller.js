@@ -301,12 +301,15 @@ exports.Update = async (req, res) => {
         const s2FileUrl = await uploadToS3(request?.photoImage);
         request.photoImage.content = s2FileUrl;
     }
+    console.log(request);
 
     if (user) {
-        Admin.findOneAndUpdate({ user } ,{ $set: request }, { new: false }, async (err, updatedDocument) => {
+        Admin.findOneAndUpdate({ email: user.email } ,{ $set: request }, { new: true }, async (err, updatedDocument) => {
+            console.log(err);
             if (err) {
                 return res.status(500).json({ error: err });
             } else {
+                console.log(updatedDocument);
                 const payload = {
                     email: user.email,
                     userRole: user.userRole,
@@ -315,6 +318,7 @@ exports.Update = async (req, res) => {
                 }
                 const token = setToken(payload);
                 const users = await Admin.findOne({email: request.email})
+                console.log(users);
                 if (users) {
                     return res.status(200).json({ message: 'Updated', token: token, user: users });
                 } else {

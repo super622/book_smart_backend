@@ -237,36 +237,36 @@ exports.resetPassword = async (req, res) => {
 }
 
 async function extractNonJobId(job) {
-    const keys = Object.keys(job);
-    console.log(keys);
-    
-    // Filter out the key 'email'
-    const nonJobIdKeys = keys.filter(key => key !== 'contactEmail');
-    
-    // Create a new object with the non-email properties
     const newObject = {};
-    nonJobIdKeys.forEach(async key => {
+    for (const [key, value] of Object.entries(job)) {
+        if (key === 'contactEmail') continue;
+
         if (key == 'avatar') {
-            let file = job[key];
-            if (file.content) {
-                const s3FileUrl = await uploadToS3(file);
-                file.content = s3FileUrl;
+            if (value.content) {
+                const s3FileUrl = await uploadToS3(value);
+                newObject[key] = {
+                    name: value.name,
+                    type: value.type,
+                    content: s3FileUrl
+                };
+            } else if (!value.name) {
+                newObject[key] = { content: '', type: '', name: '' };
             }
-            newObject[key] = file;
         } else {
-            newObject[key] = job[key];
+            newObject[key] = value;
         }
-    });
-    
+    }
+    console.log(newObject);
     return newObject;
 }
+
 //Update Account
 exports.Update = async (req, res) => {
     console.log('updateSignal');
     const request = req.body;
     const user = req.user;
     const role = request.userRole || user.userRole;
-    const extracted = extractNonJobId(request);
+    const extracted = await extractNonJobId(request);
 
     if (extracted.updateEmail) {
        extracted.contactEmail =extracted.updateEmail; // Create the new property
@@ -275,7 +275,16 @@ exports.Update = async (req, res) => {
     
     if (user) {
         try {
-            const updatedDocument = await Facility.findOneAndUpdate(role=="Admin" ? { contactEmail: request.contactEmail, userRole: 'Facilities' } : {contactEmail: req.user.contactEmail, userRole: req.user.userRole}, role=="Admin" ? { $set: extracted } : { $set: request }, { new: false });
+            const query = role === "Admin" 
+                            ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
+                            : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
+        
+            // Set the fields to update
+            const updateFields = { $set: extracted };
+
+            // Find and update the document
+            const updatedDocument = await Facility.findOneAndUpdate(query, updateFields, { new: true, projection: { signature: 0 } }); // Set `new: true` to return updated document
+        
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
@@ -285,8 +294,8 @@ exports.Update = async (req, res) => {
 
             if (role != 'Admin') {
                 const token = setToken(payload);
-                const users = await Facility.findOne({contactEmail: user.contactEmail});
-
+                const users = await Facility.findOne({contactEmail: user.contactEmail}, { signature: 0 });
+                console.log(updatedDocument);
                 return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
             } else {
                 if (updatedDocument) {

@@ -34,6 +34,7 @@ async function uploadToS3(file) {
   
     const command = new PutObjectCommand(params);
     const upload = await s3.send(command);
+    console.log(`https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`);
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
 }
 
@@ -418,25 +419,24 @@ exports.Update = async (req, res) => {
     const role = req.headers.userrole || user.userRole;
     console.log(user);
 
-    const extracted = extractNonJobId(request);
+    const extracted = await extractNonJobId(request);
 
     if (extracted.updateEmail) {
        extracted.email = extracted.updateEmail;
        delete extracted.updateEmail;
     }
 
-    const existUser = await Clinical.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
-
-    if (!existUser) {
-        return res.status(404).json({ error: "User not found" });
-    }
-
     if (user) {
-        Clinical.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: false }, (err, updatedDocument) => {
+console.log('updating....');
+console.log(extracted);
+console.log(request.email, user.email);
+        Clinical.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+            console.log('updated');
             if (err) {
                 console.log(err);
                 return res.status(500).json({ error: err });
             } else {
+                console.log('sending mail');
                 let updatedData = updatedDocument;
 
                 if (role == "Admin" && extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
@@ -465,15 +465,12 @@ exports.Update = async (req, res) => {
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
+                console.log('end');
                 const token = setToken(payload);
-                if (role != 'Clinician') {
-                    if (updatedData) {
-                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedData });
-                    }
+                if (updatedData) {
+                    return res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedData });
                 } else {
-                    if (updatedData) {
-                        res.status(200).json({ message: 'Responded Successfully!', token: token, user: [] });
-                    }
+                    return res.status(200).json({ message: 'Responded Successfully!', token: token, user: [] });
                 }
             }
         })
@@ -484,9 +481,8 @@ exports.getUserImage = async (req, res) => {
     try {
         const { userId, filename } = req.body;
         const isUser = await Clinical.findOne({ aic: userId }, { [filename]: 1 });
-        const content = isUser[filename]?.content.toString('base64');
 
-        return res.status(200).json({ message: "Successfully Get!", data: { name: isUser[filename].name, type: isUser[filename].type, content: content } });
+        return res.status(200).json({ message: "Successfully Get!", data: isUser[filename] });
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occured!" })
