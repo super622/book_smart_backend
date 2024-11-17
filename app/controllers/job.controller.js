@@ -276,7 +276,7 @@ exports.shifts = async (req, res) => {
       }, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 }).sort({ entryDate: 1 });
       let dataArray = [];
       data.map((item, index) => {
-        console.log(user.title);
+        console.log(user.title, item.degree);
         if (item.jobStatus == 'Available' && item.degree == user.title) {
           dataArray.push({
             jobId: item.jobId,

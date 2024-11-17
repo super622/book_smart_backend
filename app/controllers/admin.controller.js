@@ -72,7 +72,7 @@ exports.login = async (req, res) => {
     try {
         console.log("LogIn");
         const { email, password, userRole } = req.body;
-        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole }, { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1 });
+        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole }, { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1 });
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
@@ -163,15 +163,15 @@ exports.forgotPassword = async (req, res) => {
                 if (approveResult) {
                     const updateUser = await Admin.updateOne({ email: email }, { $set: { verifyCode: verifyCode, verifyTime: verifyTime } });
                     console.log(updateUser);
-                    res.status(200).json({ message: "Sucess" });
+                    return res.status(200).json({ message: "Sucess" });
                 }
             }
             else {
-                res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
+                return res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
             }
         }
         else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+            return res.status(404).json({ message: "User Not Found! Please Register First." })
         }
     } catch (e) {
         console.log(e);
@@ -182,19 +182,21 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
     try {
         console.log("verfyCode");
-        const { verifyCode } = req.body;
+        const { verifyCode, email } = req.body;
         console.log(verifyCode);
-        const isUser = await Admin.findOne({ verifyCode: verifyCode });
+        const isUser = await Admin.findOne({ email: email });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
-                res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
+                return res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
+            } else {
+                if (isUser.verifyCode == verifyCode) {
+                    return res.status(200).json({message: "Success to verify code."})
+                } else {
+                    return res.status(402).json({message: "Invalid verification code."})
+                }
             }
-            else {
-                res.status(200).json({message: "Success to verify code."})
-            }
-        }
-        else {
+        } else {
             res.status(404).json({ message: "User Not Found! Please Register First." })
         }
     } catch (e) {

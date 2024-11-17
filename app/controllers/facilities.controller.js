@@ -194,24 +194,25 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
     try {
         console.log("verfyCode");
-        const { verifyCode } = req.body;
+        const { verifyCode, email } = req.body;
         console.log(verifyCode);
-        const isUser = await Facility.findOne({ verifyCode: verifyCode });
+        const isUser = await Facility.findOne({ contactEmail: email });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
-                res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
+                return res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"});
+            } else {
+                if (isUser.verifyCode == verifyCode) {
+                    return res.status(200).json({message: "Success to verify code."});
+                } else {
+                    return res.status(402).json({message: "Invalid verification code."});
+                }
             }
-            else {
-                res.status(200).json({message: "Success to verify code."})
-            }
-        }
-        else {
-            res.status(404).json({ message: "User Not Found! Please Register First." })
+        } else {
+            return res.status(404).json({ message: "User Not Found! Please Register First." });
         }
     } catch (e) {
-        console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" })
+        return res.status(500).json({ message: "An Error Occured!" });
     }
 }
 

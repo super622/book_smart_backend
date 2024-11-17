@@ -263,15 +263,19 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
     try {
         console.log("verfyCode");
-        const { verifyCode } = req.body;
+        const { verifyCode, email } = req.body;
         console.log(verifyCode);
-        const isUser = await Clinical.findOne({ verifyCode: verifyCode }, { verifyTime: 1 });
+        const isUser = await Clinical.findOne({ email: email }, { verifyTime: 1, verifyCode: 1 });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
                 return res.status(401).json({message: "This verifyCode is expired. Please regenerate code!"})
             } else {
-                return res.status(200).json({message: "Success to verify code."})
+                if (isUser.verifyCode == verifyCode) {
+                    return res.status(200).json({message: "Success to verify code."});
+                } else {
+                    return res.status(401).json({message: "Invalid verification code."});
+                }
             }
         } else {
             res.status(404).json({ message: "User Not Found! Please Register First." })
