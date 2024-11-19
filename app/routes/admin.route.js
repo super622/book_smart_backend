@@ -29,9 +29,9 @@ module.exports = app => {
     
   router.get('/admin', verifyUser, admin.admin);
 
-  router.get('/getAllUsersName', verifyUser, admin.getAllUsersName);
+  router.get('/getAllUsersName', admin.getAllUsersName);
 
-  router.get('/getBidIDs', verifyUser, admin.getBidIDs);
+  router.get('/getBidIDs', admin.getBidIDs);
 
   router.post('/getAllUsersList', verifyUser, admin.getAllUsersList);
 

@@ -221,6 +221,7 @@ exports.removeJob = async (req, res) => {
 //Login Account
 exports.shifts = async (req, res) => {
   try {
+    console.log("start =============");
     const user = req.user;
     const role = req.headers.role;
     console.log(user, role);
@@ -307,95 +308,13 @@ exports.shifts = async (req, res) => {
         res.status(400).json({ message: "Cannot logined User!" })
       }
     } else if (role === 'Admin') {
-      const { search = '', page = 1, filters = [] } = req.body;
+      const { search = '', page = 1 } = req.body;
       const limit = 5;
       const skip = (page - 1) * limit;
       const query = {};
-      console.log(search, page, filters);
+      console.log(search, page);
 
-      // filters.forEach(filter => {
-      //   const { logic = 'and', field, condition, value } = filter;
-    
-      //   let fieldNames = [];
-    
-      //   if (field === 'Job Status') {
-      //     fieldNames = ['jobStatus']; 
-      //   } else if (field === 'Facility') {
-      //     fieldNames = ['facility']; 
-      //   } else if (field === 'Job-ID') {
-      //     fieldNames = ['jobId'];
-      //   } else if (field === 'Job Bum #') {
-      //     fieldNames = ['jobNum'];
-      //   } else if (field === 'Location') {
-      //     fieldNames = ['location'];
-      //   } else if (field === 'Count - BDA') {
-      //     fieldNames = ['countBDA'];
-      //   } else if (field === 'Nurse') {
-      //     fieldNames = ['nurse'];
-      //   } else if (field === 'Degree/Discipline') {
-      //     fieldNames = ['degree'];
-      //   } else if (field === 'Bids / Offers') {
-      //     fieldNames = ['bid_offer'];
-      //   } else if (field === 'Hours Submitted?') {
-      //     fieldNames = ['isHoursSubmit'];
-      //   } else if (field === 'Hours Approved?') {
-      //     fieldNames = ['isHoursApproved'];
-      //   } else if (field === 'Timesheet Template') {
-      //     fieldNames = ['timeSheetTemplate'];
-      //   } else if (field === 'Timesheet Upload') {
-      //     fieldNames = ['timeSheet'];
-      //   } else if (field === 'No Status Explanation') {
-      //     fieldNames = ['noStatusExplanation'];
-      //   }
-    
-      //   const conditions = [];
-    
-      //   fieldNames.forEach(fieldName => {
-      //     let conditionObj = {};
-      //     switch (condition) {
-      //       case 'is':
-      //         conditionObj[fieldName] = value;
-      //         break;
-      //       case 'is not':
-      //         conditionObj[fieldName] = { $ne: value };
-      //         break;
-      //       case 'contains':
-      //         conditionObj[fieldName] = { $regex: value, $options: 'i' };
-      //         break;
-      //       case 'does not contain':
-      //         conditionObj[fieldName] = { $not: { $regex: value, $options: 'i' } };
-      //         break;
-      //       case 'starts with':
-      //         conditionObj[fieldName] = { $regex: '^' + value, $options: 'i' };
-      //         break;
-      //       case 'ends with':
-      //         conditionObj[fieldName] = { $regex: value + '$', $options: 'i' };
-      //         break;
-      //       case 'is blank':
-      //         conditionObj[fieldName] = { $exists: false };
-      //         break;
-      //       case 'is not blank':
-      //         conditionObj[fieldName] = { $exists: true, $ne: null };
-      //         break;
-      //       default:
-      //         break;
-      //     }
-      //     conditions.push(conditionObj);
-      //   });
-    
-      //   if (field === 'Name') {
-      //     query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-      //   } else {
-      //     if (logic === 'or') {
-      //       query.$or = query.$or ? [...query.$or, ...conditions] : conditions;
-      //     } else {
-      //       query.$and = query.$and ? [...query.$and, ...conditions] : conditions;
-      //     }
-      //   } 
-      // });
-
-
-      if (search) {
+      if (search.trim()) {
         const isNumeric = !isNaN(search);
         query.$or = [
           { entryDate: { $regex: search, $options: 'i' } },
@@ -407,20 +326,39 @@ exports.shifts = async (req, res) => {
           { noStatusExplanation: { $regex: search, $options: 'i' } }
         ];
       }
-      console.log(query);
 
-      const data = await Job.find(query, { jobId: 1, entryDate: 1, facility: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, degree: 1, jobStatus: 1, bid_offer: 1, isHoursApproved: 1, isHoursSubmit: 1, timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' }, noStatusExplanation: 1 })
-                              .skip(skip)
-                              .limit(limit)
-                              .lean();
+      const pipeline = [
+        { $match: query },
+        { $project: {
+            entryDate: 1, facility: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, 
+            shiftTime: 1, degree: 1, jobStatus: 1, isHoursSubmit: 1, isHoursApproved: 1,
+            timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' },
+            timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' },
+            noStatusExplanation: 1
+        }},
+        { $skip: skip },
+        { $limit: limit }
+      ];
 
+      const data = await Job.aggregate(pipeline);
+      console.log("got data");
       const totalRecords = await Job.countDocuments(query);
       const totalPageCnt = Math.ceil(totalRecords / limit);
-      let dataArray = [];
 
+      const jobIds = data.map(item => item.jobId);
+      const bids = await Bid.find({ jobId: { $in: jobIds } }).lean();
+      const bidMap = {};
+      const totalBidCountMap = {};
+      
+      bids.forEach(bid => {
+        if (bid.bidStatus === 'Awarded') {
+          bidMap[bid.jobId] = bid.caregiver;
+        }
+        totalBidCountMap[bid.jobId] = (totalBidCountMap[bid.jobId] || 0) + 1;
+      });
+
+      let dataArray = [];
       for (const item of data) {
-        const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' });
-        const totalBidderCnt = await Bid.countDocuments({ jobId: item.jobId });
         dataArray.push([
           item.entryDate,
           item.facility,
@@ -432,8 +370,8 @@ exports.shifts = async (req, res) => {
           "view_shift",
           item.degree,
           item.jobStatus,
-          hiredUser ? hiredUser.caregiver : '',
-          totalBidderCnt,
+          bidMap[item.jobId] || '',
+          totalBidCountMap[item.jobId] || 0,
           "view_hours",
           item.isHoursSubmit ? "yes" : "no",
           item.isHoursApproved ? "yes" : "no",
@@ -443,23 +381,8 @@ exports.shifts = async (req, res) => {
           "delete"
         ])
       }
-      console.log(dataArray);
-
-      const payload = {
-        email: user.email,
-        userRole: user.userRole,
-        iat: Math.floor(Date.now() / 1000), // Issued at time
-        exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-      }
-      const token = setToken(payload);
-      // console.log('token----------------------------------------------------->',token);
-      if (token) {
-        // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-        res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
-      }
-      else {
-        res.status(400).json({ message: "Cannot logined User!" })
-      }
+      console.log(dataArray.length);
+      return res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt });
     }
   } catch (e) {
     console.log(e);

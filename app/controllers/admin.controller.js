@@ -1026,8 +1026,6 @@ exports.UpdateUser = async (req, res) => {
 
 exports.getBidIDs = async (req, res) => {
     try {
-        const user = req.user;
-        
         // Find clinical and facility data
         const bidders = await Bid.find({}, { bidId: 1 });
     
@@ -1036,15 +1034,7 @@ exports.getBidIDs = async (req, res) => {
             ...bidders.map(item => item.bidId),
         ];
 
-        const payload = {
-            email: user.email,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + expirationTime
-        }
-        const token = setToken(payload);
-    
-        return res.status(200).json({ message: "success", bidList, token });
+        return res.status(200).json({ message: "success", bidList });
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occurred!" });
@@ -1053,8 +1043,6 @@ exports.getBidIDs = async (req, res) => {
 
 exports.getAllUsersName = async (req, res) => {
     try {
-        const user = req.user;
-        
         // Find clinical and facility data
         const clinicals = await Clinical.find({}, { firstName: 1, lastName: 1 });
         const facilities = await Facility.find({}, { firstName: 1, lastName: 1 });
@@ -1067,16 +1055,7 @@ exports.getAllUsersName = async (req, res) => {
     
         // Sort the combined names alphabetically
         combinedNames.sort((a, b) => a.localeCompare(b));
-
-        const payload = {
-            email: user.email,
-            userRole: user.userRole,
-            iat: Math.floor(Date.now() / 1000), // Issued at time
-            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-        }
-        const token = setToken(payload);
-    
-        return res.status(200).json({ message: "success", userList: combinedNames, token });
+        return res.status(200).json({ message: "success", userList: combinedNames });
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occurred!" });
