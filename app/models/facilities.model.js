@@ -85,6 +85,8 @@ module.exports = mongoose => {
         return object;
     });
 
+    schema.index({ contactEmail: 1 }); // added indexing
+
     const Facility = mongoose.model("Facility", schema);
     return Facility;
 };

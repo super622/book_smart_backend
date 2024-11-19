@@ -72,7 +72,7 @@ module.exports = mongoose => {
       object.id = _id;
       return object;
   });
-
+  schema.index({ email: 1 }); // added indexing
   const Admin = mongoose.model("Admin", schema);
   return Admin;
 };
