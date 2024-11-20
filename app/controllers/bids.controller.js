@@ -6,7 +6,7 @@ const Job = db.jobs;
 const Bid = db.bids;
 const Facility = db.facilities;
 const mailTrans = require("../controllers/mailTrans.controller.js");
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 // const limitAccNum = 100;
 const expirationTime = 10000000;
@@ -42,7 +42,7 @@ exports.postBid = async (req, res) => {
       const facilityEmail = await Facility.findOne({ aic: facility.facilityId }, { contactEmail: 1, aic: 1 });
       console.log(facilityEmail.aic);
       
-      response.entryDate = moment(new Date()).format("MM/DD/YYYY");
+      response.entryDate = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
       response.bidId = newBidId;
       response.facility = facility.facility;
       response.facilityId = facilityEmail.aic;

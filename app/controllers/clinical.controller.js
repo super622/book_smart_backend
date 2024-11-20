@@ -4,7 +4,7 @@ const Clinical = db.clinical;
 const Bid = db.bids;
 const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
-const moment = require('moment');
+const moment = require('moment-timezone');
 const phoneSms = require('../controllers/twilio.js');
 var dotenv = require('dotenv');
 dotenv.config()
@@ -55,7 +55,7 @@ exports.signup = async (req, res) => {
                 <strong>Note: Once you are "APPROVED" you will be notified via email and can view shifts<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
-                <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
@@ -89,7 +89,7 @@ exports.signup = async (req, res) => {
                 <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
-                <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                 <p><strong>Nurse-ID</strong>: ${newClinicianId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>

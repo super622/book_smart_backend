@@ -1,6 +1,6 @@
 // invoice.jsconst 
-moment = require('moment'); // Assuming you're using Node.js
-
+moment = require('moment-timezone'); // Assuming you're using Node.js
+moment.tz.setDefault("America/Toronto");
 function getPreviousFriday() {
     return moment().day('Saturday').subtract(1, 'week').format("MM/DD/YYYY");
 }
@@ -290,7 +290,7 @@ async function generateInvoiceHTML(invoiceData, key) {
                     <div class="middle-items">
                         <div class="bill-style margin-top">
                             <div class="font-style light dark-background border half-width">DUE DATE:</div>
-                            <div class="font-style border half-width">${moment(new Date()).format("MM/DD")}</div>
+                            <div class="font-style border half-width">${moment.tz(new Date(), "America/Toronto").format("MM/DD")}</div>
                         </div>
                         <div class="bill-style margin-top">
                             <div class="font-style light dark-background border half-width">PO #:</div>

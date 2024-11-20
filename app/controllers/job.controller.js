@@ -4,7 +4,7 @@ const Job = db.jobs;
 const Bid = db.bids;
 const Facility = db.facilities;
 const Clinical = db.clinical;
-const moment = require('moment');
+const moment = require('moment-timezone');
 const nodemailer = require('nodemailer');
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const invoiceHTML = require('../utils/invoiceHtml.js');
@@ -176,7 +176,7 @@ exports.postJob = async (req, res) => {
       const lastJobId = lastJob.length > 0 ? lastJob[0].jobId : 0; // Get the last jobId value or default to 0
       const newJobId = lastJobId + 1; // Increment the last jobId by 1 to set the new jobId for the next data entry
       const response = req.body;
-      response.entryDate = moment(new Date()).format("MM/DD/YYYY");
+      response.entryDate = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
       response.payRate = response.payRate;
       response.jobId = newJobId;
       const auth = new Job(response);
@@ -268,7 +268,7 @@ exports.shifts = async (req, res) => {
       }
     } else if (role === "Clinician") {
       console.log('started');
-      const today = moment(new Date()).format("MM/DD/YYYY");
+      const today = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
       console.log(today);
       const data = await Job.find({ 
         entryDate: { 
@@ -478,7 +478,7 @@ exports.setAwarded = async (req, res) => {
     const verifySubject1 = `Congrats ${nurse?.caregiver}, You Have Been Hired for Shift - #${jobId}`
     const verifiedContent1 = `
     <div id=":15j" class="a3s aiL ">
-      <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+      <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
       <p><strong>Job</strong> - ${jobId}</p>
       <p><strong>Name</strong> : ${nurse?.caregiver}</p>
     </div>`
@@ -488,7 +488,7 @@ exports.setAwarded = async (req, res) => {
     const verifySubject2 =  `${nurse?.caregiver} was hired for Shift - #${jobId}`
     const verifiedContent2 = `
     <div id=":15j" class="a3s aiL ">
-      <p><strong>Entry Date</strong> - ${moment(new Date()).format("MM/DD/YYYY")}</p>
+      <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
       <p><strong>Job</strong> - ${jobId}</p>
       <p><strong>Name</strong> : ${nurse?.caregiver}</p>
     </div>`
@@ -556,6 +556,7 @@ exports.myShift = async (req, res) => {
   try {
     const user = req.user;
     const role = req.headers.role;
+    console.log(user);
 
     const jobIds = await Bid.find({ caregiverId: user?.aic, bidStatus: { $ne: 'Not Awarded' }  }, { jobId: 1 }).lean();
     const jobIdArray = jobIds.map(bid => bid.jobId);
@@ -584,7 +585,7 @@ exports.myShift = async (req, res) => {
           shiftEndTime: item.shiftEndTime
         });
       })
-      const date = moment(new Date()).format("MM/DD/YYYY");
+      const date = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
       // const date = "04/03/2024"
       const jobs = await Job.find({ jobId: { $in: jobIdArray }, shiftDate: date }, { payRate: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1, jobStatus: 1 });
       console.log(jobs);
@@ -609,8 +610,8 @@ exports.myShift = async (req, res) => {
       const weekly = await Job.find({
         email: user.email,
         shiftDate: {
-          $gte: moment(monday).format("MM/DD/YYYY"), // Convert to YYYY-MM-DD
-          $lte: moment(today).format("MM/DD/YYYY"),
+          $gte: moment(monday, "America/Toronto").format("MM/DD/YYYY"), // Convert to YYYY-MM-DD
+          $lte: moment.tz(today, "America/Toronto").format("MM/DD/YYYY"),
         },
       }, { payRate: 1, jobStatus: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1 });
 
@@ -640,7 +641,7 @@ exports.myShift = async (req, res) => {
           jobData: {
             reportData: dataArray,
             dailyPay: { pay: totalPay, date: date },
-            weeklyPay: { date: moment(monday).format("MM/DD/YYYY") + "-" + moment(today).format("MM/DD/YYYY"), pay: weeklyPay }
+            weeklyPay: { date: moment(monday, "America/Toronto").format("MM/DD/YYYY") + "-" + moment(today, "America/Toronto").format("MM/DD/YYYY"), pay: weeklyPay }
           },
           token: token
         }
@@ -1103,7 +1104,7 @@ exports.Update = async (req, res) => {
                   <strong> ${updatedDocument.nurse}: You failed in job:${updatedDocument.jobId} beacuse the Facility don't accept you.<br></strong>
                   </p>
                   <p><strong>-----------------------<br></strong></p>
-                  <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                  <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                   <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
                   <p><br></p>
               </div>`
@@ -1114,7 +1115,7 @@ exports.Update = async (req, res) => {
                   <strong> ${updatedDocument.nurse}: You accepted in job:${updatedDocument.jobId}.<br></strong>
                   </p>
                   <p><strong>-----------------------<br></strong></p>
-                  <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                  <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                   <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
                   <p><br></p>
               </div>`
@@ -1126,7 +1127,7 @@ exports.Update = async (req, res) => {
                   <strong> ${updatedDocument.nurse}: The job ${updatedDocument.jobId} will be started in 2 hours. Pleaset prepare the job.</strong>
                   </p>
                   <p><strong>-----------------------<br></strong></p>
-                  <p><strong>Date</strong>: ${moment(Date.now()).format("MM/DD/YYYY")}</p>
+                  <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                   <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
                   <p><br></p>
               </div>`
