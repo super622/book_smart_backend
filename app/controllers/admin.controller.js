@@ -339,7 +339,7 @@ exports.getAllUsersList = async (req, res) => {
         let clinicalDataArr = [];
 
         const { search = '', page = 1, filters = [] } = req.body;
-        const limit = 5;
+        const limit = 25;
         const skip = (page - 1) * limit;
         const query = {};
         const fQuery = {};

@@ -227,8 +227,33 @@ exports.shifts = async (req, res) => {
     console.log(user, role);
 
     if (role === 'Facilities') {
-      console.log('started');
-      const data = await Job.find({ facilityId: user.aic }, { facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1 });
+      const { search = '', page = 1 } = req.body;
+      const limit = 25;
+      const skip = (page - 1) * limit;
+      const query = {};      
+      console.log(search, page);
+
+      if (search.trim()) {
+        const isNumeric = !isNaN(search);
+        query.$or = [
+          { entryDate: { $regex: search, $options: 'i' } },
+          { degree: { $regex: search, $options: 'i' } },
+          { jobNum: { $regex: search, $options: 'i' } },
+          { location: { $regex: search, $options: 'i' } },
+          ...(isNumeric ? [{ jobId: Number(search) }] : []),
+        ];
+      }
+
+      const pipeline = [
+        { $match: query },
+        { $project: {
+          facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1
+        }},
+        { $skip: skip },
+        { $limit: limit }
+      ];
+      
+      const data = await Job.aggregate(pipeline);
       let dataArray = [];
       for (const item of data) {
         const hiredUser = await Bid.findOne({ jobId: item.jobId, bidStatus: 'Awarded' }, { caregiver: 1 });
@@ -251,7 +276,9 @@ exports.shifts = async (req, res) => {
           ]);
         // }
       }
-      console.log(dataArray.length);
+      const totalRecords = await Job.countDocuments(query);
+      const totalPageCnt = Math.ceil(totalRecords / limit);
+
 
       const payload = {
         contactEmail: user.contactEmail,
@@ -262,7 +289,7 @@ exports.shifts = async (req, res) => {
       const token = setToken(payload);
       if (token) {
         // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
-        res.status(200).json({ message: "Successfully Get!", dataArray, token });
+        res.status(200).json({ message: "Successfully Get!", dataArray, token, totalPageCnt });
       } else {
         res.status(400).json({ message: "Cannot logined User!" })
       }
@@ -309,9 +336,9 @@ exports.shifts = async (req, res) => {
       }
     } else if (role === 'Admin') {
       const { search = '', page = 1 } = req.body;
-      const limit = 5;
+      const limit = 25;
       const skip = (page - 1) * limit;
-      const query = {};
+      const query = {};      
       console.log(search, page);
 
       if (search.trim()) {
@@ -659,7 +686,7 @@ exports.myShift = async (req, res) => {
 exports.getCaregiverTimesheets = async (req, res) => {
   const user = req.user;
   const { search = '', page = 1, filters = [] } = req.body; // Include filters from the request body
-  const limit = 5; // Number of results per page
+  const limit = 25; // Number of results per page
   const skip = (page - 1) * limit; // Calculate number of items to skip
 
   try {

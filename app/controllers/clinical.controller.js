@@ -816,7 +816,7 @@ exports.allCaregivers = async (req, res) => {
     try {
         const user = req.user;
         const { search = '', page = 1, filters = [] } = req.body;
-        const limit = 5;
+        const limit = 25;
         let perPage = page;
         const query = {};
 
