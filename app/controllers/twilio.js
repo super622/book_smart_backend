@@ -39,3 +39,26 @@ exports.pushNotification = async function (message, address) {
         .then(notification => console.log(notification.sid))
         .catch(error => console.log(error));
 }
+
+exports.sendSMS = async function (phoneNumber, location) {
+    const message = `BookSmart Shift Reminder.\n\nWe'll see you in 2 hours at ${location}!\n\nPlease be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+        
+    try {
+        const notificationOpts = {
+            toBinding: JSON.stringify({
+                binding_type: 'sms',
+                address: phoneNumber,
+            }),
+            body: message,
+        };
+
+        client.notify.v1
+            .services('IS825fa0ac8b32411998cb2e8ead356eed')
+            .notifications.create(notificationOpts)
+            .then(notification => console.log(notification.sid))
+            .catch(error => console.log(error));
+        console.log(`Reminder sent to ${phoneNumber}`);
+    } catch (error) {
+      console.error(`Failed to send SMS to ${phoneNumber}: ${error.message}`);
+    }
+}
