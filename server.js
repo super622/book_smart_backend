@@ -87,8 +87,33 @@ cron.schedule('50 10 * * 6', () => {
 });
 
 function extractStartTime(shiftTime) {
-  const [startTime] = shiftTime.split(' - ');
-  return moment(startTime, 'h:mm A').format('HH:mm');
+  // const [startTime] = shiftTime.split(' - ');
+  // return moment(startTime, 'h:mm A').format('HH:mm');
+  // Handle case like "13-19" (24-hour format without AM/PM)
+  if (shiftTime.match(/^\d{2}-\d{2}$/)) {
+    const [startTime] = shiftTime.split('-');
+    return moment(startTime, 'HH').format('HH:mm');
+  }
+
+  // Handle time ranges with AM/PM (like "7a-3p" or "7:00 AM - 10:30 PM")
+  if (shiftTime.match(/^[0-9]{1,2}[ap]m/)) {
+    const [startTime] = shiftTime.split(' - ');
+    return moment(startTime, 'h:mma').format('HH:mm');  // handle "7a-3p" or "7:00 AM"
+  }
+
+  // Handle explicit AM/PM format like "7:00 AM - 10:30 PM"
+  if (shiftTime.match(/[AP]M/)) {
+    const [startTime] = shiftTime.split(' - ');
+    return moment(startTime, 'h:mm A').format('HH:mm');
+  }
+
+  // Handle simple times like "3a-6a" (without leading zeros)
+  if (shiftTime.match(/^[0-9]{1}[ap]m/)) {
+    const [startTime] = shiftTime.split('-');
+    return moment(startTime, 'h a').format('HH:mm');
+  }
+
+  return null;  // Return null for unsupported formats
 }
 
 // Cron job scheduled to run every 50 seconds
@@ -106,6 +131,26 @@ cron.schedule('*/15 * * * *', async () => {
       { shiftDate: currentDate, jobStatus: 'Awarded' },
       { jobId: 1, shiftTime: 1, location: 1 }
     );
+
+    // if an endDate exist.
+    // Fetch all jobs with minimal fields
+    // const jobs = await db.jobs.find(
+    //   { jobStatus: 'Awarded' },
+    //   { jobId: 1, shiftTime: 1, location: 1 }
+    // );
+
+    // console.log(`Fetched ${jobs.length} jobs.`);
+
+    // // Filter jobs where shiftTime includes the current date
+    // const matchingJobs = jobs.filter(job => {
+    //   const [start, end] = job.shiftTime.split(' - ').map(time =>
+    //     moment.tz(time.trim(), 'MM/DD/YYYY hh:mm:ss A', 'America/Toronto')
+    //   );
+
+    //   // Check if the current date is within the range
+    //   return start.isSameOrBefore(moment.tz(currentDate, 'MM/DD/YYYY', 'America/Toronto'), 'day') &&
+    //          end.isSameOrAfter(moment.tz(currentDate, 'MM/DD/YYYY', 'America/Toronto'), 'day');
+    // });
 
     console.log(`Fetched ${jobs.length} jobs for the date ${currentDate}.`);
 
