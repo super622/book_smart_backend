@@ -143,7 +143,7 @@ exports.updateDocuments = async (req, res) => {
 
     if (type == 'timesheet') {
       if (file.name != '') {
-        const s3FileUrl = await uploadToS3(timeSheetFile);
+        const s3FileUrl = await uploadToS3(file);
         await Job.updateOne({ jobId }, { $set: {timeSheet: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
       } else {
         if (prevFile == '') {
@@ -363,10 +363,17 @@ exports.shifts = async (req, res) => {
 
       const pipeline = [
         { $match: query },
+        { 
+          $addFields: { 
+              parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
+          }
+        },{ 
+          $sort: { parsedEntryDate: -1 } 
+        }, 
         { $project: {
             entryDate: 1, facility: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, 
             shiftTime: 1, degree: 1, jobStatus: 1, isHoursSubmit: 1, isHoursApproved: 1,
-            timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' },
+            timeSheet: { content: '$timeSheet.content', name: '$timeSheet.name', type: '$timeSheet.type' },
             timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' },
             noStatusExplanation: 1
         }},
@@ -409,7 +416,7 @@ exports.shifts = async (req, res) => {
           "view_hours",
           item.isHoursSubmit ? "yes" : "no",
           item.isHoursApproved ? "yes" : "no",
-          item.timeSheet.name,
+          item.timeSheet,
           item.timeSheetTemplate?.name,
           item.noStatusExplanation,
           "delete"
