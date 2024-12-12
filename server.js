@@ -189,9 +189,10 @@ cron.schedule('*/15 * * * *', async () => {
 
         // Send SMS notifications
         await Promise.all(
-          caregivers.map(caregiver =>
-            sendSMS(caregiver.phoneNumber, `Reminder: You have a shift starting soon at ${location}`)
-          )
+          caregivers.map(caregiver =>{
+            sendSMS(caregiver.phoneNumber, location)
+            console.log("phoneNumber",caregiver.phoneNumber)
+          })
         );
 
         console.log(`SMS notifications sent for jobId ${jobId}.`);
