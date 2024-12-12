@@ -297,6 +297,7 @@ exports.Update = async (req, res) => {
                 const token = setToken(payload);
                 const users = await Facility.findOne({contactEmail: user.contactEmail}, { signature: 0 });
                 const verifySubject = "BookSmart™ - New Account signed";
+                const verifySubject1 = "BookSmart™ - You signed";
                 const verifiedContent = `
                 <div>
                     <p>Hello Admin,</p>
@@ -308,6 +309,18 @@ exports.Update = async (req, res) => {
                     <p>His signature is below:</p>
                      <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
                 </div>`;
+                const facilityverifiedContent = `
+                <div>
+                    <p>Hello ${updatedDocument.firstName},</p>
+                    <p>You have selected this Term: 
+                        ${updatedDocument.selectedoption === 'first' ? 
+                        'Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
+                        'Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
+                    </p>
+                    <p>Your signature is below:</p>
+                     <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
+                </div>`;
+
                 // Configure the email options
                 const attachments = 
                         {                  
@@ -319,6 +332,7 @@ exports.Update = async (req, res) => {
                 // Send the email
                 let approveResult = mailTrans.sendMail("support@whybookdumb.com", verifySubject, verifiedContent, attachments);
                 let approveResult1 = mailTrans.sendMail("techableteam@gmail.com", verifySubject, verifiedContent, attachments);
+                let approveResult2 = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject1, facilityverifiedContent, attachments);
                 return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
             } else {
                 if (updatedDocument) {
