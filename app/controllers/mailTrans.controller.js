@@ -29,10 +29,12 @@ exports.sendMail = async(email, subject, content, file = '') => {
             content: attachFile?.content || '',
             filename: attachFile?.name || '',
             type: attachFile?.type == 'pdf' ? "application/pdf" : "image/jpeg",
-            disposition: "attachment"
+            disposition: attachFile?.cid?"inline":"attachment",
+            content_id: attachFile?.cid || 'null'
           }
         ]
       };
+      console.log(attachFile?.cid || 'null')
     }
 
     sgMail

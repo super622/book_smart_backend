@@ -49,6 +49,9 @@ module.exports = mongoose => {
             type: Boolean,
             default: false
         },
+        selectedoption: {
+            type: String,
+        },
         signature: {
             type: String,
             default: ''

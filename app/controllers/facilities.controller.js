@@ -258,17 +258,16 @@ async function extractNonJobId(job) {
             newObject[key] = value;
         }
     }
-    console.log(newObject);
     return newObject;
 }
 
 //Update Account
 exports.Update = async (req, res) => {
-    console.log('updateSignal');
     const request = req.body;
     const user = req.user;
     const role = request.userRole || user.userRole;
     const extracted = await extractNonJobId(request);
+    const selectedoption = request.selectedoption;
 
     if (extracted.updateEmail) {
        extracted.contactEmail =extracted.updateEmail; // Create the new property
@@ -285,8 +284,8 @@ exports.Update = async (req, res) => {
             const updateFields = { $set: extracted };
 
             // Find and update the document
-            const updatedDocument = await Facility.findOneAndUpdate(query, updateFields, { new: true, projection: { signature: 0 } }); // Set `new: true` to return updated document
-        
+            const updatedDocument = await Facility.findOneAndUpdate(query, updateFields, { new: true }); // Set `new: true` to return updated document
+            console.log('updatedDocumnet',  typeof(updatedDocument.contactEmail));
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
@@ -297,7 +296,29 @@ exports.Update = async (req, res) => {
             if (role != 'Admin') {
                 const token = setToken(payload);
                 const users = await Facility.findOne({contactEmail: user.contactEmail}, { signature: 0 });
-                console.log(updatedDocument);
+                const verifySubject = "BookSmart™ - New Account signed";
+                const verifiedContent = `
+                <div>
+                    <p>Hello Admin,</p>
+                    <p>${updatedDocument.firstName} has selected this Term: 
+                        ${updatedDocument.selectedoption === 'first' ? 
+                        'Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
+                        'Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
+                    </p>
+                    <p>His signature is below:</p>
+                     <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
+                </div>`;
+                // Configure the email options
+                const attachments = 
+                        {                  
+                            content: updatedDocument.signature, // The Base64 encoded string of your file
+                            name: "signature.png",   // The name of the file you want to attach
+                            type: "png",            // The type of the file, e.g., 'pdf' or 'jpeg
+                            cid : "signatureImage"
+                        };
+                // Send the email
+                let approveResult = mailTrans.sendMail("support@whybookdumb.com", verifySubject, verifiedContent, attachments);
+                let approveResult1 = mailTrans.sendMail("techableteam@gmail.com", verifySubject, verifiedContent, attachments);
                 return res.status(200).json({ message: 'Trading Signals saved Successfully', token: token, user: users });
             } else {
                 if (updatedDocument) {
@@ -307,8 +328,10 @@ exports.Update = async (req, res) => {
                         const verifiedContent = `
                         <div id=":15j" class="a3s aiL ">
                             <p>Hello ${updatedDocument.firstName},</p>
+                            <p>You have selected this Term : ${updatedDocument.selectedoption=='first'?' Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).':' Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}</p>
                             <p>Your BookSmart™ account has been approved.</p>
                         </div>`
+                        console.log(verifiedContent);
                         let approveResult = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject, verifiedContent);
                     } else if (extracted.userStatus == "inactivate") {
                         console.log('Activated .........');
@@ -413,7 +436,7 @@ exports.getAllFacilities = async (req, res) => {
             ];
         }
 
-        const data = await Facility.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, userRole: 1, contactEmail: 1 })
+        const data = await Facility.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
             .skip(skip)
             .limit(limit)
             .lean();
@@ -429,13 +452,15 @@ exports.getAllFacilities = async (req, res) => {
                 item.companyName,
                 item.firstName + " " + item.lastName,
                 item.userStatus,
+                item.selectedoption,
+                item.signature,
                 item.userRole,
                 "view_shift",
                 "pw",
                 item.contactEmail
             ]);
         });
-
+        console.log('dataArray', dataArray)
         const payload = {
             email: user.email,
             userRole: user.userRole,
