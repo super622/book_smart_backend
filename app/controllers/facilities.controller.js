@@ -312,13 +312,14 @@ exports.Update = async (req, res) => {
                 const facilityverifiedContent = `
                 <div>
                     <p>Hello ${updatedDocument.firstName},</p>
-                    <p>You have selected this Term: 
+                    <p>Under Section 3, (a).Payment Terms, You have selected option Number: 
                         ${updatedDocument.selectedoption === 'first' ? 
-                        'Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
-                        'Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
+                        '1. Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
+                        '2. Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
                     </p>
                     <p>Your signature is below:</p>
                      <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
+                     <p>Here is the link of the whole Terms : ${updatedDocument.selectedoption==='first' ?'https://drive.google.com/file/d/1L-1O1kt953JjDif5dtkNW-8jih2n-pba/view?usp=drive_link':'https://drive.google.com/file/d/12J4JjH6BOd29TYNt-DJheOMhaaUFPiNd/view?usp=drive_link'}</p>
                 </div>`;
 
                 // Configure the email options
