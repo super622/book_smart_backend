@@ -251,7 +251,7 @@ exports.shifts = async (req, res) => {
               parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
           }
         },{ 
-          $sort: { parsedEntryDate: 1 } 
+          $sort: { parsedEntryDate: -1 } 
         }, 
         { $project: {
           facility: 1, degree: 1, entryDate: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, shiftTime: 1, bid_offer: 1, jobStatus: 1, timeSheetVerified: 1, jobRating: 1
@@ -368,7 +368,7 @@ exports.shifts = async (req, res) => {
               parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
           }
         },{ 
-          $sort: { parsedEntryDate: 1 } 
+          $sort: { parsedEntryDate: -1 } 
         }, 
         { $project: {
             entryDate: 1, facility: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, 

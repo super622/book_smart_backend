@@ -297,7 +297,7 @@ exports.Update = async (req, res) => {
                 const token = setToken(payload);
                 const users = await Facility.findOne({contactEmail: user.contactEmail}, { signature: 0 });
                 const verifySubject = "BookSmart™ - New Account signed";
-                const verifySubject1 = "BookSmart™ - You signed";
+                const verifySubject1 = "BookSmart™ Terms of Service";
                 const verifiedContent = `
                 <div>
                     <p>Hello Admin,</p>
@@ -311,15 +311,19 @@ exports.Update = async (req, res) => {
                 </div>`;
                 const facilityverifiedContent = `
                 <div>
-                    <p>Hello ${updatedDocument.firstName},</p>
-                    <p>Under Section 3, (a).Payment Terms, You have selected option Number: 
+                    <p>Dear ${updatedDocument.firstName},</p>
+                    <p>Please find a copy of the Terms of Service agreed upon by and between your organization and BookSmart Technologies LLC.</p>
+                    <p>It's most important to save these Terms as our relationship is built on them. We will do our part to provide exceptional service, and we stress the importance of on time payments. We look forward to our glowing review which we will begin earning now.</p>
+                    <p>Under Section 3, (a).Payment Terms, You have selected option Number:<br/><br/>
                         ${updatedDocument.selectedoption === 'first' ? 
                         '1. Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
                         '2. Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
                     </p>
-                    <p>Your signature is below:</p>
+                    <p>Your signature:</p>
                      <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
-                     <p>Here is the link of the whole Terms : ${updatedDocument.selectedoption==='first' ?'https://drive.google.com/file/d/1L-1O1kt953JjDif5dtkNW-8jih2n-pba/view?usp=drive_link':'https://drive.google.com/file/d/12J4JjH6BOd29TYNt-DJheOMhaaUFPiNd/view?usp=drive_link'}</p>
+                     <p>Here's the link of a copy of the BOOKSMART™ TERMS OF SERVICE:</p>
+                     <p> ${updatedDocument.selectedoption==='first' ?'https://drive.google.com/file/d/1L-1O1kt953JjDif5dtkNW-8jih2n-pba/view?usp=drive_link':'https://drive.google.com/file/d/12J4JjH6BOd29TYNt-DJheOMhaaUFPiNd/view?usp=drive_link'}</p>
+                     <p>Thanks, and have a great day!</p>
                 </div>`;
 
                 // Configure the email options
@@ -452,6 +456,7 @@ exports.getAllFacilities = async (req, res) => {
         }
 
         const data = await Facility.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
+            .sort({ entryDate: -1 })
             .skip(skip)
             .limit(limit)
             .lean();
