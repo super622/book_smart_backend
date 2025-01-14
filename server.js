@@ -67,6 +67,9 @@ require('./app/routes/bid.route.js')(app);
 require('./app/routes/degree.route.js')(app);
 require('./app/routes/location.route.js')(app);
 require('./app/routes/title.route.js')(app);
+require('./app/routes/restau_user.route.js')(app);
+require('./app/routes/restau_manager.route.js')(app);
+require('./app/routes/hospital_user.route.js')(app);
 
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
