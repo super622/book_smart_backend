@@ -259,7 +259,6 @@ exports.forgotPassword = async (req, res) => {
     }
 }
 
-
 exports.verifyCode = async (req, res) => {
     try {
         console.log("verfyCode");
@@ -416,7 +415,6 @@ exports.updateUserStatus = async (req, res) => {
     }
 }
 
-//Update Account
 exports.Update = async (req, res) => {
     const request = req.body;
     const user = req.user;
@@ -953,7 +951,6 @@ exports.clinician = async (req, res) => {
     }
 }
 
-//Logout Account
 exports.logout = async (req, res) => {
     try {
         console.log('Logout');

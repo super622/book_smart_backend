@@ -70,6 +70,10 @@ require('./app/routes/title.route.js')(app);
 require('./app/routes/restau_user.route.js')(app);
 require('./app/routes/restau_manager.route.js')(app);
 require('./app/routes/hospital_user.route.js')(app);
+require('./app/routes/restau_bid.route.js')(app);
+require('./app/routes/restau_job.route.js')(app);
+require('./app/routes/hospital_bid.route.js')(app);
+require('./app/routes/hospital_job.route.js')(app);
 
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
