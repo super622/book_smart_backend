@@ -11,7 +11,7 @@ module.exports = app => {
     router.post("/setAwarded", jobs.setAwarded);
     router.post("/updateTimeSheet", verifyUser, jobs.updateTimeSheet);
     router.post("/updateJobRatings", verifyUser, jobs.updateJobRatings);
-    router.get("/myShift", verifyUser, jobs.myShift);
+    router.post("/myShift", jobs.myShift);
     router.post("/getTimesheet", verifyUser, jobs.getTimesheet);
     router.post("/updateJobTSVerify", verifyUser, jobs.updateJobTSVerify);
     router.get("/getDashboardData", verifyUser, jobs.getAllData);
