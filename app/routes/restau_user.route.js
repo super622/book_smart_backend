@@ -1,3 +1,5 @@
+const { verifyUser, verifyToken } = require("../utils/verifyToken.js");
+
 module.exports = app => {
     const restau_user = require("../controllers/restau_user.controller.js");
     var router = require("express").Router();

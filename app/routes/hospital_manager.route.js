@@ -1,3 +1,5 @@
+const { verifyUser, verifyToken } = require("../utils/verifyToken.js");
+
 module.exports = app => {
     const hospital_manager = require("../controllers/hospital_manager.controller.js");
     var router = require("express").Router();
