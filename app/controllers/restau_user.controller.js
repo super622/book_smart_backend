@@ -137,7 +137,7 @@ exports.login = async (req, res) => {
                                             { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
 
         if (userData) {
-            if (userData.userStatus === 'activate') {
+            // if (userData.userStatus === 'activate') {
                 let devices = userData.device || [];
                 let phoneAuth = true;
 
@@ -160,9 +160,9 @@ exports.login = async (req, res) => {
                 } else {
                     return res.status(400).json({ message: "Cannot logined User!" })
                 }
-            } else {
-                return res.status(402).json({message: "You are not approved! Please wait."})
-            }
+            // } else {
+            //     return res.status(402).json({message: "You are not approved! Please wait."})
+            // }
         } else {
             const isExist = await Restau_User.findOne({ email: email.toLowerCase() }, { email: 1 });
 
@@ -462,7 +462,6 @@ exports.getUserImage = async (req, res) => {
 
 exports.getUserInfo = async (req, res) => {
     try {
-        const user = req.user;
         const { userId } = req.body;
         let isUser = await Restau_User.findOne({ aic: userId }, 
             { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
