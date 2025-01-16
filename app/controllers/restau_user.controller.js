@@ -389,61 +389,57 @@ exports.updateUserStatus = async (req, res) => {
 }
 
 exports.Update = async (req, res) => {
-    const request = req.body;
-    // const user = req.user;
-    // const role = req.headers.userrole || user.userRole;
-
-    const extracted = await extractNonJobId(request);
-
-    if (extracted.updateEmail) {
-       extracted.email = extracted.updateEmail;
-       delete extracted.updateEmail;
-    }
-
-    Restau_User.findOneAndUpdate({ email: request.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
-        console.log('updated');
-        if (err) {
-            console.log(err);
-            return res.status(500).json({ error: err });
-        } else {
-            console.log('sending mail');
-            let updatedData = updatedDocument;
-
-            if (role == "Admin" && extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
-                console.log('Activated .........');
-                const verifySubject = "BookSmart™ - Your Account Approval"
-                const verifiedContent = `
-                <div id=":15j" class="a3s aiL ">
-                    <p>Hello ${updatedData.firstName},</p>
-                    <p>Your BookSmart™ account has been approved.</p>
-                </div>`
-                let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
-            }
-            if (role == "Admin" && extracted.userStatus == "inactivate" && extracted.userStatus != existUser.userStatus) {
-                console.log('Activated .........');
-                const verifySubject = "BookSmart™ - Your Account Restricted"
-                const verifiedContent = `
-                <div id=":15j" class="a3s aiL ">
-                    <p>Hello ${updatedData.firstName},</p>
-                    <p>Your BookSmart™ account has been restricted.</p>
-                </div>`
-                let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
-            }
-            const payload = {
-                email: user.email,
-                userRole: user.userRole,
-                iat: Math.floor(Date.now() / 1000), // Issued at time
-                exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
-            }
-            console.log('end');
-            const token = setToken(payload);
-            if (updatedData) {
-                return res.status(200).json({ message: 'Responded Successfully!', token: token, user: updatedData });
-            } else {
-                return res.status(200).json({ message: 'Responded Successfully!', token: token, user: [] });
-            }
+    try {
+        const request = req.body;
+        console.log(request);
+    
+        const extracted = await extractNonJobId(request);
+    
+        if (extracted.updateEmail) {
+           extracted.email = extracted.updateEmail;
+           delete extracted.updateEmail;
         }
-    })
+    
+        Restau_User.findOneAndUpdate({ email: request.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+            console.log('updated');
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ error: err });
+            } else {
+                console.log('sending mail');
+                let updatedData = updatedDocument;
+    
+                if (extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
+                    console.log('Activated .........');
+                    const verifySubject = "BookSmart™ - Your Account Approval"
+                    const verifiedContent = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${updatedData.firstName},</p>
+                        <p>Your BookSmart™ account has been approved.</p>
+                    </div>`
+                    let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
+                }
+                if (extracted.userStatus == "inactivate" && extracted.userStatus != existUser.userStatus) {
+                    console.log('Activated .........');
+                    const verifySubject = "BookSmart™ - Your Account Restricted"
+                    const verifiedContent = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${updatedData.firstName},</p>
+                        <p>Your BookSmart™ account has been restricted.</p>
+                    </div>`
+                    let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
+                }
+                if (updatedData) {
+                    return res.status(200).json({ message: 'Updated', user: updatedData });
+                } else {
+                    return res.status(200).json({ message: 'Empty', user: [] });
+                }
+            }
+        })
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
 };
 
 exports.getUserImage = async (req, res) => {
