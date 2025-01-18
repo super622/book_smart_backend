@@ -42,8 +42,8 @@ exports.signup = async (req, res) => {
         const lastUserId = lastUser.length > 0 ? lastUser[0].aic : 0;
         const newUserId = lastUserId + 1;
         let response = req.body;
-        response.email = response.email.toLowerCase();
-        const isUser = await Restau_manager.findOne({ email: response.email });
+        response.contactEmail = response.contactEmail.toLowerCase();
+        const isUser = await Restau_manager.findOne({ contactEmail: response.contactEmail });
 
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
@@ -55,7 +55,7 @@ exports.signup = async (req, res) => {
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                 <p><strong>Nurse-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
                 <p><strong>Password</strong>: <br></p>
                 <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
                 <p>-----------------------</p>
@@ -63,12 +63,12 @@ exports.signup = async (req, res) => {
             </div>`
             response.entryDate = new Date();
             response.aic = newUserId;
-            response.userStatus = "pending approval";
+            response.userStatus = "activate";
             response.AcknowledgeTerm = false;
 
-            if (response?.photoImage?.name != "") {
-                const s3FileUrl = await uploadToS3(response.photoImage);
-                response.photoImage.content = s3FileUrl;
+            if (response?.avatar?.name != "") {
+                const s3FileUrl = await uploadToS3(response.avatar);
+                response.avatar.content = s3FileUrl;
             }
 
             const auth = new Restau_manager(response);
@@ -101,7 +101,7 @@ exports.signup = async (req, res) => {
             if (sendResult) {
                 await auth.save();
                 const payload = {
-                    email: response.email.toLowerCase(),
+                    email: response.contactEmail.toLowerCase(),
                     userRole: response.userRole,
                     iat: Math.floor(Date.now() / 1000),
                     exp: Math.floor(Date.now() / 1000) + expirationTime
@@ -126,45 +126,30 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password, device } = req.body;
-        
-        if (!email || !password || !device) {
-            return res.status(401).json({ message: "Incorrect Data !" });
-        }
-
-        let userData = await Restau_manager.findOne({ email: email.toLowerCase(), password: password }, 
-                                            { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
-
-        if (userData) {
-            if (userData.userStatus === 'activate') {
-                let devices = userData.device || [];
-                let phoneAuth = true;
-
-                if (!devices.includes(device)) {
-                    phoneAuth = true;
-                } else {
-                    phoneAuth = false;
-                    await Restau_manager.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
-                }
-                
+        const { contactEmail, password, userRole } = req.body;
+        const isUser = await Restau_manager.findOne({ contactEmail: contactEmail.toLowerCase(), password: password, userRole: userRole }, 
+                                                { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1, password: 1, contactPassword: 1, address: 1, avatar: 1 });
+        console.log(isUser);
+        if (isUser) {
+            if (isUser.userStatus === 'activate') {
                 const payload = {
-                    email: userData.email,
-                    userRole: userData.userRole,
-                    iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + expirationTime
+                    contactEmail: isUser.contactEmail,
+                    userRole: isUser.userRole,
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
                 if (token) {
-                    return res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth });
+                    return res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
                 } else {
                     return res.status(400).json({ message: "Cannot logined User!" })
                 }
             } else {
-                return res.status(402).json({message: "You are not approved! Please wait."})
+                return res.status(402).json({message: "You are not approved! Please wait until the admin accept you."})
             }
         } else {
-            const isExist = await Restau_manager.findOne({ email: email.toLowerCase() }, { email: 1 });
-
+            const isExist = await Restau_manager.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+      
             if (isExist) {
                 return res.status(401).json({ message: "Login information is incorrect." })
             } else {

@@ -203,7 +203,7 @@ exports.shifts = async (req, res) => {
         const user = req.user;
         const role = req.headers.role;
 
-        if (role === 'Facilities') {
+        if (role === 'RestaurantHire') {
             const { search = '', page = 1 } = req.body;
             const limit = 25;
             const skip = (page - 1) * limit;
@@ -277,7 +277,7 @@ exports.shifts = async (req, res) => {
             } else {
                 return res.status(400).json({ message: "Cannot logined User!" })
             }
-        } else if (role === "Clinician") {
+        } else if (role === "RestaurantWork") {
             const today = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
             const data = await Job.find({ 
                 entryDate: { 

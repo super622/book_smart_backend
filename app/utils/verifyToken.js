@@ -1,10 +1,10 @@
 const jwt = require('jsonwebtoken');
 const db = require("../models");
-const Auth = db.authentications;
 const Clinical =  db.clinical;
 const Facility = db.facilities;
 const Admin = db.admins;
-const expirationTime = 10000000;
+const RestaurantUser = db.restau_user;
+const RestaurantManager = db.restau_manager;
 
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -40,22 +40,27 @@ const verifyUser = (req, res, next) => {
     console.log('verifyToken');
     console.log(req.user);
     verifyToken(req, res, async () => {
-        console.log(req.user.userRole)
+        console.log(req.user)
         let isUser = {};
         if (req.user.userRole === "Facilities") {
             isUser = await Facility.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
-        } else if(req.user.userRole === "Clinician") {
+        } else if (req.user.userRole === "Clinician") {
             isUser = await Clinical.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
-        } else if(req.user.userRole === "Admin") {
+        } else if (req.user.userRole === "Admin") {
             isUser = await Admin.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, userRole: 1, userStatus: 1, firstName: 1, lastName: 1 });
+        } else if (req.user.userRole === "restaurantWork") {
+            isUser = await RestaurantUser.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 });
+        } else if (req.user.userRole === "restaurantManager") {
+            isUser = await RestaurantManager.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
         }
         
         console.log(isUser);
         if (isUser) {
             req.user = isUser;
             next();
+        } else {
+            return res.status(401).json({success: false, message: "You are not authenticated!"});
         }
-        else res.status(401).json({success: false, message: "You are not authenticated!"})
     });
 };
 
