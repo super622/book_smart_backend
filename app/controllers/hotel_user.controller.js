@@ -462,7 +462,6 @@ exports.getUserImage = async (req, res) => {
 
 exports.getUserInfo = async (req, res) => {
     try {
-        const user = req.user;
         const { userId } = req.body;
         let isUser = await Hotel_User.findOne({ aic: userId }, 
             { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
@@ -471,82 +470,7 @@ exports.getUserInfo = async (req, res) => {
                     name: '$photoImage.name',
                     type: '$photoImage.type'
                 },
-                //  driverLicense: {
-                //     content: '',
-                //     name: '$driverLicense.name',
-                //     type: '$driverLicense.type'
-                // }, socialCard: {
-                //     content: '',
-                //     name: '$socialCard.name',
-                //     type: '$socialCard.type'
-                // }, physicalExam: {
-                //     content: '',
-                //     name: '$physicalExam.name',
-                //     type: '$physicalExam.type'
-                // }, ppd: {
-                //     content: '',
-                //     name: '$ppd.name',
-                //     type: '$ppd.type'
-                // }, mmr: {
-                //     content: '',
-                //     name: '$mmr.name',
-                //     type: '$mmr.type'
-                // }, healthcareLicense: {
-                //     content: '',
-                //     name: '$healthcareLicense.name',
-                //     type: '$healthcareLicense.type'
-                // }, resume: {
-                //     content: '',
-                //     name: '$resume.name',
-                //     type: '$resume.type'
-                // }, covidCard: {
-                //     content: '',
-                //     name: '$covidCard.name',
-                //     type: '$covidCard.type'
-                // }, bls: {
-                //     content: '',
-                //     name: '$bls.name',
-                //     type: '$bls.type'
-                // }, flu: {
-                //     content: '',
-                //     name: '$flu.name',
-                //     type: '$flu.type'
-                // }, cna: {
-                //     content: '',
-                //     name: '$cna.name',
-                //     type: '$cna.type'
-                // }, taxForm: {
-                //     content: '',
-                //     name: '$taxForm.name',
-                //     type: '$taxForm.type'
-                // }, chrc102: {
-                //     content: '',
-                //     name: '$chrc102.name',
-                //     type: '$chrc102.type'
-                // }, chrc103: {
-                //     content: '',
-                //     name: '$chrc103.name',
-                //     type: '$chrc103.type'
-                // }, drug: {
-                //     content: '',
-                //     name: '$drug.name',
-                //     type: '$drug.type'
-                // }, ssc: {
-                //     content: '',
-                //     name: '$ssc.name',
-                //     type: '$ssc.type'
-                // }, copyOfTB: {
-                //     content: '',
-                //     name: '$copyOfTB.name',
-                //     type: '$copyOfTB.type'
-                // }, hepB: {
-                //     content: '',
-                //     name: '$hepB.name',
-                //     type: '$hepB.type'
-                // },
-                // driverLicenseStatus: 1, socialCardStatus: 1, physicalExamStatus: 1, ppdStatus: 1, mmrStatus: 1, healthcareLicenseStatus: 1, resumeStatus: 1, covidCardStatus: 1, blsStatus: 1, hepBStatus: 1, fluStatus: 1, cnaStatus: 1, taxFormStatus: 1, chrc102Status: 1, chrc103Status: 1, drugStatus: 1, sscStatus: 1, copyOfTBStatus: 1
             });
-
         if (isUser) {
             const payload = {
                 email: isUser.email,

@@ -403,7 +403,7 @@ exports.shifts = async (req, res) => {
         console.log(e);
         return res.status(500).json({ message: "An Error Occured!" })
     }
-}
+};
 
 exports.getJob = async (req, res) => {
     try {
@@ -559,89 +559,87 @@ exports.updateJobTSVerify = async (req, res) => {
 exports.myShift = async (req, res) => {
     try {
         const user = req.user;
-        const role = req.headers.role;
 
         const jobIds = await Bid.find({ caregiverId: user?.aic, bidStatus: { $ne: 'Not Awarded' }  }, { jobId: 1 }).lean();
         const jobIdArray = jobIds.map(bid => bid.jobId);
         const data = await Job.find({ jobId: { $in: jobIdArray } }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, jobStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 }).sort({ entryDate: -1, shiftDate: -1 });
 
         let dataArray = [];
-        if (role === "Clinician") {
-            data.map((item) => {
-                let file = item.timeSheet;
-                file.content = '';
-                dataArray.push({
-                jobId: item.jobId,
-                location: item.location,
-                payRate: item.payRate,
-                shiftStatus: item.jobStatus,
-                caregiver: item.nurse,
-                timeSheet: file,
-                unit: item.unit,
-                entryDate: item.entryDate,
-                shiftDate: item.shiftDate,
-                shiftTime: item.shiftTime,
-                shiftDateAndTimes: item.shiftDateAndTimes,
-                laborState: item.laborState,
-                shiftStartTime: item.shiftStartTime,
-                shiftEndTime: item.shiftEndTime
-                });
+        
+        data.map((item) => {
+            let file = item.timeSheet;
+            file.content = '';
+            dataArray.push({
+            jobId: item.jobId,
+            location: item.location,
+            payRate: item.payRate,
+            shiftStatus: item.jobStatus,
+            caregiver: item.nurse,
+            timeSheet: file,
+            unit: item.unit,
+            entryDate: item.entryDate,
+            shiftDate: item.shiftDate,
+            shiftTime: item.shiftTime,
+            shiftDateAndTimes: item.shiftDateAndTimes,
+            laborState: item.laborState,
+            shiftStartTime: item.shiftStartTime,
+            shiftEndTime: item.shiftEndTime
             });
-            const date = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
-            const jobs = await Job.find({ jobId: { $in: jobIdArray }, shiftDate: date }, { payRate: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1, jobStatus: 1 });
-            let totalPay = 0;
+        });
+        const date = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
+        const jobs = await Job.find({ jobId: { $in: jobIdArray }, shiftDate: date }, { payRate: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1, jobStatus: 1 });
+        let totalPay = 0;
 
-            for (const job of jobs) {
-                if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-                    const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
-                    const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
-                    const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
-                    totalPay += payRate * shiftHours + bonus;
-                }
+        for (const job of jobs) {
+            if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
+                const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
+                const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
+                const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
+                totalPay += payRate * shiftHours + bonus;
             }
+        }
 
-            const today = new Date();
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+        const today = new Date();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
 
-            const weekly = await Job.find({
-                email: user.email,
-                shiftDate: {
-                $gte: moment(monday, "America/Toronto").format("MM/DD/YYYY"),
-                $lte: moment.tz(today, "America/Toronto").format("MM/DD/YYYY"),
+        const weekly = await Job.find({
+            email: user.email,
+            shiftDate: {
+            $gte: moment(monday, "America/Toronto").format("MM/DD/YYYY"),
+            $lte: moment.tz(today, "America/Toronto").format("MM/DD/YYYY"),
+            },
+        }, { payRate: 1, jobStatus: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1 });
+
+        let weeklyPay = 0;
+
+        for (const job of weekly) {
+            if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
+                const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
+                const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
+                const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
+                weeklyPay += payRate * shiftHours + bonus;
+            }
+        }
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        }
+        const token = setToken(payload);
+        if (token) {
+            return res.status(200).json({
+                message: "Successfully Get!",
+                jobData: {
+                    reportData: dataArray,
+                    dailyPay: { pay: totalPay, date: date },
+                    weeklyPay: { date: moment(monday, "America/Toronto").format("MM/DD/YYYY") + "-" + moment(today, "America/Toronto").format("MM/DD/YYYY"), pay: weeklyPay }
                 },
-            }, { payRate: 1, jobStatus: 1, shiftStartTime: 1, shiftEndTime: 1, bonus: 1 });
-
-            let weeklyPay = 0;
-
-            for (const job of weekly) {
-                if (!['Available', 'Cancelled', 'Paid'].includes(job.jobStatus)) {
-                    const payRate = job.payRate != '$' ? job.payRate == '' ? 0 : parseFloat(job.payRate.replace('$', '')) : 0;
-                    const shiftHours = calculateShiftHours(job.shiftStartTime, job.shiftEndTime);
-                    const bonus = job.bonus != '$' ? job.bonus == '' ? 0 : parseFloat(job.bonus.replace('$', '')) : 0;
-                    weeklyPay += payRate * shiftHours + bonus;
-                }
-            }
-            const payload = {
-                email: user.email,
-                userRole: user.userRole,
-                iat: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + expirationTime
-            }
-            const token = setToken(payload);
-            if (token) {
-                return res.status(200).json({
-                    message: "Successfully Get!",
-                    jobData: {
-                        reportData: dataArray,
-                        dailyPay: { pay: totalPay, date: date },
-                        weeklyPay: { date: moment(monday, "America/Toronto").format("MM/DD/YYYY") + "-" + moment(today, "America/Toronto").format("MM/DD/YYYY"), pay: weeklyPay }
-                    },
-                    token: token
-                });
-            } else {
-                return res.status(400).json({ message: "Cannot logined User!" });
-            }
+                token: token
+            });
+        } else {
+            return res.status(400).json({ message: "Cannot logined User!" });
         }
     } catch (e) {
         console.log(e);
