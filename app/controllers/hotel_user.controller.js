@@ -1,9 +1,9 @@
-const db = require("../models");
-const { setToken } = require('../utils/verifyToken');
-const Hospital_User = db.hospital_user;
-const Bid = db.hospital_bid;
-const Job = db.hospital_job;
-const mailTrans = require("../controllers/mailTrans.controller.js");
+const db = require("../models/index.js");
+const { setToken } = require('../utils/verifyToken.js');
+const Hotel_User = db.hotel_user;
+const Bid = db.hotel_bid;
+const Job = db.hotel_job;
+const mailTrans = require("./mailTrans.controller.js");
 const moment = require('moment-timezone');
 var dotenv = require('dotenv');
 dotenv.config()
@@ -39,12 +39,12 @@ async function uploadToS3(file) {
 
 exports.signup = async (req, res) => {
     try {
-        const lastUser = await Hospital_User.find().sort({ aic: -1 }).limit(1);
+        const lastUser = await Hotel_User.find().sort({ aic: -1 }).limit(1);
         const lastUserId = lastUser.length > 0 ? lastUser[0].aic : 0;
         const newUserId = lastUserId + 1;
         let response = req.body;
         response.email = response.email.toLowerCase();
-        const isUser = await Hospital_User.findOne({ email: response.email });
+        const isUser = await Hotel_User.findOne({ email: response.email });
 
         if (!isUser) {
             const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
@@ -72,7 +72,7 @@ exports.signup = async (req, res) => {
                 response.photoImage.content = s3FileUrl;
             }
 
-            const auth = new Hospital_User(response);
+            const auth = new Hotel_User(response);
             let sendResult = mailTrans.sendMail(response.email, subject, content);
             const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
             const content2 = `<div id=":18t" class="a3s aiL ">
@@ -133,7 +133,7 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: "Incorrect Data !" });
         }
 
-        let userData = await Hospital_User.findOne({ email: email.toLowerCase(), password: password }, 
+        let userData = await Hotel_User.findOne({ email: email.toLowerCase(), password: password }, 
                                             { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
 
         if (userData) {
@@ -145,7 +145,7 @@ exports.login = async (req, res) => {
                     phoneAuth = true;
                 } else {
                     phoneAuth = false;
-                    await Hospital_User.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
+                    await Hotel_User.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
                 }
                 
                 const payload = {
@@ -164,7 +164,7 @@ exports.login = async (req, res) => {
                 return res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Hospital_User.findOne({ email: email.toLowerCase() }, { email: 1 });
+            const isExist = await Hotel_User.findOne({ email: email.toLowerCase() }, { email: 1 });
 
             if (isExist) {
                 return res.status(401).json({ message: "Login information is incorrect." })
@@ -214,7 +214,7 @@ function generateVerificationCode(length = 6) {
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        const isUser = await Hospital_User.findOne({ email: email });
+        const isUser = await Hotel_User.findOne({ email: email });
         if (isUser) {
             const verifyCode = generateVerificationCode();
             const verifyTime = Math.floor(Date.now() / 1000) + 600;
@@ -230,7 +230,7 @@ exports.forgotPassword = async (req, res) => {
                 
                 let approveResult = mailTrans.sendMail(isUser.email, verifySubject, verifiedContent);
                 if (approveResult) {
-                    const updateUser = await Hospital_User.updateOne({ email: email }, { $set: { verifyCode: verifyCode, verifyTime: verifyTime } });
+                    const updateUser = await Hotel_User.updateOne({ email: email }, { $set: { verifyCode: verifyCode, verifyTime: verifyTime } });
                     return res.status(200).json({ message: "Sucess" });
                 }
             } else {
@@ -248,7 +248,7 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
     try {
         const { verifyCode, email } = req.body;
-        const isUser = await Hospital_User.findOne({ email: email }, { verifyTime: 1, verifyCode: 1 });
+        const isUser = await Hotel_User.findOne({ email: email }, { verifyTime: 1, verifyCode: 1 });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
@@ -283,7 +283,7 @@ exports.phoneSms = async (req, res) => {
     try {
         const { phoneNumber, email } = req.body;
         const verifyPhone = convertToInternationalFormat(phoneNumber);
-        const isUser = await Hospital_User.findOne({ email: email }, { firstName: 1 });
+        const isUser = await Hotel_User.findOne({ email: email }, { firstName: 1 });
         if (isUser) {
             let verifyPhoneCode = generateVerificationCode();
             // if (verifyPhone == '+16505551234') {
@@ -295,7 +295,7 @@ exports.phoneSms = async (req, res) => {
                 const verifiedContent = `${isUser.firstName}, your verification code is here: \n ${verifyPhoneCode}`
                 
                 let approveResult = phoneSms.pushNotification(verifiedContent, verifyPhone);
-                const updateUser = await Hospital_User.updateOne({ email: email }, { $set: { verifyPhoneCode: verifyPhoneCode, verifyPhoneTime: verifyPhoneTime } });
+                const updateUser = await Hotel_User.updateOne({ email: email }, { $set: { verifyPhoneCode: verifyPhoneCode, verifyPhoneTime: verifyPhoneTime } });
                 return res.status(200).json({ message: "Sucess" });
             } else {
                 return res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
@@ -312,7 +312,7 @@ exports.phoneSms = async (req, res) => {
 exports.verifyPhone = async (req, res) => {
     try {
         const { verifyCode, device, email } = req.body;
-        const isUser = await Hospital_User.findOne({ verifyPhoneCode: verifyCode, email: email }, { device: 1, verifyPhoneTime: 1 });
+        const isUser = await Hotel_User.findOne({ verifyPhoneCode: verifyCode, email: email }, { device: 1, verifyPhoneTime: 1 });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyPhoneTime) {
@@ -327,7 +327,7 @@ exports.verifyPhone = async (req, res) => {
                 const token = setToken(payload);
                 let devices = isUser.device || [];
                 devices.push(device);
-                const updateUser = await Hospital_User.updateOne({ email: email }, { $set: { logined: true, device: devices } });
+                const updateUser = await Hotel_User.updateOne({ email: email }, { $set: { logined: true, device: devices } });
                 return res.status(200).json({message: "Success to verify code.", token: token});
             }
         } else {
@@ -342,9 +342,9 @@ exports.verifyPhone = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const isUser = await Hospital_User.findOne({ email: email }, { email: 1 });
+        const isUser = await Hotel_User.findOne({ email: email }, { email: 1 });
         if (isUser) {
-            const updateUser = await Hospital_User.updateOne({ email: email }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
+            const updateUser = await Hotel_User.updateOne({ email: email }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
             return res.status(200).json({message: "Password changed successfully."})
         } else {
             return res.status(404).json({ message: "Password change failed." })
@@ -358,9 +358,9 @@ exports.resetPassword = async (req, res) => {
 exports.updateUserStatus = async (req, res) => {
     try {
         const { userId, status } = req.body;
-        const isUser = await Hospital_User.findOne({ aic: userId }, { firstName: 1, lastName: 1, email: 1 });
+        const isUser = await Hotel_User.findOne({ aic: userId }, { firstName: 1, lastName: 1, email: 1 });
         if (isUser) {
-            await Hospital_User.updateOne({ aic: userId }, { $set: { userStatus: status } });
+            await Hotel_User.updateOne({ aic: userId }, { $set: { userStatus: status } });
             if (status == 'activate') {
                 const verifySubject2 = "BookSmart™ - Your Account Approval"
                 const verifiedContent2 = `
@@ -401,7 +401,7 @@ exports.Update = async (req, res) => {
     }
 
     if (user) {
-        Hospital_User.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+        Hotel_User.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
             console.log('updated');
             if (err) {
                 console.log(err);
@@ -451,7 +451,7 @@ exports.Update = async (req, res) => {
 exports.getUserImage = async (req, res) => {
     try {
         const { userId, filename } = req.body;
-        const isUser = await Hospital_User.findOne({ aic: userId }, { [filename]: 1 });
+        const isUser = await Hotel_User.findOne({ aic: userId }, { [filename]: 1 });
 
         return res.status(200).json({ message: "Successfully Get!", data: isUser[filename] });
     } catch (e) {
@@ -464,7 +464,7 @@ exports.getUserInfo = async (req, res) => {
     try {
         const user = req.user;
         const { userId } = req.body;
-        let isUser = await Hospital_User.findOne({ aic: userId }, 
+        let isUser = await Hotel_User.findOne({ aic: userId }, 
             { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
                 photoImage: {
                     content: '',
@@ -568,7 +568,7 @@ exports.getUserInfo = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
-        const isUser = await Hospital_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: {
+        const isUser = await Hotel_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: {
             content: '',
             name: '$photoImage.name',
             type: '$photoImage.type'
@@ -652,7 +652,7 @@ exports.getAllList = async (req, res) => {
     try {
         const user = req.user;
         const role = req.headers.role;
-        const data = await Hospital_User.find({});
+        const data = await Hotel_User.find({});
         let dataArray = [];
 
         if (role === 'Admin') {
@@ -725,7 +725,7 @@ exports.allCaregivers = async (req, res) => {
         }
 
         const skip = (perPage - 1) * limit;
-        const data = await Hospital_User.find(query, { 
+        const data = await Hotel_User.find(query, { 
                 firstName: 1, lastName: 1, aic: 1, entryDate: 1, phoneNumber: 1, title: 1, email: 1, userStatus: 1 
             })
             .sort({ aic: -1 })
@@ -733,7 +733,7 @@ exports.allCaregivers = async (req, res) => {
             .limit(limit)
             .lean();
 
-        const totalRecords = await Hospital_User.countDocuments(query);
+        const totalRecords = await Hotel_User.countDocuments(query);
         const totalPageCnt = Math.ceil(totalRecords / limit);
 
         let dataArray = [];
@@ -789,7 +789,7 @@ exports.clinician = async (req, res) => {
     try {
         const user = req.user;
         const role = req.headers.role;
-        const data = await Hospital_User.find({});
+        const data = await Hotel_User.find({});
         let dataArray = [];
 
         if (role === 'Admin') {

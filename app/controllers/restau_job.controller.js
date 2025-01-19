@@ -558,13 +558,13 @@ exports.updateJobTSVerify = async (req, res) => {
 
 exports.myShift = async (req, res) => {
     try {
-        const email = req.body.email;
-        const aic = req.body.aic;
+        const {email, aic} = req.body;
+        console.log(email, aic);
 
         const jobIds = await Bid.find({ caregiverId: aic, bidStatus: { $ne: 'Not Awarded' }  }, { jobId: 1 }).lean();
         const jobIdArray = jobIds.map(bid => bid.jobId);
         const data = await Job.find({ jobId: { $in: jobIdArray } }, { timeSheet: { content: '', name: '$timeSheet.name', type: '$timeSheet.type' }, jobId: 1, location: 1, payRate: 1, jobStatus: 1, nurse: 1, unit: 1, entryDate: 1, shiftDate: 1, shiftTime: 1, shiftDateAndTimes: 1, laborState: 1, shiftStartTime: 1, shiftEndTime: 1 }).sort({ entryDate: -1, shiftDate: -1 });
-
+console.log(jobIds, jobIdArray, data);
         let dataArray = [];
         data.map((item) => {
             let file = item.timeSheet;

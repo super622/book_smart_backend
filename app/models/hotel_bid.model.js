@@ -51,6 +51,6 @@ module.exports = mongoose => {
         return object;
     });
   
-    const Hospital_Bid = mongoose.model("Hospital_Bid", schema);
-    return Hospital_Bid;
+    const Hotel_Bid = mongoose.model("Hotel_Bid", schema);
+    return Hotel_Bid;
 };

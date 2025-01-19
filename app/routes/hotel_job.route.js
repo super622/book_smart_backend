@@ -1,6 +1,6 @@
 const { verifyUser, verifyToken } = require("../utils/verifyToken.js");
 module.exports = app => {
-    const jobs = require("../controllers/hospital_job.controller.js");
+    const jobs = require("../controllers/hotel_job.controller.js");
     var router = require("express").Router();
 
     router.post("/shifts", verifyUser, jobs.shifts);
@@ -23,5 +23,5 @@ module.exports = app => {
     router.post('/sendInvoice', jobs.sendInvoice);
     router.post('/updateTime', verifyUser, jobs.updateTime)
 
-    app.use("/api/hospital/jobs", router);
+    app.use("/api/hotel/jobs", router);
 };

@@ -5,6 +5,8 @@ const Facility = db.facilities;
 const Admin = db.admins;
 const RestaurantUser = db.restau_user;
 const RestaurantManager = db.restau_manager;
+const HotelManager = db.hotel_manager;
+const HotelWorker = db.hotel_user;
 
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -52,9 +54,12 @@ const verifyUser = (req, res, next) => {
             isUser = await RestaurantUser.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 });
         } else if (req.user.userRole === "restaurantManager") {
             isUser = await RestaurantManager.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
+        } else if (req.user.userRole === "hotelManager") {
+            isUser = await HotelManager.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
+        } else if (req.user.userRole === "hotelWorker") {
+            isUser = await HotelWorker.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 });
         }
-        
-        console.log(isUser);
+
         if (isUser) {
             req.user = isUser;
             next();

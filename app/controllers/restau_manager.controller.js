@@ -278,7 +278,7 @@ exports.Update = async (req, res) => {
     if (user) {
         try {
             const query = role === "Admin" 
-                            ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
+                            ? { contactEmail: request.contactEmail, userRole: 'restaurantManager' } 
                             : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
         
             const updateFields = { $set: extracted };

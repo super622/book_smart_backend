@@ -192,6 +192,6 @@ module.exports = mongoose => {
 
     schema.index({ jobId: 1 });
 
-    const Hospital_job = mongoose.model("Hospital_job", schema);
-    return Hospital_job;
+    const Hotel_job = mongoose.model("Hotel_job", schema);
+    return Hotel_job;
 };

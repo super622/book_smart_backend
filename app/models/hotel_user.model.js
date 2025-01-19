@@ -283,6 +283,6 @@ module.exports = mongoose => {
   
     schema.index({ aic: 1, email: 1 });
   
-    const Hospital_user = mongoose.model("Hospital_user", schema);
-    return Hospital_user;
+    const Hotel_user = mongoose.model("Hotel_user", schema);
+    return Hotel_user;
 };

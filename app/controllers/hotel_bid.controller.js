@@ -1,9 +1,9 @@
-const db = require("../models");
-const { setToken } = require('../utils/verifyToken');
-const Job = db.hospital_job;
-const Bid = db.hospital_bid;
-const Manager = db.hospital_manager;
-const mailTrans = require("../controllers/mailTrans.controller.js");
+const db = require("../models/index.js");
+const { setToken } = require('../utils/verifyToken.js');
+const Job = db.hotel_job;
+const Bid = db.hotel_bid;
+const Manager = db.hotel_manager;
+const mailTrans = require("./mailTrans.controller.js");
 const moment = require('moment-timezone');
 
 const expirationTime = 10000000;

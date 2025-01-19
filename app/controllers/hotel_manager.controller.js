@@ -1,8 +1,8 @@
-const db = require("../models");
-const { setToken } = require('../utils/verifyToken');
-const Hospital_Manager = db.hospital_manager;
+const db = require("../models/index.js");
+const { setToken } = require('../utils/verifyToken.js');
+const Hotel_Manager = db.hotel_manager;
 const Job = db.restau_job;
-const mailTrans = require("../controllers/mailTrans.controller.js");
+const mailTrans = require("./mailTrans.controller.js");
 const moment = require('moment-timezone');
 var dotenv = require('dotenv');
 dotenv.config()
@@ -38,76 +38,58 @@ async function uploadToS3(file) {
 
 exports.signup = async (req, res) => {
     try {
-        const lastUser = await Hospital_Manager.find().sort({ aic: -1 }).limit(1);
-        const lastUserId = lastUser.length > 0 ? lastUser[0].aic : 0;
-        const newUserId = lastUserId + 1;
+        const lastFacility = await Hotel_Manager.find().sort({ aic: -1 }).limit(1);
+        const lastFacilityId = lastFacility.length > 0 ? lastFacility[0].aic : 0;
+        const newFacilityId = lastFacilityId + 1;
         let response = req.body;
-        response.email = response.email.toLowerCase();
-        const isUser = await Hospital_Manager.findOne({ email: response.email });
+        const isUser = await Hotel_Manager.findOne({ contactEmail: response.contactEmail.toLowerCase() });
 
         if (!isUser) {
-            const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
+            const subject = `Welcome to BookSmart™`;
             const content = `<div id=":18t" class="a3s aiL ">
-                <p>
-                <strong>Note: Once you are "APPROVED" you will be notified via email and can view shifts<br></strong>
-                </p>
-                <p><strong>-----------------------<br></strong></p>
-                <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
-                <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
-                <p><strong>Password</strong>: <br></p>
-                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
-                <p>-----------------------</p>
-                <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
-            </div>`
+                <p>Thank you for registering as a Facility User!</p>
+                <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
+            </div>`;
             response.entryDate = new Date();
-            response.aic = newUserId;
-            response.userStatus = "pending approval";
-            response.AcknowledgeTerm = false;
+            response.aic = newFacilityId;
+            response.userStatus = "activate";
+            response.contactEmail = response.contactEmail.toLowerCase();
 
-            if (response?.photoImage?.name != "") {
-                const s3FileUrl = await uploadToS3(response.photoImage);
-                response.photoImage.content = s3FileUrl;
+            if (response.avatar.name != "") {
+                const s3FileUrl = await uploadToS3(response.avatar);
+                response.avatar.content = s3FileUrl;
             }
 
-            const auth = new Hospital_Manager(response);
-            let sendResult = mailTrans.sendMail(response.email, subject, content);
-            const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
-            const content2 = `<div id=":18t" class="a3s aiL ">
-                <p>Please click the following link to fill out the enrollment forms.</p>
-                <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhC7jj-Qqg1kETpx-qVqvryaiJrzPVomGSSnCFCPPc_Q_VSbdCEZnNvPS7PPD1499Gg*" target="_blank">BookSmart™ Enrollment Packet</a></p>
-            </div>`
-            let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
+            const auth = new Hotel_Manager(response);
 
-            const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            let sendResult = mailTrans.sendMail(response.contactEmail, subject, content);
+
+            const subject1 = `A New Facility ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
-                <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
+                <strong>Note: The facility will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
-                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:${response.contactPhone || ''}" target="_blank">${response.contactPhone || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
             let adminMail1 = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
-            let adminMail12 = mailTrans.sendMail('info@whybookdumb.com', subject1, content1);
             let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
 
             if (sendResult) {
                 await auth.save();
                 const payload = {
-                    email: response.email.toLowerCase(),
+                    email: response.contactEmail,
                     userRole: response.userRole,
-                    iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + expirationTime
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                return res.status(200).json({ message: "Successfully Regisetered", token: token });
+                return res.status(200).json({ msg: "Successfully Registered", token: token });
             } else {
                 return res.status(500).json({ msg: "Can't Register Now" });
             }
@@ -126,49 +108,35 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password, device } = req.body;
-        
-        if (!email || !password || !device) {
-            return res.status(401).json({ message: "Incorrect Data !" });
-        }
-
-        let userData = await Hospital_Manager.findOne({ email: email.toLowerCase(), password: password }, 
-                                            { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
-
-        if (userData) {
-            if (userData.userStatus === 'activate') {
-                let devices = userData.device || [];
-                let phoneAuth = true;
-
-                if (!devices.includes(device)) {
-                    phoneAuth = true;
-                } else {
-                    phoneAuth = false;
-                    await Hospital_Manager.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
-                }
-                
+        console.log("LogIn");
+        const { contactEmail, password, userRole } = req.body;
+        const isUser = await Hotel_Manager.findOne({ contactEmail: contactEmail.toLowerCase(), password: password, userRole: userRole }, 
+                                                { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1, password: 1, contactPassword: 1, facilityAcknowledgeTerm: 1, address: 1, avatar: 1 });
+        console.log(isUser);
+        if (isUser) {
+            if (isUser.userStatus === 'activate') {
                 const payload = {
-                    email: userData.email,
-                    userRole: userData.userRole,
-                    iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + expirationTime
+                    contactEmail: isUser.contactEmail,
+                    userRole: isUser.userRole,
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
                 if (token) {
-                    return res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
                 } else {
-                    return res.status(400).json({ message: "Cannot logined User!" })
+                    res.status(400).json({ message: "Cannot logined User!" })
                 }
             } else {
-                return res.status(402).json({message: "You are not approved! Please wait."})
+                res.status(402).json({message: "You are not approved! Please wait until the admin accept you."})
             }
         } else {
-            const isExist = await Hospital_Manager.findOne({ email: email.toLowerCase() }, { email: 1 });
-
+            const isExist = await Hotel_Manager.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+      
             if (isExist) {
-                return res.status(401).json({ message: "Login information is incorrect." })
+                res.status(401).json({ message: "Login information is incorrect." })
             } else {
-                return res.status(404).json({ message: "User Not Found! Please Register First." })
+                res.status(404).json({ message: "User Not Found! Please Register First." })
             }
         }
     } catch (e) {
@@ -188,7 +156,7 @@ function generateVerificationCode(length = 6) {
 exports.forgotPassword = async (req, res) => {
     try {
         const { contactEmail } = req.body;
-        const isUser = await Hospital_Manager.findOne({ contactEmail: contactEmail });
+        const isUser = await Hotel_Manager.findOne({ contactEmail: contactEmail });
         if (isUser) {
             const verifyCode = generateVerificationCode();
             const verifyTime = Math.floor(Date.now() / 1000) + 600;
@@ -203,7 +171,7 @@ exports.forgotPassword = async (req, res) => {
                 </div>`
                 
                 let approveResult = mailTrans.sendMail(isUser.contactEmail, verifySubject, verifiedContent);
-                const updateUser = await Hospital_Manager.updateOne({ contactEmail: contactEmail }, { $set: { verifyCode: verifyCode, verifyTime: verifyTime } });
+                const updateUser = await Hotel_Manager.updateOne({ contactEmail: contactEmail }, { $set: { verifyCode: verifyCode, verifyTime: verifyTime } });
                 return res.status(200).json({ message: "Sucess" });
             } else {
                 return res.status(400).json({message: "Failde to generate VerifyCode. Please try again!"})
@@ -220,7 +188,7 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
     try {
         const { verifyCode, email } = req.body;
-        const isUser = await Hospital_Manager.findOne({ contactEmail: email });
+        const isUser = await Hotel_Manager.findOne({ contactEmail: email });
         if (isUser) {
             const verifyTime = Math.floor(Date.now() / 1000);
             if (verifyTime > isUser.verifyTime) {
@@ -243,9 +211,9 @@ exports.verifyCode = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     try {
         const { contactEmail, password } = req.body;
-        const isUser = await Hospital_Manager.findOne({ contactEmail: contactEmail });
+        const isUser = await Hotel_Manager.findOne({ contactEmail: contactEmail });
         if (isUser) {
-            const updateUser = await Hospital_Manager.updateOne({ contactEmail: contactEmail }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
+            const updateUser = await Hotel_Manager.updateOne({ contactEmail: contactEmail }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
             return res.status(200).json({message: "Password changed successfully."});
         } else {
             return res.status(404).json({ message: "Password change failed." });
@@ -293,11 +261,11 @@ exports.Update = async (req, res) => {
     if (user) {
         try {
             const query = role === "Admin" 
-                            ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
+                            ? { contactEmail: request.contactEmail, userRole: 'hotelManager' } 
                             : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
         
             const updateFields = { $set: extracted };
-            const updatedDocument = await Hospital_Manager.findOneAndUpdate(query, updateFields, { new: true });
+            const updatedDocument = await Hotel_Manager.findOneAndUpdate(query, updateFields, { new: true });
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
@@ -307,7 +275,7 @@ exports.Update = async (req, res) => {
 
             if (role != 'Admin') {
                 const token = setToken(payload);
-                const users = await Hospital_Manager.findOne({contactEmail: user.contactEmail}, { signature: 0 });
+                const users = await Hotel_Manager.findOne({contactEmail: user.contactEmail}, { signature: 0 });
                 const verifySubject = "BookSmart™ - New Account signed";
                 const verifySubject1 = "BookSmart™ Terms of Service";
                 const verifiedContent = `
@@ -375,6 +343,7 @@ exports.Update = async (req, res) => {
                 }
             }
         } catch (err) {
+            console.log(JSON.stringify(err));
             return res.status(500).json({ error: err });
         }
     }
@@ -398,12 +367,12 @@ exports.getAllFacilities = async (req, res) => {
             ];
         }
 
-        const data = await Hospital_Manager.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
+        const data = await Hotel_Manager.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
             .sort({ entryDate: -1 })
             .skip(skip)
             .limit(limit)
             .lean();
-        const totalRecords = await Hospital_Manager.countDocuments(query);
+        const totalRecords = await Hotel_Manager.countDocuments(query);
         const totalPageCnt = Math.ceil(totalRecords / limit);
 
         let dataArray = [];
@@ -441,11 +410,11 @@ exports.getAllFacilities = async (req, res) => {
     }
 };
 
-exports.getHospital_ManagerList = async (req, res) => {
+exports.getHotel_ManagerList = async (req, res) => {
     try {
         const user = req.user;
         const role = req.headers.role;
-        const data = await Hospital_Manager.find({});
+        const data = await Hotel_Manager.find({});
         let dataArray = [];
 
         if (role === 'Admin') {
@@ -483,11 +452,11 @@ exports.getHospital_ManagerList = async (req, res) => {
     }
 };
 
-exports.getHospital_ManagerInfo = async (req, res) => {
+exports.getHotel_ManagerInfo = async (req, res) => {
     try {
         const user = req.user;
         const { userId } = req.body;
-        const userData = await Hospital_Manager.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, aic: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1, contactPhone: 1, address: 1 });
+        const userData = await Hotel_Manager.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, aic: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1, contactPhone: 1, address: 1 });
         const jobList = await Job.find({ facilityId: userId }, { jobId: 1, entryDate: 1, jobNum: 1, jobStatus: 1, shiftDate: 1, shiftTime: 1 });
         let jobData = [];
         jobList.map((item, index) => {
@@ -523,7 +492,7 @@ exports.managers = async (req, res) => {
     try {
         const user = req.user;
         const role = req.headers.role;
-        const data = await Hospital_Manager.find({});
+        const data = await Hotel_Manager.find({});
         let dataArray = [];
 
         if (role === 'Admin') {

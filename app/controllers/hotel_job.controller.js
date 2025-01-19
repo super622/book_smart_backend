@@ -1,17 +1,17 @@
-const db = require("../models");
-const { setToken } = require('../utils/verifyToken');
-const Job = db.hospital_job;
-const Bid = db.hospital_bid;
-const Hospital_Manager = db.hospital_manager;
-const hospital_user = db.hospital_user;
+const db = require("../models/index.js");
+const { setToken } = require('../utils/verifyToken.js');
+const Job = db.hotel_job;
+const Bid = db.hotel_bid;
+const Hotel_Manager = db.hotel_manager;
+const hotel_user = db.hotel_user;
 const moment = require('moment-timezone');
 const nodemailer = require('nodemailer');
-const mailTrans = require("../controllers/mailTrans.controller.js");
+const mailTrans = require("./mailTrans.controller.js");
 const invoiceHTML = require('../utils/invoiceHtml.js');
-const { generatePDF } = require('../utils/pdf');
+const { generatePDF } = require('../utils/pdf.js');
 const path = require('path');
 const cron = require('node-cron');
-const phoneSms = require('../controllers/twilio.js');
+const phoneSms = require('./twilio.js');
 var dotenv = require('dotenv');
 dotenv.config()
 
@@ -90,7 +90,7 @@ exports.updateTimeSheet = async (req, res) => {
         return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
     } else {
         const jobDetail = await Job.findOne({ jobId: request.jobId }, { facilityId: 1 });
-        const facility = await Hospital_Manager.findOne({ aic: jobDetail.facilityId }, { contactEmail: 1 });
+        const facility = await Hotel_Manager.findOne({ aic: jobDetail.facilityId }, { contactEmail: 1 });
         const s3FileUrl = await uploadToS3(timeSheetFile);
 
         await Job.updateOne({ jobId: request.jobId }, { $set: {timeSheet: { content: s3FileUrl, name: timeSheetFile.name, type: timeSheetFile.type }, jobStatus: 'Pending Verification'} });
@@ -203,7 +203,7 @@ exports.shifts = async (req, res) => {
         const user = req.user;
         const role = req.headers.role;
 
-        if (role === 'Facilities') {
+        if (role === 'HotelHire') {
             const { search = '', page = 1 } = req.body;
             const limit = 25;
             const skip = (page - 1) * limit;
@@ -277,7 +277,7 @@ exports.shifts = async (req, res) => {
             } else {
                 return res.status(400).json({ message: "Cannot logined User!" })
             }
-        } else if (role === "Clinician") {
+        } else if (role === "HotelWork") {
             const today = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
             const data = await Job.find({ 
                 entryDate: { 
@@ -416,7 +416,7 @@ exports.getJob = async (req, res) => {
         let jobData = await Job.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
         const bidders = await Bid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1, caregiverId: 1 });
         let biddersList = await Promise.all(bidders.map(async (item) => {
-            let bidderInfo = await hospital_user.findOne({ aic: item.caregiverId }, { email: 1, phoneNumber: 1 });
+            let bidderInfo = await hotel_user.findOne({ aic: item.caregiverId }, { email: 1, phoneNumber: 1 });
             return [
                 item.entryDate,
                 item.caregiver,
@@ -474,7 +474,7 @@ exports.setAwarded = async (req, res) => {
     const bidId = req.body.bidderId;
     const status = req.body.status;
     const nurse = await Bid.findOne({ bidId });
-    const user = await hospital_user.findOne({ aic: nurse.caregiverId }, { email: 1 } );
+    const user = await hotel_user.findOne({ aic: nurse.caregiverId }, { email: 1 } );
 
     if (status === 1) {
         await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
@@ -518,7 +518,7 @@ exports.updateJobTSVerify = async (req, res) => {
     const status = req.body.status;
     const file = req.body.file;
     const JobDetails = await Job.findOne({ jobId });
-    const clinicalInfo = await hospital_user.findOne({ firstName: JobDetails.nurse.split(' ')[0], lastName: JobDetails.nurse.split(' ')[1] });
+    const clinicalInfo = await hotel_user.findOne({ firstName: JobDetails.nurse.split(' ')[0], lastName: JobDetails.nurse.split(' ')[1] });
 
     if (status == 1) {
         await Job.updateOne({ jobId }, { $set: { timeSheetVerified: true, jobStatus: 'Verified' }});
@@ -535,7 +535,7 @@ exports.updateJobTSVerify = async (req, res) => {
         const subject1 = `${clinicalInfo?.firstName} ${clinicalInfo?.lastName} - Your Timesheet has been verified!`;
         const content1 = `<div id=":18t" class="a3s aiL ">
             <p><strong>Job / Shift</strong> : ${jobId}</p>
-            <p><strong>Hospital_Manager</strong> : ${JobDetails?.location || ''}</p>
+            <p><strong>Hotel_Manager</strong> : ${JobDetails?.location || ''}</p>
             <p><strong>Shift Date</strong> : ${JobDetails?.shiftDate || ''}</p>
             <p><strong>Time</strong> : ${JobDetails?.shiftTime || ''}</p>
         </div>`;
@@ -544,7 +544,7 @@ exports.updateJobTSVerify = async (req, res) => {
         const subject2 = `${clinicalInfo?.firstName} ${clinicalInfo?.lastName}'s timesheet has been verified!`;
         const content2 = `<div id=":18t" class="a3s aiL ">
             <p><strong>Job / Shift</strong> : ${jobId}</p>
-            <p><strong>Hospital_Manager</strong> : ${JobDetails?.location || ''}</p>
+            <p><strong>Hotel_Manager</strong> : ${JobDetails?.location || ''}</p>
             <p><strong>Shift Date</strong> : ${JobDetails?.shiftDate || ''}</p>
             <p><strong>Time</strong> : ${JobDetails?.shiftTime || ''}</p>
         </div>`;
@@ -820,7 +820,7 @@ const MailTransfer = async (name, subject, content) => {
     const [firstName, lastName] = name;
 
     try {
-        const clinician = await hospital_user.findOne({ firstName, lastName });
+        const clinician = await hotel_user.findOne({ firstName, lastName });
         if (clinician) {
             const sendResult = await mailTrans.sendMail(clinician.email, subject, content);
         } else {
@@ -843,7 +843,7 @@ function convertToInternationalFormat(phoneNumber) {
 const pushSms = async (name, message) => {
     const [firstName, lastName] = name;
     try {
-        const clinician = await hospital_user.findOne({ firstName, lastName });
+        const clinician = await hotel_user.findOne({ firstName, lastName });
         const phoneNumber = convertToInternationalFormat(clinician.phoneNumber)
         if (clinician) {
             const sendResult = await phoneSms.pushNotification(message, phoneNumber);
@@ -944,14 +944,14 @@ exports.Update = async (req, res) => {
                 const subject = `BookSmart™ - You failed Job`
                 const content = `<div id=":18t" class="a3s aiL ">
                         <p>
-                        <strong> ${updatedDocument.nurse}: You failed in job:${updatedDocument.jobId} beacuse the Hospital_Manager don't accept you.<br></strong>
+                        <strong> ${updatedDocument.nurse}: You failed in job:${updatedDocument.jobId} beacuse the Hotel_Manager don't accept you.<br></strong>
                         </p>
                         <p><strong>-----------------------<br></strong></p>
                         <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
                         <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
                         <p><br></p>
                     </div>`
-                const smsContent = `${updatedDocument.nurse}: You failed in job:${updatedDocument.jobId} beacuse the Hospital_Manager don't accept you.`
+                const smsContent = `${updatedDocument.nurse}: You failed in job:${updatedDocument.jobId} beacuse the Hotel_Manager don't accept you.`
                 const sucSub = `BookSmart™ - You accpeted Job`
                 const sucCnt = `<div id=":18t" class="a3s aiL ">
                         <p>
@@ -1104,11 +1104,11 @@ async function generateInovices () {
     }, {});
 
     async function pdfGenerate (invoiceData, key) {
-        const invoicesForHospital_Manager = [];
+        const invoicesForHotel_Manager = [];
         const htmlContent = await invoiceHTML.generateInvoiceHTML(invoiceData, key);
         const invoicePath = await generatePDF(htmlContent, `${key}.pdf`);
-        invoicesForHospital_Manager.push({ facilityId: key, path: invoicePath });
-        invoices.push(...invoicesForHospital_Manager);
+        invoicesForHotel_Manager.push({ facilityId: key, path: invoicePath });
+        invoices.push(...invoicesForHotel_Manager);
     }
     Object.keys(transformedArray).forEach(key => {
         const facilityData = transformedArray[key];
@@ -1126,7 +1126,7 @@ exports.generateInvoice = async (req, res) => {
             invoiceGenerate = false;
             return res.status(200).json({message: 'success', invoiceData: invoices});
         } else {
-            return res.status(404).json({message:'Hospital_Manager Invoices Not generated. Pleas try again 30 mins later.'});
+            return res.status(404).json({message:'Hotel_Manager Invoices Not generated. Pleas try again 30 mins later.'});
         }
     } catch (e) {
         console.log(e);
@@ -1161,7 +1161,7 @@ exports.sendInvoice = async (req, res) => {
     const mailOptions = {
         from: "lovely7rh@gmail.com",
         to: email,
-        subject: `Invoice for Hospital_Manager ${facilityId}`,
+        subject: `Invoice for Hotel_Manager ${facilityId}`,
         text: 'Please find the attached invoice.',
         attachments: [
             {
