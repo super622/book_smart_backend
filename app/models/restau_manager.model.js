@@ -45,7 +45,7 @@ module.exports = mongoose => {
             type: String,
             default: ''
         },
-        facilityAcknowledgeTerm: {
+        AcknowledgeTerm: {
             type: Boolean,
             default: false
         },
