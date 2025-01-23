@@ -5,6 +5,7 @@ const Bid = db.restau_bid;
 const Job = db.restau_job;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const moment = require('moment-timezone');
+const phoneSms = require('../controllers/twilio.js');
 var dotenv = require('dotenv');
 dotenv.config()
 
@@ -391,16 +392,17 @@ exports.updateUserStatus = async (req, res) => {
 exports.Update = async (req, res) => {
     try {
         const request = req.body;
-        console.log(request);
-    
+        const user = req.user;
         const extracted = await extractNonJobId(request);
     
         if (extracted.updateEmail) {
            extracted.email = extracted.updateEmail;
            delete extracted.updateEmail;
         }
+
+        console.log(user);
     
-        Restau_User.findOneAndUpdate({ email: request.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+        Restau_User.findOneAndUpdate({ email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
             console.log('updated');
             if (err) {
                 console.log(err);

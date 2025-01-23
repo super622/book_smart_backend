@@ -11,7 +11,7 @@ module.exports = app => {
     router.post('/resetPassword', restau_user.resetPassword);
     router.post('/phoneSms', restau_user.phoneSms);
     router.post('/verifyPhone', restau_user.verifyPhone);
-    router.post('/update', restau_user.Update);
+    router.post('/update', verifyUser, restau_user.Update);
     router.post('/getUserProfile', verifyUser, restau_user.getUserProfile);
     router.get('/clinician', verifyUser, restau_user.clinician);
     router.get('/getAllList', verifyUser, restau_user.getAllList);

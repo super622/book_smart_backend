@@ -274,12 +274,10 @@ exports.Update = async (req, res) => {
        extracted.contactEmail =extracted.updateEmail;
        delete extracted.updateEmail;
     }
-    
+    console.log(user);
     if (user) {
         try {
-            const query = role === "Admin" 
-                            ? { contactEmail: request.contactEmail, userRole: 'restaurantManager' } 
-                            : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
+            const query = { contactEmail: user.contactEmail };
         
             const updateFields = { $set: extracted };
             const updatedDocument = await Restau_manager.findOneAndUpdate(query, updateFields, { new: true });

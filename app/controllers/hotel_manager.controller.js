@@ -257,12 +257,10 @@ exports.Update = async (req, res) => {
        extracted.contactEmail =extracted.updateEmail;
        delete extracted.updateEmail;
     }
-    
+
     if (user) {
         try {
-            const query = role === "Admin" 
-                            ? { contactEmail: request.contactEmail, userRole: 'hotelManager' } 
-                            : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
+            const query = { contactEmail: user.contactEmail };
         
             const updateFields = { $set: extracted };
             const updatedDocument = await Hotel_Manager.findOneAndUpdate(query, updateFields, { new: true });
