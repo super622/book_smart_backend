@@ -111,7 +111,7 @@ exports.login = async (req, res) => {
         console.log("LogIn");
         const { contactEmail, password, userRole } = req.body;
         const isUser = await Hotel_Manager.findOne({ contactEmail: contactEmail.toLowerCase(), password: password, userRole: userRole }, 
-                                                { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1, password: 1, contactPassword: 1, facilityAcknowledgeTerm: 1, address: 1, avatar: 1 });
+                                                { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1, password: 1, contactPassword: 1, AcknowledgeTerm: 1, address: 1, avatar: 1 });
         console.log(isUser);
         if (isUser) {
             if (isUser.userStatus === 'activate') {
