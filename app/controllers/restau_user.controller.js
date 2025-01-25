@@ -69,9 +69,14 @@ exports.signup = async (req, res) => {
             response.userStatus = "pending approval";
             response.AcknowledgeTerm = false;
 
-            if (response?.photoImage?.name != "") {
-                const s3FileUrl = await uploadToS3(response.photoImage);
-                response.photoImage.content = s3FileUrl;
+            // if (response?.photoImage?.name != "") {
+            //     const s3FileUrl = await uploadToS3(response.photoImage);
+            //     response.photoImage.content = s3FileUrl;
+            // }
+
+            if (response?.resume?.name != "") {
+                const s3FileUrl = await uploadToS3(response.resume);
+                response.resume.content = s3FileUrl;
             }
 
             const auth = new Restau_User(response);
@@ -136,7 +141,7 @@ exports.login = async (req, res) => {
         }
 
         let userData = await Restau_User.findOne({ email: email.toLowerCase(), password: password }, 
-                                            { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
+                                            { aic: 1, firstName: 1, relevantExep: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
 
         if (userData) {
             // if (userData.userStatus === 'activate') {
@@ -472,6 +477,7 @@ exports.getUserInfo = async (req, res) => {
                     name: '$resume.name',
                     type: '$resume.type'
                 },
+                relevantExep: 1
             });
 
         if (isUser) {
@@ -505,7 +511,8 @@ exports.getUserProfile = async (req, res) => {
                 content: '',
                 name: '$resume.name',
                 type: '$resume.type'
-            }
+            },
+            relevantExep: 1
         });
         console.log('got user data');
         if (isUser) {
@@ -557,7 +564,9 @@ exports.getUserProfile = async (req, res) => {
                 ratio += '%';
             }
             userData = {
-                photoImage: isUser.photoImage,
+                resume: isUser.resume,
+                relevantExep: isUser.relevantExep,
+                // photoImage: isUser.photoImage,
                 entryDate: isUser.entryDate,
                 firstName: isUser.firstName,
                 lastName: isUser.lastName,

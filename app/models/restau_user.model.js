@@ -62,17 +62,20 @@ module.exports = mongoose => {
                 default: ''
             }
         },
-        photoImage: {
-            type: { type: String, default: '' },
-            content: { type: String, default: '' },
-            name: { type: String, default: '' }
-        },
+        // photoImage: {
+        //     type: { type: String, default: '' },
+        //     content: { type: String, default: '' },
+        //     name: { type: String, default: '' }
+        // },
         resume: {
             type: { type: String, default: '' },
             content: { type: String, default: '' },
             name: { type: String, default: '' }
         },
-        
+        relevantExep: {
+            type: String,
+            default: ''
+        },
         password: {
             type: String,
             required: true,

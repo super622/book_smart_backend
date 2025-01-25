@@ -11,6 +11,7 @@ dotenv.config()
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+const { resume } = require("pdfkit");
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -68,9 +69,14 @@ exports.signup = async (req, res) => {
             response.userStatus = "pending approval";
             response.AcknowledgeTerm = false;
 
-            if (response?.photoImage?.name != "") {
-                const s3FileUrl = await uploadToS3(response.photoImage);
-                response.photoImage.content = s3FileUrl;
+            // if (response?.photoImage?.name != "") {
+            //     const s3FileUrl = await uploadToS3(response.photoImage);
+            //     response.photoImage.content = s3FileUrl;
+            // }
+
+            if (response?.resume?.name != "") {
+                const s3FileUrl = await uploadToS3(response.resume);
+                response.resume.content = s3FileUrl;
             }
 
             const auth = new Hotel_User(response);
@@ -135,7 +141,7 @@ exports.login = async (req, res) => {
         }
 
         let userData = await Hotel_User.findOne({ email: email.toLowerCase(), password: password }, 
-                                            { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
+                                            { aic: 1, firstName: 1, lastName: 1, relevantExep: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, AcknowledgeTerm: 1, password: 1 });
 
         if (userData) {
             if (userData.userStatus === 'activate') {
@@ -466,11 +472,12 @@ exports.getUserInfo = async (req, res) => {
         const { userId } = req.body;
         let isUser = await Hotel_User.findOne({ aic: userId }, 
             { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
-                photoImage: {
+                resume: {
                     content: '',
-                    name: '$photoImage.name',
-                    type: '$photoImage.type'
+                    name: '$resume.name',
+                    type: '$resume.type'
                 },
+                relevantExep: 1
             });
         if (isUser) {
             const payload = {
@@ -493,11 +500,14 @@ exports.getUserInfo = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
-        const isUser = await Hotel_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: {
-            content: '',
-            name: '$photoImage.name',
-            type: '$photoImage.type'
-        } });
+        const isUser = await Hotel_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, 
+            resume: {
+                content: '',
+                name: '$resume.name',
+                type: '$resume.type'
+            },
+            relevantExep: 1
+        });
         console.log('got user data');
         if (isUser) {
             let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiverId: userId }, { jobId: 1, entryDate: 1, facility: 1, bidStatus: 1 });
@@ -505,7 +515,7 @@ exports.getUserProfile = async (req, res) => {
             console.log('got bid data');
             let awardedCnt = await Bid.countDocuments({ bidStatus: 'Awarded', caregiverId: userId });
             let appliedCnt = await Bid.countDocuments({ caregiverId: userId });
-            console.log('got bid countdata')
+            console.log('got bid countdata');
             let ratio = '';
             let totalJobRating = 0;
             let avgJobRating = 0;
@@ -548,7 +558,8 @@ exports.getUserProfile = async (req, res) => {
                 ratio += '%';
             }
             userData = {
-                photoImage: isUser.photoImage,
+                resume: isUser.resume,
+                relevantExep: isUser.relevantExep,
                 entryDate: isUser.entryDate,
                 firstName: isUser.firstName,
                 lastName: isUser.lastName,
