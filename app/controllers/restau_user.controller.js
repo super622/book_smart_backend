@@ -11,6 +11,7 @@ dotenv.config()
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+const { resume } = require("pdfkit");
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -55,14 +56,14 @@ exports.signup = async (req, res) => {
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
+                <p><strong>Hospitality Contractor-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
                 <p><strong>Password</strong>: <br></p>
                 <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
-            </div>`
+            </div>`;
             response.entryDate = new Date();
             response.aic = newUserId;
             response.userStatus = "pending approval";
@@ -82,14 +83,14 @@ exports.signup = async (req, res) => {
             </div>`
             let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
 
-            const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            const subject1 = `A New Hospitality Independent Contractor ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
-                <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
+                <strong>Note: The Hospitality Independent Contractor will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
+                <p><strong>Hospitality Contractor-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
                 <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
@@ -461,85 +462,16 @@ exports.getUserInfo = async (req, res) => {
         const { userId } = req.body;
         let isUser = await Restau_User.findOne({ aic: userId }, 
             { aic: 1, firstName: 1, lastName: 1, email: 1, userStatus: 1, userRole: 1, phoneNumber: 1, title: 1, birthday: 1, socialSecurityNumber: 1, verifiedSocialSecurityNumber: 1, address: 1, password: 1, entryDate: 1, device: 1, 
-                photoImage: {
+                // photoImage: {
+                //     content: '',
+                //     name: '$photoImage.name',
+                //     type: '$photoImage.type'
+                // }, 
+                resume: {
                     content: '',
-                    name: '$photoImage.name',
-                    type: '$photoImage.type'
+                    name: '$resume.name',
+                    type: '$resume.type'
                 },
-                //  driverLicense: {
-                //     content: '',
-                //     name: '$driverLicense.name',
-                //     type: '$driverLicense.type'
-                // }, socialCard: {
-                //     content: '',
-                //     name: '$socialCard.name',
-                //     type: '$socialCard.type'
-                // }, physicalExam: {
-                //     content: '',
-                //     name: '$physicalExam.name',
-                //     type: '$physicalExam.type'
-                // }, ppd: {
-                //     content: '',
-                //     name: '$ppd.name',
-                //     type: '$ppd.type'
-                // }, mmr: {
-                //     content: '',
-                //     name: '$mmr.name',
-                //     type: '$mmr.type'
-                // }, healthcareLicense: {
-                //     content: '',
-                //     name: '$healthcareLicense.name',
-                //     type: '$healthcareLicense.type'
-                // }, resume: {
-                //     content: '',
-                //     name: '$resume.name',
-                //     type: '$resume.type'
-                // }, covidCard: {
-                //     content: '',
-                //     name: '$covidCard.name',
-                //     type: '$covidCard.type'
-                // }, bls: {
-                //     content: '',
-                //     name: '$bls.name',
-                //     type: '$bls.type'
-                // }, flu: {
-                //     content: '',
-                //     name: '$flu.name',
-                //     type: '$flu.type'
-                // }, cna: {
-                //     content: '',
-                //     name: '$cna.name',
-                //     type: '$cna.type'
-                // }, taxForm: {
-                //     content: '',
-                //     name: '$taxForm.name',
-                //     type: '$taxForm.type'
-                // }, chrc102: {
-                //     content: '',
-                //     name: '$chrc102.name',
-                //     type: '$chrc102.type'
-                // }, chrc103: {
-                //     content: '',
-                //     name: '$chrc103.name',
-                //     type: '$chrc103.type'
-                // }, drug: {
-                //     content: '',
-                //     name: '$drug.name',
-                //     type: '$drug.type'
-                // }, ssc: {
-                //     content: '',
-                //     name: '$ssc.name',
-                //     type: '$ssc.type'
-                // }, copyOfTB: {
-                //     content: '',
-                //     name: '$copyOfTB.name',
-                //     type: '$copyOfTB.type'
-                // }, hepB: {
-                //     content: '',
-                //     name: '$hepB.name',
-                //     type: '$hepB.type'
-                // },
-                // driverLicenseStatus: 1, socialCardStatus: 1, physicalExamStatus: 1, ppdStatus: 1, mmrStatus: 1, healthcareLicenseStatus: 1, resumeStatus: 1, covidCardStatus: 1, blsStatus: 1, hepBStatus: 1, fluStatus: 1, cnaStatus: 1, taxFormStatus: 1, chrc102Status: 1, chrc103Status: 1, drugStatus: 1, sscStatus: 1, copyOfTBStatus: 1
             });
 
         if (isUser) {
@@ -563,11 +495,18 @@ exports.getUserInfo = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;
-        const isUser = await Restau_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, photoImage: {
-            content: '',
-            name: '$photoImage.name',
-            type: '$photoImage.type'
-        } });
+        const isUser = await Restau_User.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, title: 1, address: 1, 
+            // photoImage: {
+            //     content: '',
+            //     name: '$photoImage.name',
+            //     type: '$photoImage.type'
+            // }
+            resume: {
+                content: '',
+                name: '$resume.name',
+                type: '$resume.type'
+            }
+        });
         console.log('got user data');
         if (isUser) {
             let awardedData = await Bid.find({ bidStatus: 'Awarded', caregiverId: userId }, { jobId: 1, entryDate: 1, facility: 1, bidStatus: 1 });

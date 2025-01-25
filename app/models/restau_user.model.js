@@ -67,6 +67,12 @@ module.exports = mongoose => {
             content: { type: String, default: '' },
             name: { type: String, default: '' }
         },
+        resume: {
+            type: { type: String, default: '' },
+            content: { type: String, default: '' },
+            name: { type: String, default: '' }
+        },
+        
         password: {
             type: String,
             required: true,

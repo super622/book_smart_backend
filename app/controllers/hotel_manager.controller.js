@@ -47,7 +47,7 @@ exports.signup = async (req, res) => {
         if (!isUser) {
             const subject = `Welcome to BookSmart™`;
             const content = `<div id=":18t" class="a3s aiL ">
-                <p>Thank you for registering as a Facility User!</p>
+                <p>Thank you for registering as a Hospitality Independent Contractor!</p>
                 <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
             </div>`;
             response.entryDate = new Date();
@@ -64,10 +64,10 @@ exports.signup = async (req, res) => {
 
             let sendResult = mailTrans.sendMail(response.contactEmail, subject, content);
 
-            const subject1 = `A New Facility ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            const subject1 = `A New Hospitality Independent Contractor ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
-                <strong>Note: The facility will not be able to view shifts until approved by the "Administrator"<br></strong>
+                <strong>Note: The Hospitality Independent Contractor will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>

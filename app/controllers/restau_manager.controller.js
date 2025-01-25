@@ -46,68 +46,50 @@ exports.signup = async (req, res) => {
         const isUser = await Restau_manager.findOne({ contactEmail: response.contactEmail });
 
         if (!isUser) {
-            const subject = `Welcome to BookSmart™ - ${response.firstName} ${response.lastName}`
+            const subject = `Welcome to BookSmart™`;
             const content = `<div id=":18t" class="a3s aiL ">
-                <p>
-                <strong>Note: Once you are "APPROVED" you will be notified via email and can view shifts<br></strong>
-                </p>
-                <p><strong>-----------------------<br></strong></p>
-                <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
-                <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
-                <p><strong>Password</strong>: <br></p>
-                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
-                <p>-----------------------</p>
-                <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
-            </div>`
+                <p>Thank you for registering as a Hospitality Independent Contractor!</p>
+                <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
+            </div>`;
             response.entryDate = new Date();
-            response.aic = newUserId;
+            response.aic = newFacilityId;
             response.userStatus = "activate";
-            response.AcknowledgeTerm = false;
 
-            if (response?.avatar?.name != "") {
+            if (response.avatar.name != "") {
                 const s3FileUrl = await uploadToS3(response.avatar);
                 response.avatar.content = s3FileUrl;
             }
 
             const auth = new Restau_manager(response);
-            let sendResult = mailTrans.sendMail(response.email, subject, content);
-            const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
-            const content2 = `<div id=":18t" class="a3s aiL ">
-                <p>Please click the following link to fill out the enrollment forms.</p>
-                <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhC7jj-Qqg1kETpx-qVqvryaiJrzPVomGSSnCFCPPc_Q_VSbdCEZnNvPS7PPD1499Gg*" target="_blank">BookSmart™ Enrollment Packet</a></p>
-            </div>`
-            let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
 
-            const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            let sendResult = mailTrans.sendMail(response.contactEmail, subject, content);
+
+            const subject1 = `A New Hospitality Independent Contractor ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
-                <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
+                <strong>Note: The Hospitality Independent Contractor will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
-                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
-                <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
+                <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.contactEmail}" target="_blank">${response.contactEmail}</a></p>
+                <p><strong>Phone</strong>: <a href="tel:${response.contactPhone || ''}" target="_blank">${response.contactPhone || ''}</a></p>
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
             let adminMail1 = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
-            let adminMail12 = mailTrans.sendMail('info@whybookdumb.com', subject1, content1);
             let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
 
             if (sendResult) {
                 await auth.save();
                 const payload = {
-                    email: response.contactEmail.toLowerCase(),
+                    email: response.contactEmail,
                     userRole: response.userRole,
-                    iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + expirationTime
+                    iat: Math.floor(Date.now() / 1000), // Issued at time
+                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
-                return res.status(200).json({ message: "Successfully Regisetered", token: token });
+                return res.status(200).json({ msg: "Successfully Registered", token: token });
             } else {
                 return res.status(500).json({ msg: "Can't Register Now" });
             }

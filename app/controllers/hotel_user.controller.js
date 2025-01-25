@@ -55,7 +55,7 @@ exports.signup = async (req, res) => {
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
+                <p><strong>Hospitality Contractor-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
                 <p><strong>Password</strong>: <br></p>
@@ -82,14 +82,14 @@ exports.signup = async (req, res) => {
             </div>`
             let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
 
-            const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            const subject1 = `A New Hospitality Independent Contractor ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
-                <strong>Note: The caregivers will not be able to view shifts until approved by the "Administrator"<br></strong>
+                <strong>Note: The Hospitality Independent Contractors will not be able to view shifts until approved by the "Administrator"<br></strong>
                 </p>
                 <p><strong>-----------------------<br></strong></p>
                 <p><strong>Date</strong>: ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
-                <p><strong>Nurse-ID</strong>: ${newUserId}</p>
+                <p><strong>Hospitality Contractor-ID</strong>: ${newUserId}</p>
                 <p><strong>Name</strong>: ${response.firstName} ${response.lastName}</p>
                 <p><strong>Email / Login</strong><strong>:</strong> <a href="mailto:${response.email}" target="_blank">${response.email}</a></p>
                 <p><strong>Phone</strong>: <a href="tel:${response.phoneNumber || ''}" target="_blank">${response.phoneNumber || ''}</a></p>
