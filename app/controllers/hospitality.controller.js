@@ -836,8 +836,49 @@ exports.updatePassword = async (req, res) => {
             } else {
                 return res.status(404).json({ message: "Password change failed." })
             }
+        } else if (userRole == 'Restaurant Manager') {
+            const restauManager = await RestauHire.findOne({ aic: userId });
+            if (restauManager) {
+                const updateUser = await RestauHire.updateOne({ aic: userId }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
+                const verifySubject8 = "Your BookSmart™ Password Has Been Reset"
+                const verifiedContent8 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>${restauManager.firstName} ${restauManager.lastName}</p>
+                    <p>Your password has been reset!</p>
+                    <p><strong>--------------------</strong></p>
+                    <p>Login: ${restauManager.contactEmail}</p>
+                    <p>Password: ${tmpPassword}</p>
+                    <p><strong>--------------------</strong></p>
+                    <p><strong>BOOK SMART</strong></p>
+                    <p style="color: red;">(save to favorites or bookmark to Home Screen)</p>
+                </div>`
+                let approveResult8 = mailTrans.sendMail(restauManager.contactEmail, verifySubject8, verifiedContent8);
+                return res.status(200).json({message: "Password changed successfully."});
+            } else {
+                return res.status(404).json({ message: "Password change failed." })
+            }
+        } else if (userRole == 'Hotel Manager') {
+            const hotelManager = await HoteLHire.findOne({ aic: userId });
+            if (hotelManager) {
+                const updateUser = await HoteLHire.updateOne({ aic: userId }, { $set: { password: password, verifyTime: 0, verifyCode: '' } });
+                const verifySubject8 = "Your BookSmart™ Password Has Been Reset"
+                const verifiedContent8 = `
+                <div id=":15j" class="a3s aiL ">
+                    <p>${hotelManager.firstName} ${hotelManager.lastName}</p>
+                    <p>Your password has been reset!</p>
+                    <p><strong>--------------------</strong></p>
+                    <p>Login: ${hotelManager.contactEmail}</p>
+                    <p>Password: ${tmpPassword}</p>
+                    <p><strong>--------------------</strong></p>
+                    <p><strong>BOOK SMART</strong></p>
+                    <p style="color: red;">(save to favorites or bookmark to Home Screen)</p>
+                </div>`
+                let approveResult8 = mailTrans.sendMail(hotelManager.contactEmail, verifySubject8, verifiedContent8);
+                return res.status(200).json({message: "Password changed successfully."});
+            } else {
+                return res.status(404).json({ message: "Password change failed." })
+            }
         }
-
     } catch (e) {
         console.log(e);
         return res.status(500).json({ message: "An Error Occured!" })
@@ -1168,4 +1209,559 @@ exports.update = async (req, res) => {
             }
         })
     }
+};
+
+exports.getAllHotelAndRestaurants = async (req, res) => {
+    try {
+        const user = req.user;
+        const { search = '', page = 1 } = req.body;
+        const limit = 25;
+        const skip = (page - 1) * limit;
+        const query = {};
+
+        if (search) {
+            query.$or = [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { contactEmail: { $regex: search, $options: 'i' } },
+                { companyName: { $regex: search, $options: 'i' } },
+                { contactPhone: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const restauData = await RestauHire.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
+                                            .sort({ entryDate: -1 });
+
+        const hotelData = await HoteLHire.find(query, { aic: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, userStatus: 1, selectedoption: 1, signature: 1, userRole: 1, contactEmail: 1 })
+                                            .sort({ entryDate: -1 });
+
+        let restauDataArr = [];
+        restauData.map((item, index) => {
+            restauDataArr.push([
+                item.aic,
+                moment(item.entryDate).format("MM/DD/YYYY"),
+                item.companyName,
+                item.firstName + " " + item.lastName,
+                item.userStatus,
+                item.selectedoption,
+                item.signature,
+                "Restaurant Manager",
+                "view_shift",
+                "pw",
+                item.contactEmail
+            ]);
+        });
+
+        let hotelDataArr = [];
+        hotelData.map((item, index) => {
+            hotelDataArr.push([
+                item.aic,
+                moment(item.entryDate).format("MM/DD/YYYY"),
+                item.companyName,
+                item.firstName + " " + item.lastName,
+                item.userStatus,
+                item.selectedoption,
+                item.signature,
+                "Hotel Manager",
+                "view_shift",
+                "pw",
+                item.contactEmail
+            ]);
+        });
+
+        const combinedList = [...restauDataArr, ...hotelDataArr];
+        const totalRecords = combinedList.length;
+        const dataArray = combinedList.slice(skip, skip + limit);
+        const totalPageCnt = Math.ceil(totalRecords / limit);
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        };
+        const token = setToken(payload);
+
+        if (token) {
+            return res.status(200).json({ message: "Successfully Get!", dataArray, totalPageCnt, token });
+        } else {
+            return res.status(400).json({ message: "Cannot logined User!" });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};
+
+exports.getHotelAndRestaurantInfo = async (req, res) => {
+    try {
+        const user = req.user;
+        const { userId, userRole } = req.body;
+
+        if (userRole == 'Restaurant Manager') {
+            const userData = await RestauHire.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, aic: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1, contactPhone: 1, address: 1 });
+            const jobList = await RestaJob.find({ facilityId: userId }, { jobId: 1, entryDate: 1, jobNum: 1, jobStatus: 1, shiftDate: 1, shiftTime: 1 });
+            
+            let jobData = [];
+            jobList.map((item, index) => {
+                jobData.push([
+                    item.jobId,
+                    item.entryDate,
+                    item.jobNum,
+                    item.jobStatus,
+                    item.shiftDate + " " + item.shiftTime
+                ]);
+            });
+    
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + expirationTime
+            };
+            const token = setToken(payload);
+    
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", userData, jobData, token: token });
+            } else {
+                res.status(500).json({ message: "Cannot logined User!" })
+            }
+        } else if (userRole == 'Hotel Manager') {
+            const userData = await HoteLHire.findOne({ aic: userId }, { entryDate: 1, firstName: 1, lastName: 1, aic: 1, contactEmail: 1, companyName: 1, userRole: 1, userStatus: 1, contactPhone: 1, address: 1 });
+            const jobList = await HotelJob.find({ facilityId: userId }, { jobId: 1, entryDate: 1, jobNum: 1, jobStatus: 1, shiftDate: 1, shiftTime: 1 });
+            let jobData = [];
+            jobList.map((item, index) => {
+                jobData.push([
+                    item.jobId,
+                    item.entryDate,
+                    item.jobNum,
+                    item.jobStatus,
+                    item.shiftDate + " " + item.shiftTime
+                ]);
+            });
+
+            const payload = {
+                email: user.email,
+                userRole: user.userRole,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + expirationTime
+            };
+            const token = setToken(payload);
+    
+            if (token) {
+                res.status(200).json({ message: "Successfully Get!", userData, jobData, token: token });
+            } else {
+                res.status(500).json({ message: "Cannot logined User!" })
+            }
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+};
+
+exports.shifts = async (req, res) => {
+    try {
+        const user = req.user;
+
+        const { rSearch = '', rPage = 1, hSearch = '', hPage = 1 } = req.body;
+        const limit = 15;
+        const rSkip = (rPage - 1) * limit;
+        const hSkip = (hPage - 1) * limit;
+        const rQuery = {};
+        const hQuery = {};
+  
+        if (rSearch.trim()) {
+            const isNumeric = !isNaN(rSearch);
+            rQuery.$or = [
+                { entryDate: { $regex: rSearch, $options: 'i' } },
+                { facility: { $regex: rSearch, $options: 'i' } },
+                { jobNum: { $regex: rSearch, $options: 'i' } },
+                { location: { $regex: rSearch, $options: 'i' } },
+                { jobStatus: { $regex: rSearch, $options: 'i' } },
+                ...(isNumeric ? [{ jobId: Number(rSearch) }] : []),
+                { noStatusExplanation: { $regex: rSearch, $options: 'i' } }
+            ];
+        }
+
+        if (hSearch.trim()) {
+            const isNumeric = !isNaN(hSearch);
+            hQuery.$or = [
+                { entryDate: { $regex: hSearch, $options: 'i' } },
+                { facility: { $regex: hSearch, $options: 'i' } },
+                { jobNum: { $regex: hSearch, $options: 'i' } },
+                { location: { $regex: hSearch, $options: 'i' } },
+                { jobStatus: { $regex: hSearch, $options: 'i' } },
+                ...(isNumeric ? [{ jobId: Number(hSearch) }] : []),
+                { noStatusExplanation: { $regex: hSearch, $options: 'i' } }
+            ];
+        }
+  
+        const rPipeline = [
+            { $match: rQuery },
+            { 
+                $addFields: { 
+                    parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
+                }
+            },{ 
+                $sort: { parsedEntryDate: -1 } 
+            }, 
+            { $project: {
+                entryDate: 1, facility: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, 
+                shiftTime: 1, degree: 1, jobStatus: 1, isHoursSubmit: 1, isHoursApproved: 1,
+                timeSheet: { content: '$timeSheet.content', name: '$timeSheet.name', type: '$timeSheet.type' },
+                timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' },
+                noStatusExplanation: 1
+            }},
+            { $skip: rSkip },
+            { $limit: limit }
+        ];
+
+        const hPipeline = [
+            { $match: hQuery },
+            { 
+                $addFields: { 
+                    parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
+                }
+            },{ 
+                $sort: { parsedEntryDate: -1 } 
+            }, 
+            { $project: {
+                entryDate: 1, facility: 1, jobId: 1, jobNum: 1, location: 1, shiftDate: 1, 
+                shiftTime: 1, degree: 1, jobStatus: 1, isHoursSubmit: 1, isHoursApproved: 1,
+                timeSheet: { content: '$timeSheet.content', name: '$timeSheet.name', type: '$timeSheet.type' },
+                timeSheetTemplate: { content: '', name: '$timeSheetTemplate.name', type: '$timeSheetTemplate.type' },
+                noStatusExplanation: 1
+            }},
+            { $skip: hSkip },
+            { $limit: limit }
+        ];
+  
+        const restauData = await RestaJob.aggregate(rPipeline);
+        const totalResetauJobRecords = await RestaJob.countDocuments(rQuery);
+        const totalRestauPageCnt = Math.ceil(totalResetauJobRecords / limit);
+
+        const restauJobIds = restauData.map(item => item.jobId);
+        const restauBids = await RestauBid.find({ jobId: { $in: restauJobIds } }).lean();
+        const restauBidMap = {};
+        const totalRestauBidCountMap = {};
+        
+        restauBids.forEach(bid => {
+            if (bid.bidStatus === 'Awarded') {
+                restauBidMap[bid.jobId] = bid.caregiver;
+            }
+            totalRestauBidCountMap[bid.jobId] = (totalRestauBidCountMap[bid.jobId] || 0) + 1;
+        });
+  
+        let restauDataArray = [];
+        for (const item of restauData) {
+            restauDataArray.push([
+                item.entryDate,
+                item.facility,
+                item.jobId,
+                item.jobNum,
+                item.location,
+                item.shiftDate,
+                item.shiftTime,
+                "view_shift",
+                item.degree,
+                item.jobStatus,
+                restauBidMap[item.jobId] || '',
+                totalRestauBidCountMap[item.jobId] || 0,
+                "view_hours",
+                item.isHoursSubmit ? "yes" : "no",
+                item.isHoursApproved ? "yes" : "no",
+                item.timeSheet,
+                item.timeSheetTemplate?.name,
+                item.noStatusExplanation,
+                "delete",
+                "Restaurant"
+            ]);
+        }
+
+        const hotelData = await HotelJob.aggregate(hPipeline);
+        const totalHotelJobRecords = await HotelJob.countDocuments(hQuery);
+        const totalHotelPageCnt = Math.ceil(totalHotelJobRecords / limit);
+
+        const hotelJobIds = hotelData.map(item => item.jobId);
+        const hotelBids = await RestauBid.find({ jobId: { $in: hotelJobIds } }).lean();
+        const hotelBidMap = {};
+        const totalHotelBidCountMap = {};
+        
+        hotelBids.forEach(bid => {
+            if (bid.bidStatus === 'Awarded') {
+                hotelBidMap[bid.jobId] = bid.caregiver;
+            }
+            totalHotelBidCountMap[bid.jobId] = (totalHotelBidCountMap[bid.jobId] || 0) + 1;
+        });
+  
+        let hotelDataArray = [];
+        for (const item of hotelData) {
+            hotelDataArray.push([
+                item.entryDate,
+                item.facility,
+                item.jobId,
+                item.jobNum,
+                item.location,
+                item.shiftDate,
+                item.shiftTime,
+                "view_shift",
+                item.degree,
+                item.jobStatus,
+                hotelBidMap[item.jobId] || '',
+                totalHotelBidCountMap[item.jobId] || 0,
+                "view_hours",
+                item.isHoursSubmit ? "yes" : "no",
+                item.isHoursApproved ? "yes" : "no",
+                item.timeSheet,
+                item.timeSheetTemplate?.name,
+                item.noStatusExplanation,
+                "delete",
+                "Hotel"
+            ]);
+        }
+
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + expirationTime
+        };
+        const token = setToken(payload);
+
+        return res.status(200).json({ message: "Successfully Get!", restauDataArray, hotelDataArray, totalRestauPageCnt, totalHotelPageCnt, token });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" })
+    }
+}
+
+exports.removeJob = async (req, res) => {
+    const { jobId, role } = req.body;
+    if (!jobId) {
+        return res.status(500).json({ message: "JobId not exist!" });
+    } else {
+        if (role === 'Restaurant') {
+            const result = await RestaJob.deleteOne({ jobId: jobId });
+            return res.status(200).json({ message: "Successfully Removed" });
+        } else if (role === 'Hotel') {
+            const result = await HotelJob.deleteOne({ jobId: jobId });
+            return res.status(200).json({ message: "Successfully Removed" });
+        }
+    }
+};
+
+exports.updateJob = async (req, res) => {
+    try {
+        const request = req.body;
+
+        if (request.role === 'Restaurant') {
+            await RestaJob.updateOne(
+                        { jobId: request.jobId },
+                        { $set: request },
+                        { upsert: false }
+                    )
+                    .then(result => {
+                        if (result.nModified === 0) {
+                            return res.status(500).json({ error: 'Job not found or no changes made' });
+                        }
+                        return res.status(200).json({ message: 'Updated' });
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        return res.status(500).json({ error: err.message });
+                    });
+        } else if (request.role === 'Hotel') {
+            await HotelJob.updateOne(
+                        { jobId: request.jobId },
+                        { $set: request },
+                        { upsert: false }
+                    )
+                    .then(result => {
+                        if (result.nModified === 0) {
+                            return res.status(500).json({ error: 'Job not found or no changes made' });
+                        }
+                        return res.status(200).json({ message: 'Updated' });
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        return res.status(500).json({ error: err.message });
+                    });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+}
+
+exports.updateDocuments = async (req, res) => {
+    try {
+        const user = req.user;
+        const { file, type, prevFile, jobId, role } = req.body;
+    
+        const payload = {
+            email: user.email,
+            userRole: user.userRole,
+            iat: Math.floor(Date.now() / 1000), // Issued at time
+            exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+        };
+        const token = setToken(payload);
+  
+        if (role === 'Restaurant') {
+            if (type == 'timesheet') {
+                if (file.name != '') {
+                    const s3FileUrl = await uploadToS3(file);
+                    await RestaJob.updateOne({ jobId }, { $set: {timeSheet: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
+                } else {
+                    if (prevFile == '') {
+                        await RestaJob.updateOne({ jobId }, { $set: {timeSheet: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+                    }
+                }
+                return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+            } else {
+                if (file.name != '') {
+                    const s3FileUrl = await uploadToS3(file);
+                    await RestaJob.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
+                } else {
+                    if (prevFile == '') {
+                        await RestaJob.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+                    }
+                }
+                return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+            }
+        } else if (role === 'Hotel') {
+            if (type == 'timesheet') {
+                if (file.name != '') {
+                    const s3FileUrl = await uploadToS3(file);
+                    await HotelJob.updateOne({ jobId }, { $set: {timeSheet: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
+                } else {
+                    if (prevFile == '') {
+                        await HotelJob.updateOne({ jobId }, { $set: {timeSheet: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+                    }
+                }
+                return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+            } else {
+                if (file.name != '') {
+                    const s3FileUrl = await uploadToS3(file);
+                    await HotelJob.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: s3FileUrl, type: file.type, name: file.name }, jobStatus: 'Pending Verification'} });
+                } else {
+                    if (prevFile == '') {
+                        await HotelJob.updateOne({ jobId }, { $set: {timeSheetTemplate: { content: '', type: '', name: '' }, jobStatus: 'Available'} });
+                    }
+                }
+                return res.status(200).json({ message: 'The timesheet has been updated.', token: token });
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "An error occurred", error });
+    }
+};
+
+exports.getJob = async (req, res) => {
+    try {
+        // const user = req.user;
+        const {jobId, role} = req.body;
+    
+        if (!jobId) {
+            return res.status(500).json({ message: "JobId not exist" });
+        }
+    
+        if (role === 'Restaurant') {
+            let jobData = await RestaJob.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, nurse: 1, degree: 1, shiftTime: 1, isHoursApproved: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
+            const bidders = await RestauBid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1, caregiverId: 1 });
+      
+            let biddersList = await Promise.all(bidders.map(async (item) => {
+                let bidderInfo = await RestauWork.findOne({ aic: item.caregiverId }, { email: 1, phoneNumber: 1 });
+                return [
+                    item.entryDate,
+                    item.caregiver,
+                    "",
+                    item.message,
+                    item.bidStatus,
+                    "",
+                    item.bidId,
+                    bidderInfo?.email || '',
+                    bidderInfo?.phoneNumber || '',
+                ];
+            }));
+      
+            const workedHours = calculateShiftHours(jobData.shiftStartTime, jobData.shiftEndTime);
+            const startTime = jobData.shiftStartTime ? getTimeFromDate(jobData.shiftStartTime) : '';
+            const endTime = jobData.shiftEndTime ? getTimeFromDate(jobData.shiftEndTime) : '';
+    
+            let workedHoursStr = '';
+    
+            if (startTime != "" && endTime != "") {
+                workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+            }
+
+            console.log(jobData);
+    
+            jobData = { ...jobData.toObject(), workedHours: workedHoursStr, bid_offer: bidders.length };
+    
+            return res.status(200).json({
+                message: "Successfully Get",
+                jobData,
+                bidders: biddersList
+            });
+        } else if (role === 'Hotel') {
+            let jobData = await HotelJob.findOne({ jobId }, { entryDate: 1, jobId: 1, jobNum: 1, isHoursApproved: 1, nurse: 1, degree: 1, shiftTime: 1, shiftDate: 1, payRate: 1, jobStatus: 1, timeSheet: { content: '',name: '$timeSheet.name',type: '$timeSheet.type'}, jobRating: 1, location: 1, bonus: 1 });
+            const bidders = await HotelBid.find({ jobId }, { entryDate: 1, bidId: 1, caregiver: 1, message: 1, bidStatus: 1, caregiverId: 1 });
+      
+            let biddersList = await Promise.all(bidders.map(async (item) => {
+                let bidderInfo = await HotelWork.findOne({ aic: item.caregiverId }, { email: 1, phoneNumber: 1 });
+                return [
+                    item.entryDate,
+                    item.caregiver,
+                    "",
+                    item.message,
+                    item.bidStatus,
+                    "",
+                    item.bidId,
+                    bidderInfo?.email || '',
+                    bidderInfo?.phoneNumber || '',
+                ];
+            }));
+      
+            const workedHours = calculateShiftHours(jobData.shiftStartTime, jobData.shiftEndTime);
+            const startTime = jobData.shiftStartTime ? getTimeFromDate(jobData.shiftStartTime) : '';
+            const endTime = jobData.shiftEndTime ? getTimeFromDate(jobData.shiftEndTime) : '';
+    
+            let workedHoursStr = '';
+    
+            if (startTime != "" && endTime != "") {
+                workedHoursStr = startTime + " to " + endTime + " = " + workedHours;
+            }
+    
+            jobData = { ...jobData.toObject(), workedHours: workedHoursStr, bid_offer: bidders.length };
+    
+            return res.status(200).json({
+                message: "Successfully Get",
+                jobData,
+                bidders: biddersList
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "An error occurred", error });
+    }
+};
+
+exports.updateHoursStatus = async (req, res) => {
+    const { shiftFromDate, shiftEndDate, preTime, isHoursApproved, noStatusExplanation, lunch, jobId, role } = req.body;
+  
+    let finalHoursEquation = 0;
+    if (typeof preTime == 'number' && preTime) {
+        finalHoursEquation = preTime;
+    } else if (typeof preTime != 'number' && preTime) {
+        finalHoursEquation = parseFloat(preTime);
+    }
+  
+    if (role === 'Restaurant') {
+        const result = await RestaJob.updateOne({ jobId }, { $set: { isHoursApproved, lunch, preTime, noStatusExplanation, finalHoursEquation, shiftFromDate, shiftEndDate } });
+    } else if (role === 'Hotel') {
+        const result = await HotelJob.updateOne({ jobId }, { $set: { isHoursApproved, lunch, preTime, noStatusExplanation, finalHoursEquation, shiftFromDate, shiftEndDate } });
+    }
+    return res.status(200).json({ message: "Success" });
 };

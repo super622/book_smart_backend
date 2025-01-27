@@ -14,6 +14,14 @@ module.exports = app => {
   router.post("/getUserProfile", verifyUser, hospitality.getUserProfile);
   router.post("/getUserInfo", verifyUser, hospitality.getUserInfo);
   router.post("/update", verifyUser, hospitality.update);
-
+  router.post("/getAllHotelAndRestaurants", verifyUser, hospitality.getAllHotelAndRestaurants);
+  router.post("/getHotelAndRestaurantInfo", verifyUser, hospitality.getHotelAndRestaurantInfo);
+  router.post("/shifts", verifyUser, hospitality.shifts);
+  router.post("/removeJob", hospitality.removeJob);
+  router.post("/PostJob", hospitality.updateJob);
+  router.post("/updateDocuments", verifyUser, hospitality.updateDocuments);
+  router.post("/getJob", hospitality.getJob);
+  router.post("/updateHoursStatus", hospitality.updateHoursStatus);
+  
   app.use("/api/hospitality", router);
 };
