@@ -867,13 +867,9 @@ exports.getTimesheet = async (req, res) => {
   }
 };
 
-//Login Account
 exports.getAllData = async (req, res) => {
   try {
-    console.log("getAllData");
     const user = req.user;
-    const role = req.headers.role;
-    console.log('role------', req.headers.role);
     const jobStatusCount = [
       { _id: "Available", count: 0 },
       { _id: "Awarded", count: 0 },
@@ -887,8 +883,8 @@ exports.getAllData = async (req, res) => {
     const jobStatus = await Job.aggregate([
       {
         $group: {
-          _id: "$jobStatus", // Group by jobStatus
-          count: { $sum: 1 } // Count documents
+          _id: "$jobStatus",
+          count: { $sum: 1 }
         }
       }
     ]);
@@ -901,51 +897,44 @@ exports.getAllData = async (req, res) => {
       };
     });
 
-
     const nurseStatus = await Job.aggregate([
       {
         $group: {
-          _id: "$nurse", // Group by jobStatus
-          count: { $sum: 1 } // Count documents
+          _id: "$nurse",
+          count: { $sum: 1 }
         }
       },
     ]);
 
-
     const results = await Job.aggregate([
       {
         $group: {
-          _id: { $substr: ["$entryDate", 0, 2] }, // Extract MM from entryDate
-          count: { $sum: 1 } // Count the number of items
+          _id: { $substr: ["$entryDate", 0, 2] },
+          count: { $sum: 1 }
         }
       },
       {
-        $sort: { _id: -1 } // Sort by month descending (12 to 01)
+        $sort: { _id: -1 }
       },
       {
         $project: {
           _id: 0,
-          _id: { $concat: ["$_id", "/24"] }, // Format as MM/24
+          _id: { $concat: ["$_id", "/24"] },
           count: 1
         }
       }
     ]);
 
-    console.log(results);
-    // console.log(jobStatusCount, ': 3998043298098043290890843290843290843290', "\n", updatedCount);
     const payload = {
       email: user.email,
       userRole: user.userRole,
-      iat: Math.floor(Date.now() / 1000), // Issued at time
-      exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + expirationTime
     }
     const token = setToken(payload);
-    // console.log('token----------------------------------------------------->',token);
     if (token) {
-      // const updateUser = await Job.updateOne({email: email, userRole: userRole}, {$set: {logined: true}});
       res.status(200).json({ message: "Successfully Get!", jobData: { job: updatedCount, nurse: nurseStatus, cal: results }, token: token });
-    }
-    else {
+    } else {
       res.status(400).json({ message: "Cannot logined User!" })
     }
   } catch (e) {
@@ -955,7 +944,6 @@ exports.getAllData = async (req, res) => {
 }
 
 function extractNonJobId(job) {
-  // Get the keys of the object
   const keys = Object.keys(job);
 
   // Find the first key that is not 'jobId'

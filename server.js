@@ -3,39 +3,35 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const cors = require("cors");
-const dotenv = require("dotenv");
-const bodyParser = require("body-parser");
+const moment = require('moment-timezone');
 const fileUpload = require('express-fileupload');
 const cron = require('node-cron');
-const moment = require('moment-timezone');
+const bodyParser = require("body-parser");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const app = express();
 
 // Load SSL certificate and key
 // const privateKey = fs.readFileSync('ssl/server.key', 'utf8');
 // const certificate = fs.readFileSync('ssl/server.crt', 'utf8');
-
 // const credentials = { key: privateKey, cert: certificate };
 
 const server = http.createServer(app);
 // const server = https.createServer(credentials, app);
+
 app.use(fileUpload());
 require("./app/socketServer")(server);
-// require("./app/walletavatar")
-
-console.log(new Date);
 
 var corsOptions = {
   origin: "*"
 };
-dotenv.config();
+
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-// parse requests of content-type - application/json
 app.use(express.json());
-// mongoose.connect("mongodb://localhost/phantom-avatars", { useNewUrlParser: true, useUnifiedTopology: true });
-// parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
 
 const db = require("./app/models");
@@ -51,13 +47,6 @@ db.mongoose
     console.log("Cannot connect to the database!", err);
     process.exit();
   });
-
-
-
-// simple route
-app.get("/", (req, res) => {
-  res.json({ message: "Server is running" });
-});
 
 require("./app/routes/clinical.route")(app);
 require("./app/routes/facilities.route")(app);
@@ -75,6 +64,11 @@ require('./app/routes/restau_bid.route.js')(app);
 require('./app/routes/restau_job.route.js')(app);
 require('./app/routes/hotel_bid.route.js')(app);
 require('./app/routes/hotel_job.route.js')(app);
+require('./app/routes/hospitality.route.js')(app);
+
+app.get("/", (req, res) => {
+  res.json({ message: "Server is running" });
+});
 
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
