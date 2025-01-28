@@ -22,6 +22,10 @@ module.exports = app => {
   router.post("/updateDocuments", verifyUser, hospitality.updateDocuments);
   router.post("/getJob", hospitality.getJob);
   router.post("/updateHoursStatus", hospitality.updateHoursStatus);
+  router.post("/setAwarded", hospitality.setAwarded);
+  router.post("/getClientInfo", hospitality.getClientInfo);
+  router.post("/getAllContractorList", hospitality.getAllContractorList);
+  router.post("/getContractorBidIds", hospitality.getContractorBidIds);
   
   app.use("/api/hospitality", router);
 };

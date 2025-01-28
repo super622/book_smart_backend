@@ -1757,11 +1757,194 @@ exports.updateHoursStatus = async (req, res) => {
     } else if (typeof preTime != 'number' && preTime) {
         finalHoursEquation = parseFloat(preTime);
     }
-  
+
     if (role === 'Restaurant') {
         const result = await RestaJob.updateOne({ jobId }, { $set: { isHoursApproved, lunch, preTime, noStatusExplanation, finalHoursEquation, shiftFromDate, shiftEndDate } });
     } else if (role === 'Hotel') {
         const result = await HotelJob.updateOne({ jobId }, { $set: { isHoursApproved, lunch, preTime, noStatusExplanation, finalHoursEquation, shiftFromDate, shiftEndDate } });
     }
     return res.status(200).json({ message: "Success" });
+};
+
+exports.setAwarded = async (req, res) => {
+    const { jobId, bidId, status, role } = req.body;
+    console.log(jobId, bidId, status, role);
+
+    if (role === 'Restaurant') {
+        const nurse = await RestauBid.findOne({ bidId });
+        const user = await RestauWork.findOne({ aic: nurse.caregiverId }, { email: 1 } );
+      
+        if (status === 1) {
+            await RestaJob.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
+            await RestauBid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+        
+            const verifySubject1 = `Congrats ${nurse?.caregiver}, You Have Been Hired for Shift - #${jobId}`
+            const verifiedContent1 = `
+            <div id=":15j" class="a3s aiL ">
+                <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
+                <p><strong>Job</strong> - ${jobId}</p>
+                <p><strong>Name</strong> : ${nurse?.caregiver}</p>
+            </div>`
+            
+            let approveResult = mailTrans.sendMail(user?.email, verifySubject1, verifiedContent1);
+        
+            const verifySubject2 =  `${nurse?.caregiver} was hired for Shift - #${jobId}`
+            const verifiedContent2 = `
+            <div id=":15j" class="a3s aiL ">
+                <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
+                <p><strong>Job</strong> - ${jobId}</p>
+                <p><strong>Name</strong> : ${nurse?.caregiver}</p>
+            </div>`
+            
+            let approveResult2 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+            let approveResult1 = mailTrans.sendMail('techableteam@gmail.com', verifySubject2, verifiedContent2);
+        } else {
+            // await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
+            // await Bid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+        }
+    } else if (role === 'Hotel') {
+        const nurse = await HotelBid.findOne({ bidId });
+        const user = await HotelWork.findOne({ aic: nurse.caregiverId }, { email: 1 } );
+      
+        if (status === 1) {
+            await HotelJob.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
+            await HotelBid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+        
+            const verifySubject1 = `Congrats ${nurse?.caregiver}, You Have Been Hired for Shift - #${jobId}`
+            const verifiedContent1 = `
+            <div id=":15j" class="a3s aiL ">
+                <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
+                <p><strong>Job</strong> - ${jobId}</p>
+                <p><strong>Name</strong> : ${nurse?.caregiver}</p>
+            </div>`
+            
+            let approveResult = mailTrans.sendMail(user?.email, verifySubject1, verifiedContent1);
+        
+            const verifySubject2 =  `${nurse?.caregiver} was hired for Shift - #${jobId}`
+            const verifiedContent2 = `
+            <div id=":15j" class="a3s aiL ">
+                <p><strong>Entry Date</strong> - ${moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY")}</p>
+                <p><strong>Job</strong> - ${jobId}</p>
+                <p><strong>Name</strong> : ${nurse?.caregiver}</p>
+            </div>`
+            
+            let approveResult2 = mailTrans.sendMail('support@whybookdumb.com', verifySubject2, verifiedContent2);
+            let approveResult1 = mailTrans.sendMail('techableteam@gmail.com', verifySubject2, verifiedContent2);
+        } else {
+            // await Job.updateOne({ jobId }, { $set: { jobStatus: 'Awarded', nurse: nurse?.caregiver }});
+            // await Bid.updateOne({ bidId }, { $set: { bidStatus: 'Awarded' }})
+        }
+    }
+  
+    return res.status(200).json({ message: "Success" });
+};
+
+exports.getClientInfo = async (req, res) => {
+    const { bidId, role } = req.body;
+
+    if (role === 'Restaurant') {
+        const bidder = await RestauBid.findOne({ bidId });
+
+        if (bidder) {
+            const userInfo = await RestauWork.findOne({ aic: bidder.caregiverId },
+                { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, address: 1,
+                    resume: {
+                        content: '$resume.content',
+                        name: '$resume.name',
+                        type: '$resume.type'
+                    } });
+    
+            let awardedCnt = await RestauBid.find({ bidStatus: 'Awarded', bidId: bidId }).count();
+            let appliedCnt = await RestauBid.find({ bidId: bidId }).count();
+            let ratio = '';
+
+            if (awardedCnt > 0 && appliedCnt > 0) {
+                ratio = (100 / appliedCnt) * awardedCnt;
+                ratio += '%';
+            }
+    
+            let userData = {
+                ...userInfo._doc,
+                totalBid: appliedCnt,
+                totalAward: awardedCnt,
+                AwardRatio: ratio
+            };
+    
+            return res.status(200).json({ message: "success", userData: userData });
+        } else {
+            return res.status(500).json({ message: "Not exist" });
+        }
+    } else if (role === 'Hotel') {
+        const bidder = await HotelBid.findOne({ bidId });
+
+        if (bidder) {
+            const userInfo = await HotelWork.findOne({ aic: bidder.caregiverId },
+                { aic: 1, firstName: 1, lastName: 1, email: 1, phoneNumber: 1, address: 1,
+                    resume: {
+                        content: '$resume.content',
+                        name: '$resume.name',
+                        type: '$resume.type'
+                    } });
+    
+            let awardedCnt = await HotelBid.find({ bidStatus: 'Awarded', bidId: bidId }).count();
+            let appliedCnt = await HotelBid.find({ bidId: bidId }).count();
+            let ratio = '';
+            
+            if (awardedCnt > 0 && appliedCnt > 0) {
+                ratio = (100 / appliedCnt) * awardedCnt;
+                ratio += '%';
+            }
+    
+            let userData = {
+                ...userInfo._doc,
+                totalBid: appliedCnt,
+                totalAward: awardedCnt,
+                AwardRatio: ratio
+            };
+    
+            return res.status(200).json({ message: "success", userData: userData });
+        } else {
+            return res.status(500).json({ message: "Not exist" });
+        }
+    }
+};
+
+exports.getAllContractorList = async (req, res) => {
+    try {
+        const { Role } = req.body;
+
+        if (Role === 'Restaurant') {
+            const restauWork = await RestauWork.find({}, { firstName: 1, lastName: 1 });
+            return res.status(200).json({ message: "success", userList: restauWork });
+        } else if (Role === 'Hotel') {
+            const hotelWork = await HotelWork.find({}, { firstName: 1, lastName: 1 });
+            return res.status(200).json({ message: "success", userList: hotelWork });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occurred!" });
+    }
+};
+
+exports.getContractorBidIds = async (req, res) => {
+    try {
+        const { Role } = req.body;
+
+        if (Role === 'Restaurant') {
+            const bidders = await RestauBid.find({}, { bidId: 1 });
+            const bidList = [
+                ...bidders.map(item => item.bidId),
+            ];
+            return res.status(200).json({ message: "success", bidList });
+        } else if (Role === 'Hotel') {
+            const bidders = await HotelBid.find({}, { bidId: 1 });
+            const bidList = [
+                ...bidders.map(item => item.bidId),
+            ];
+            return res.status(200).json({ message: "success", bidList });
+        }
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occurred!" });
+    }
 };
