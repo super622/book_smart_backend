@@ -87,6 +87,26 @@ async function extractNonJobId(job) {
     return newObject;
 }
 
+exports.getAllRestaurants = async (req, res) => {
+    try {
+        const data = await RestauHire.find({});
+        return res.status(200).json({ message: "Successfully Get!", data: data });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};
+
+exports.getAllHotels = async (req, res) => {
+    try {
+        const data = await HoteLHire.find({});
+        return res.status(200).json({ message: "Successfully Get!", data: data });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An Error Occured!" });
+    }
+};
+
 exports.getAllData = async (req, res) => {
     try {
         const user = req.user;

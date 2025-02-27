@@ -26,6 +26,8 @@ module.exports = app => {
   router.post("/getClientInfo", hospitality.getClientInfo);
   router.post("/getAllContractorList", hospitality.getAllContractorList);
   router.post("/getContractorBidIds", hospitality.getContractorBidIds);
+  router.get("/getAllRestaurants", hospitality.getAllRestaurants);
+  router.get("/getAllHotels", hospitality.getAllHotels);
   
   app.use("/api/hospitality", router);
 };

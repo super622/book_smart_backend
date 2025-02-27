@@ -119,7 +119,7 @@ function extractStartTime(shiftTime) {
   return null;  // Return null for unsupported formats
 }
 
-// Cron job scheduled to run every 50 seconds
+// Cron job scheduled to run every 15 minutes
 cron.schedule('*/15 * * * *', async () => {
   console.log('Running job reminder check at', moment().format('YYYY-MM-DD HH:mm:ss'));
 
@@ -135,32 +135,28 @@ cron.schedule('*/15 * * * *', async () => {
       { jobId: 1, shiftTime: 1, location: 1 }
     );
 
-    // if an endDate exist.
-    // Fetch all jobs with minimal fields
-    // const jobs = await db.jobs.find(
-    //   { jobStatus: 'Awarded' },
-    //   { jobId: 1, shiftTime: 1, location: 1 }
-    // );
+    const HotelJobs = await db.hotel_job.find(
+      { shiftDate: currentDate, jobStatus: 'Awarded' },
+      { jobId: 1, shiftTime: 1, location: 1 }
+    );
 
-    // console.log(`Fetched ${jobs.length} jobs.`);
-
-    // // Filter jobs where shiftTime includes the current date
-    // const matchingJobs = jobs.filter(job => {
-    //   const [start, end] = job.shiftTime.split(' - ').map(time =>
-    //     moment.tz(time.trim(), 'MM/DD/YYYY hh:mm:ss A', 'America/Toronto')
-    //   );
-
-    //   // Check if the current date is within the range
-    //   return start.isSameOrBefore(moment.tz(currentDate, 'MM/DD/YYYY', 'America/Toronto'), 'day') &&
-    //          end.isSameOrAfter(moment.tz(currentDate, 'MM/DD/YYYY', 'America/Toronto'), 'day');
-    // });
+    const RestauJobs = await db.restau_job.find(
+      { shiftDate: currentDate, jobStatus: 'Awarded' },
+      { jobId: 1, shiftTime: 1, location: 1 }
+    );
 
     console.log(`Fetched ${jobs.length} jobs for the date ${currentDate}.`);
+    console.log(`Fetched ${HotelJobs.length} hotel jobs for the date ${currentDate}.`);
+    console.log(`Fetched ${RestauJobs.length} restaurant jobs for the date ${currentDate}.`);
 
     // Filter jobs matching the 2-hour condition
     const matchingJobs = jobs.filter(job => extractStartTime(job.shiftTime) === twoHoursLater);
+    const matchingHotelJobs = HotelJobs.filter(job => extractStartTime(job.shiftTime) === twoHoursLater);
+    const matchingRestauJobs = RestauJobs.filter(job => extractStartTime(job.shiftTime) === twoHoursLater);
 
     console.log(`Found ${matchingJobs.length} matching jobs.`);
+    console.log(`Found ${matchingHotelJobs.length} matching hotel jobs.`);
+    console.log(`Found ${matchingRestauJobs.length} matching restaurant jobs.`);
 
     // Batch process jobs
     await Promise.all(
@@ -172,7 +168,7 @@ cron.schedule('*/15 * * * *', async () => {
         const bidders = await db.bids.find(
           { jobId, bidStatus: 'Awarded' },
           { caregiverId: 1 }
-        );
+        ).toArray();
 
         const caregiverIds = bidders.map(bid => bid.caregiverId);
         console.log('Awarded caregiver IDs:', caregiverIds);
@@ -186,15 +182,93 @@ cron.schedule('*/15 * * * *', async () => {
         const caregivers = await db.clinical.find(
           { aic: { $in: caregiverIds } },
           { phoneNumber: 1 }
-        );
+        ).toArray();
 
         console.log(`Found ${caregivers.length} caregivers for jobId ${jobId}.`);
 
         // Send SMS notifications
         await Promise.all(
-          caregivers.map(caregiver =>{
-            sendSMS(caregiver.phoneNumber, location)
-            console.log("phoneNumber",caregiver.phoneNumber)
+          caregivers.map(async (caregiver) => {
+            await sendSMS(caregiver.phoneNumber, location);
+            console.log("phoneNumber:", caregiver.phoneNumber);
+          })
+        );
+
+        console.log(`SMS notifications sent for jobId ${jobId}.`);
+      })
+    );
+
+    await Promise.all(
+      matchingHotelJobs.map(async (job) => {
+        const { jobId, location, shiftTime } = job;
+        console.log('Processing hotel jobId:', jobId);
+
+        // Fetch awarded bidders
+        const bidders = await db.hotel_bid.find(
+          { jobId, bidStatus: 'Awarded' },
+          { caregiverId: 1 }
+        ).toArray();
+
+        const caregiverIds = bidders.map(bid => bid.caregiverId);
+        console.log('Awarded hotel caregiver IDs:', caregiverIds);
+
+        if (caregiverIds.length === 0) {
+          console.log(`No awarded bidders for jobId ${jobId}.`);
+          return;
+        }
+
+        // Fetch caregivers' phone numbers
+        const caregivers = await db.hotel_user.find(
+          { aic: { $in: caregiverIds } },
+          { phoneNumber: 1 }
+        ).toArray();
+
+        console.log(`Found ${caregivers.length} hotel caregivers for jobId ${jobId}.`);
+
+        // Send SMS notifications
+        await Promise.all(
+          caregivers.map(async (caregiver) => {
+            await sendSMS(caregiver.phoneNumber, location);
+            console.log("phoneNumber:", caregiver.phoneNumber);
+          })
+        );
+
+        console.log(`SMS notifications sent for jobId ${jobId}.`);
+      })
+    );
+
+    await Promise.all(
+      matchingRestauJobs.map(async (job) => {
+        const { jobId, location, shiftTime } = job;
+        console.log('Processing restaurant jobId:', jobId);
+
+        // Fetch awarded bidders
+        const bidders = await db.restau_bid.find(
+          { jobId, bidStatus: 'Awarded' },
+          { caregiverId: 1 }
+        ).toArray();
+
+        const caregiverIds = bidders.map(bid => bid.caregiverId);
+        console.log('Awarded restaurant caregiver IDs:', caregiverIds);
+
+        if (caregiverIds.length === 0) {
+          console.log(`No awarded bidders for jobId ${jobId}.`);
+          return;
+        }
+
+        // Fetch caregivers' phone numbers
+        const caregivers = await db.restau_user.find(
+          { aic: { $in: caregiverIds } },
+          { phoneNumber: 1 }
+        ).toArray();
+
+        console.log(`Found ${caregivers.length} restuarant caregivers for jobId ${jobId}.`);
+
+        // Send SMS notifications
+        await Promise.all(
+          caregivers.map(async (caregiver) => {
+            await sendSMS(caregiver.phoneNumber, location);
+            console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );
 
