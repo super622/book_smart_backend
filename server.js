@@ -168,7 +168,7 @@ cron.schedule('*/15 * * * *', async () => {
         const bidders = await db.bids.find(
           { jobId, bidStatus: 'Awarded' },
           { caregiverId: 1 }
-        ).toArray();
+        );
 
         const caregiverIds = bidders.map(bid => bid.caregiverId);
         console.log('Awarded caregiver IDs:', caregiverIds);
@@ -182,7 +182,7 @@ cron.schedule('*/15 * * * *', async () => {
         const caregivers = await db.clinical.find(
           { aic: { $in: caregiverIds } },
           { phoneNumber: 1 }
-        ).toArray();
+        );
 
         console.log(`Found ${caregivers.length} caregivers for jobId ${jobId}.`);
 
@@ -207,7 +207,7 @@ cron.schedule('*/15 * * * *', async () => {
         const bidders = await db.hotel_bid.find(
           { jobId, bidStatus: 'Awarded' },
           { caregiverId: 1 }
-        ).toArray();
+        );
 
         const caregiverIds = bidders.map(bid => bid.caregiverId);
         console.log('Awarded hotel caregiver IDs:', caregiverIds);
@@ -221,7 +221,7 @@ cron.schedule('*/15 * * * *', async () => {
         const caregivers = await db.hotel_user.find(
           { aic: { $in: caregiverIds } },
           { phoneNumber: 1 }
-        ).toArray();
+        );
 
         console.log(`Found ${caregivers.length} hotel caregivers for jobId ${jobId}.`);
 
@@ -246,7 +246,7 @@ cron.schedule('*/15 * * * *', async () => {
         const bidders = await db.restau_bid.find(
           { jobId, bidStatus: 'Awarded' },
           { caregiverId: 1 }
-        ).toArray();
+        );
 
         const caregiverIds = bidders.map(bid => bid.caregiverId);
         console.log('Awarded restaurant caregiver IDs:', caregiverIds);
@@ -260,7 +260,7 @@ cron.schedule('*/15 * * * *', async () => {
         const caregivers = await db.restau_user.find(
           { aic: { $in: caregiverIds } },
           { phoneNumber: 1 }
-        ).toArray();
+        );
 
         console.log(`Found ${caregivers.length} restuarant caregivers for jobId ${jobId}.`);
 
