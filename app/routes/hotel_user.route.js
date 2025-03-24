@@ -4,6 +4,8 @@ module.exports = app => {
     const hotel_user = require("../controllers/hotel_user.controller.js");
     var router = require("express").Router();
 
+    
+    router.post('/saveFCMToken', hotel_user.saveFCMToken);
     router.post('/login', hotel_user.login);
     router.post('/signup', hotel_user.signup);
     router.post('/forgotPassword', hotel_user.forgotPassword);

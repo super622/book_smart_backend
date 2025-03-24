@@ -4,6 +4,7 @@ module.exports = app => {
     const restau_user = require("../controllers/restau_user.controller.js");
     var router = require("express").Router();
 
+    router.post('/saveFCMToken', restau_user.saveFCMToken);
     router.post('/login', restau_user.login);
     router.post('/signup', restau_user.signup);
     router.post('/forgotPassword', restau_user.forgotPassword);

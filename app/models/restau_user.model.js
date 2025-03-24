@@ -278,6 +278,10 @@ module.exports = mongoose => {
             type: String,
             default: ''
         },
+        fcmToken: {
+            type: String,
+            default: ''
+        },
         verifyPhoneTime: {
             type: Number,
             default: 0

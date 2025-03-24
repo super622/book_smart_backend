@@ -12,6 +12,7 @@ dotenv.config()
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+const { sendNotification } = require("../utils/firebaseService.js");
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -70,7 +71,7 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        console.log("LogIn");
+
         const { email, password, userRole } = req.body;
         const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole }, { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1 });
         if (isUser) {

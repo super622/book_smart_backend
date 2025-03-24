@@ -39,6 +39,30 @@ async function uploadToS3(file) {
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
 }
 
+exports.saveFCMToken = async (req, res) => {
+    try {
+        const { email, token } = req.body;
+    
+        if (!email || !token) {
+            return res.status(400).json({ message: "Email and Token is required" });
+        }
+    
+        const user = await Hotel_User.findOne({ email: email });
+    
+        if (user) {
+            const updateUser = await Hotel_User.updateOne({ email: email }, { $set: { fcmToken: token } });
+            return res.status(200).json({ message: "Token Updated!" });
+        } else {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
 exports.signup = async (req, res) => {
     try {
         const lastUser = await Hotel_User.find().sort({ aic: -1 }).limit(1);

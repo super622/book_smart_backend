@@ -272,7 +272,11 @@ module.exports = mongoose => {
     verifyPhoneTime: {
       type: Number,
       default: 0
-    }
+    },
+    fcmToken: {
+      type: String,
+      default: ''
+    },
   });
 
   schema.method("toJSON", function () {

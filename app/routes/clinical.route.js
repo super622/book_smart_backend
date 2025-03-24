@@ -7,6 +7,8 @@ module.exports = app => {
 
   router.post('/login', clinical.login);
 
+  router.post('/saveFCMToken', clinical.saveFCMToken);
+
   router.post('/signup', clinical.signup);
 
   router.post('/logout', clinical.logout);
@@ -38,6 +40,8 @@ module.exports = app => {
   router.post('/updateUserStatus', verifyUser, clinical.updateUserStatus);
 
   router.post('/getUserImage', clinical.getUserImage);
+
+  router.post("/sendMSG", clinical.sendMSG);
 
   app.use("/api/clinical", router);
 };

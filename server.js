@@ -72,6 +72,7 @@ app.get("/", (req, res) => {
 
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
+const { sendNotification } = require("./app/utils/firebaseService.js");
 
 let invoices = [];
 
@@ -181,7 +182,7 @@ cron.schedule('*/15 * * * *', async () => {
         // Fetch caregivers' phone numbers
         const caregivers = await db.clinical.find(
           { aic: { $in: caregiverIds } },
-          { phoneNumber: 1 }
+          { phoneNumber: 1, fcmToken: 1 }
         );
 
         console.log(`Found ${caregivers.length} caregivers for jobId ${jobId}.`);
@@ -190,6 +191,8 @@ cron.schedule('*/15 * * * *', async () => {
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
+            const message = `BookSmart Shift Reminder.\n\nWe'll see you in 2 hours at ${location}!\n\nPlease be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );
@@ -220,7 +223,7 @@ cron.schedule('*/15 * * * *', async () => {
         // Fetch caregivers' phone numbers
         const caregivers = await db.hotel_user.find(
           { aic: { $in: caregiverIds } },
-          { phoneNumber: 1 }
+          { phoneNumber: 1, fcmToken: 1 }
         );
 
         console.log(`Found ${caregivers.length} hotel caregivers for jobId ${jobId}.`);
@@ -229,6 +232,8 @@ cron.schedule('*/15 * * * *', async () => {
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
+            const message = `BookSmart Shift Reminder.\n\nWe'll see you in 2 hours at ${location}!\n\nPlease be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );
@@ -259,7 +264,7 @@ cron.schedule('*/15 * * * *', async () => {
         // Fetch caregivers' phone numbers
         const caregivers = await db.restau_user.find(
           { aic: { $in: caregiverIds } },
-          { phoneNumber: 1 }
+          { phoneNumber: 1, fcmToken: 1 }
         );
 
         console.log(`Found ${caregivers.length} restuarant caregivers for jobId ${jobId}.`);
@@ -268,6 +273,8 @@ cron.schedule('*/15 * * * *', async () => {
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
+            const message = `BookSmart Shift Reminder.\n\nWe'll see you in 2 hours at ${location}!\n\nPlease be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );

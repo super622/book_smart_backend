@@ -11,6 +11,7 @@ dotenv.config()
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+const { sendNotification } = require("../utils/firebaseService.js");
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -37,6 +38,48 @@ async function uploadToS3(file) {
     console.log(`https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`);
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
 }
+
+exports.saveFCMToken = async (req, res) => {
+    try {
+        const { email, token } = req.body;
+    
+        if (!email || !token) {
+            return res.status(400).json({ message: "Email and Token is required" });
+        }
+    
+        const user = await Clinical.findOne({ email: email });
+    
+        if (user) {
+            const updateUser = await Clinical.updateOne({ email: email }, { $set: { fcmToken: token } });
+            return res.status(200).json({ message: "Token Updated!" });
+        } else {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+exports.sendMSG = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return res.status(400).json({ message: "Token is required" });
+        }
+        
+        const message = `BookSmart Shift Reminder.\n\nWe'll see you in 2 hours at XXX!\n\nPlease be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+        await sendNotification(token, "Reminder", message);
+        return res.status(200).json({ message: "Sent!" });
+    } catch (e) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
 
 //Regiseter Account
 exports.signup = async (req, res) => {
