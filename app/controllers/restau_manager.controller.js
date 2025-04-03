@@ -52,7 +52,7 @@ exports.signup = async (req, res) => {
                 <p>Your request has been submitted and you will be notified as soon as your access is approved.</p>
             </div>`;
             response.entryDate = new Date();
-            response.aic = newFacilityId;
+            response.aic = newUserId;
             response.userStatus = "activate";
 
             if (response.avatar.name != "") {
