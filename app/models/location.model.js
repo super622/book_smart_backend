@@ -4,6 +4,10 @@ module.exports = mongoose => {
             type: String,
             default: ''
         },
+        locationType: {
+            type: String,
+            default: ''
+        }
     });
   
     schema.method("toJSON", function () {

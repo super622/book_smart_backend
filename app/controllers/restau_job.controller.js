@@ -279,6 +279,7 @@ exports.shifts = async (req, res) => {
             }
         } else if (role === "RestaurantWork") {
             const today = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
+            console.log(user, today);
             const data = await Job.find({ 
                 entryDate: { 
                     $gte: today
