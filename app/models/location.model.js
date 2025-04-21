@@ -7,6 +7,10 @@ module.exports = mongoose => {
         locationType: {
             type: String,
             default: ''
+        },
+        userId: {
+            type: String,
+            default: ''
         }
     });
   
