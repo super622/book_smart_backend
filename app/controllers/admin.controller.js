@@ -1094,3 +1094,28 @@ exports.removeAccount = async (req, res) => {
         return res.status(500).json({ message: "An Error Occured!" });
     }
 };
+
+exports.sendMessage = async (req, res) => {
+    try {
+        const { caregiverIds, message } = req.body;
+        if (caregiverIds.length == 0) {
+            return res.status(400).json({ message: "Caregiver is required" });
+        }
+        const caregivers = await db.clinical.find(
+            { aic: { $in: caregiverIds } },
+            { phoneNumber: 1, fcmToken: 1 }
+        );
+
+        await Promise.all(
+            caregivers.map(async (caregiver) => {
+                await sendNotification(caregiver.fcmToken, "Notice!", message);
+            })
+        );
+        return res.status(200).json({ message: "Sent!" });
+    } catch (e) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};

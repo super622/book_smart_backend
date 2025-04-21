@@ -33,6 +33,8 @@ module.exports = app => {
 
   router.get('/getBidIDs', admin.getBidIDs);
 
+  router.get('/sendMessage', admin.sendMessage);
+
   router.post('/getAllUsersList', verifyUser, admin.getAllUsersList);
 
   router.post('/getAdminInfo', verifyUser, admin.getAdminInfo);
