@@ -52,7 +52,7 @@ exports.signup = async (req, res) => {
             </div>`;
             response.entryDate = new Date();
             response.aic = newFacilityId;
-            response.userStatus = "activate";
+            response.userStatus = "pending approval";
             response.contactEmail = response.contactEmail.toLowerCase();
 
             if (response.avatar.name != "") {

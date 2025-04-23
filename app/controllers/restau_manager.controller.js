@@ -53,7 +53,7 @@ exports.signup = async (req, res) => {
             </div>`;
             response.entryDate = new Date();
             response.aic = newUserId;
-            response.userStatus = "activate";
+            response.userStatus = "pending approval";
 
             if (response.avatar.name != "") {
                 const s3FileUrl = await uploadToS3(response.avatar);
