@@ -647,12 +647,12 @@ exports.updateUserInfo = async (req, res) => {
             }
         }
     } else if (userRole === 'Hotel Manager') {
-        const hotelManager = await HotelWork.findOne({ contactEmail: email });
+        const hotelManager = await HoteLHire.findOne({ contactEmail: email });
 
-        await HotelWork.updateOne({ contactEmail: email }, {$set: { userStatus: status }});
+        await HoteLHire.updateOne({ contactEmail: email }, {$set: { userStatus: status }});
 
         if (password != '') {
-            await HotelWork.updateOne({ contactEmail: email }, {$set: { password }});
+            await HoteLHire.updateOne({ contactEmail: email }, {$set: { password }});
             const verifySubject4 = "BookSmart™ - Your password has been changed"
             const verifiedContent4 = `
             <div id=":15j" class="a3s aiL ">
