@@ -959,6 +959,56 @@ exports.updateUserStatus = async (req, res) => {
             } else {
                 res.status(404).json({ message: "Status change failed." });
             }
+        } else if (userRole === 'restaurantManager') {
+            const restaumanager = await RestauHire.findOne({ aic: userId }, { firstName: 1, lastName: 1, contactEmail: 1 });
+            if (restaumanager) {
+                await RestauHire.updateOne({ aic: userId }, { $set: { userStatus: status } });
+                if (status == 'activate') {
+                    const verifySubject2 = "BookSmart™ - Your Account Approval"
+                    const verifiedContent2 = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${restaumanager.firstName},</p>
+                        <p>Your BookSmart™ account has been approved.</p>
+                    </div>`
+                    let approveResult2 = mailTrans.sendMail(restaumanager.contactEmail, verifySubject2, verifiedContent2);
+                } else {
+                    const verifySubject3 = "BookSmart™ - Your Account Restricted"
+                    const verifiedContent3 = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${restaumanager.firstName},</p>
+                        <p>Your BookSmart™ account has been restricted.</p>
+                    </div>`
+                    let approveResult3 = mailTrans.sendMail(restaumanager.contactEmail, verifySubject3, verifiedContent3);
+                }
+                res.status(200).json({ message: "Status has been updated" });
+            } else {
+                res.status(404).json({ message: "Status change failed." });
+            }
+        } else if (userRole === 'hotelManager') {
+            const hotelManager = await HoteLHire.findOne({ aic: userId }, { firstName: 1, lastName: 1, contactEmail: 1 });
+            if (hotelManager) {
+                await HoteLHire.updateOne({ aic: userId }, { $set: { userStatus: status } });
+                if (status == 'activate') {
+                    const verifySubject2 = "BookSmart™ - Your Account Approval"
+                    const verifiedContent2 = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${hotelManager.firstName},</p>
+                        <p>Your BookSmart™ account has been approved.</p>
+                    </div>`
+                    let approveResult2 = mailTrans.sendMail(hotelManager.contactEmail, verifySubject2, verifiedContent2);
+                } else {
+                    const verifySubject3 = "BookSmart™ - Your Account Restricted"
+                    const verifiedContent3 = `
+                    <div id=":15j" class="a3s aiL ">
+                        <p>Hello ${hotelManager.firstName},</p>
+                        <p>Your BookSmart™ account has been restricted.</p>
+                    </div>`
+                    let approveResult3 = mailTrans.sendMail(hotelManager.contactEmail, verifySubject3, verifiedContent3);
+                }
+                res.status(200).json({ message: "Status has been updated" });
+            } else {
+                res.status(404).json({ message: "Status change failed." });
+            }
         }
     } catch (e) {
         console.log(e);
