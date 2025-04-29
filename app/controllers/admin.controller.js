@@ -1097,16 +1097,22 @@ exports.removeAccount = async (req, res) => {
 
 exports.sendMessage = async (req, res) => {
     try {
-        const { caregiverIds = [], message } = req.body;
+        const { caregiverIds = [], message, type = "" } = req.body;
         
         if (caregiverIds.length == 0) {
             return res.status(400).json({ message: "Caregiver is required" });
         }
 
-        const caregivers = await db.clinical.find(
+        let caregivers = await db.clinical.find(
             { aic: { $in: caregiverIds } },
-            { phoneNumber: 1, fcmToken: 1 }
+            { fcmToken: 1 }
         );
+
+        if (type === "All") {
+            caregivers = await db.clinical.find({}, { fcmToken: 1 });
+        } else if (type !== "") {
+            caregivers = await db.clinical.find({ title: type }, { fcmToken: 1 });
+        }
 
         await Promise.all(
             caregivers.map(async (caregiver) => {
