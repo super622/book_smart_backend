@@ -1103,15 +1103,28 @@ exports.sendMessage = async (req, res) => {
             return res.status(400).json({ message: "Caregiver is required" });
         }
 
-        let caregivers = await db.clinical.find(
-            { aic: { $in: caregiverIds } },
-            { fcmToken: 1 }
-        );
+        let caregivers = [];
 
         if (type === "All") {
-            caregivers = await db.clinical.find({}, { fcmToken: 1 });
+            caregivers = await db.clinical.find({}, { fcmToken: 1, aic: 1 });
         } else if (type !== "") {
-            caregivers = await db.clinical.find({ title: type }, { fcmToken: 1 });
+            caregivers = await db.clinical.find({ title: type }, { fcmToken: 1, aic: 1 });
+        } else {
+            caregivers = await db.clinical.find(
+                { aic: { $in: caregiverIds } },
+                { fcmToken: 1, aic: 1 }
+            );
+        }
+
+        const includedAICs = new Set(caregivers.map(c => c.aic));
+        const missingIds = caregiverIds.filter(id => !includedAICs.has(id));
+
+        if (missingIds.length > 0) {
+            const missingCaregivers = await db.clinical.find(
+                { aic: { $in: missingIds } },
+                { fcmToken: 1, aic: 1 }
+            );
+            caregivers = caregivers.concat(missingCaregivers);
         }
 
         await Promise.all(
