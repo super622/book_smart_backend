@@ -212,16 +212,16 @@ exports.shifts = async (req, res) => {
             if (search.trim()) {
                 const isNumeric = !isNaN(search);
                 query.$or = [
-                { entryDate: { $regex: search, $options: 'i' } },
-                { degree: { $regex: search, $options: 'i' } },
-                { jobNum: { $regex: search, $options: 'i' } },
-                { location: { $regex: search, $options: 'i' } },
-                ...(isNumeric ? [{ jobId: Number(search) }] : []),
+                    { entryDate: { $regex: search, $options: 'i' } },
+                    { degree: { $regex: search, $options: 'i' } },
+                    { jobNum: { $regex: search, $options: 'i' } },
+                    { location: { $regex: search, $options: 'i' } },
+                    ...(isNumeric ? [{ jobId: Number(search) }] : []),
                 ];
             }
 
             const pipeline = [
-                { $match: query },
+                { $match: { ...query, facilityId: user?.aic } },
                 { 
                     $addFields: { 
                         parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
