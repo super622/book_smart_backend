@@ -292,16 +292,11 @@ exports.Update = async (req, res) => {
                     <p>Dear ${updatedDocument.firstName},</p>
                     <p>Please find a copy of the Terms of Service agreed upon by and between your organization and BookSmart Technologies LLC.</p>
                     <p>It's most important to save these Terms as our relationship is built on them. We will do our part to provide exceptional service, and we stress the importance of on time payments. We look forward to our glowing review which we will begin earning now.</p>
-                    <p>Under Section 3, (a).Payment Terms, You have selected option Number:<br/><br/>
-                        ${updatedDocument.selectedoption === 'first' ? 
-                        '1. Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
-                        '2. Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
-                    </p>
                     <p>Your signature:</p>
-                     <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
-                     <p>Here's the link of a copy of the BOOKSMART™ TERMS OF SERVICE:</p>
-                     <p> ${updatedDocument.selectedoption==='first' ?'https://drive.google.com/file/d/1L-1O1kt953JjDif5dtkNW-8jih2n-pba/view?usp=drive_link':'https://drive.google.com/file/d/12J4JjH6BOd29TYNt-DJheOMhaaUFPiNd/view?usp=drive_link'}</p>
-                     <p>Thanks, and have a great day!</p>
+                    <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
+                    <p>Here's the link of a copy of the BOOKSMART™ TERMS OF SERVICE:</p>
+                    <p> ${updatedDocument.selectedoption==='first' ? 'https://drive.google.com/file/d/1NFjODJEvbSG8-Q1bTXUPfmHNDb5872of/view?usp=sharing' : 'https://drive.google.com/file/d/1NFjODJEvbSG8-Q1bTXUPfmHNDb5872of/view?usp=sharing'}</p>
+                    <p>Thanks, and have a great day!</p>
                 </div>`;
 
                 const attachments = 
