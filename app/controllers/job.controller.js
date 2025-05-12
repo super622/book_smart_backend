@@ -221,17 +221,14 @@ exports.removeJob = async (req, res) => {
 //Login Account
 exports.shifts = async (req, res) => {
   try {
-    console.log("start =============");
     const user = req.user;
     const role = req.headers.role;
-    console.log(user, role);
 
     if (role === 'Facilities') {
       const { search = '', page = 1 } = req.body;
       const limit = 25;
       const skip = (page - 1) * limit;
-      const query = {};      
-      console.log(search, page);
+      const query = {};
 
       if (search.trim()) {
         const isNumeric = !isNaN(search);
@@ -245,7 +242,7 @@ exports.shifts = async (req, res) => {
       }
 
       const pipeline = [
-        { $match: query },
+        { $match: { ...query, facilityId: user?.aic } },
         { 
           $addFields: { 
               parsedEntryDate: { $dateFromString: { dateString: "$entryDate" } }
