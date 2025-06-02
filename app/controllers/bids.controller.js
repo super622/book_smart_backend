@@ -62,7 +62,8 @@ exports.postBid = async (req, res) => {
         </div>`;
       
       let approveResult = await mailTrans.sendMail(facilityEmail?.contactEmail, verifySubject1, verifiedContent1);
-      let approveResult2 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
+      // let approveResult2 = await mailTrans.sendMail('support@whybookdumb.com', verifySubject1, verifiedContent1);
+      let approveResult2 = await mailTrans.sendMail('dan@whybookdumb.com', verifySubject1, verifiedContent1);
       let approveResult1 = await mailTrans.sendMail('techableteam@gmail.com', verifySubject1, verifiedContent1);
 
       const verifySubject3 = `Thank you for your interest in shift - ${response.jobId}`
