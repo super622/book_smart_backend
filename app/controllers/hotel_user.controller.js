@@ -108,7 +108,7 @@ exports.signup = async (req, res) => {
             const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
             const content2 = `<div id=":18t" class="a3s aiL ">
                 <p>Please click the following link to fill out the enrollment forms.</p>
-                <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhBbDLYVzhDxByOX5XXRxCz0vt9BjmQC7hYTnDg3JGGcI-zeRfNKTX3wJn-w_Su4opM*" target="_blank">BookSmart™ Enrollment Packet</a></p>
+                <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhC_naEwoMIzgijZB8c6lBohqKcdidV7R0m2Gnl56HpROKYefq3RLr91TWdop22FZVQ*" target="_blank">BookSmart™ Enrollment Packet</a></p>
             </div>`
 
             let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
