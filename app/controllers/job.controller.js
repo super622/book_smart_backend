@@ -306,7 +306,8 @@ exports.shifts = async (req, res) => {
         shiftDate: { 
           $gte: today
         }
-      }, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 }).sort({ shiftDate: 1 });
+      }, { jobId: 1, degree: 1, shiftDate: 1, shiftTime: 1, location: 1, jobStatus: 1, 
+        jobNum: 1, payRate: 1, jobInfo: 1, bonus: 1 }).sort({ shiftDate: -1 });
 
       let dataArray = [];
       data.map((item, index) => {
