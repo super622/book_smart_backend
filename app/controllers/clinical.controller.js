@@ -143,6 +143,15 @@ exports.signup = async (req, res) => {
             let adminMail1 = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
             let adminMail12 = mailTrans.sendMail('info@whybookdumb.com', subject1, content1);
             let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
+            // const adminRecipients = [
+            //     'support@whybookdumb.com',
+            //     'info@whybookdumb.com',
+            //     'techableteam@gmail.com'
+            //   ];
+              
+            //   await Promise.all(adminRecipients.map(email =>
+            //     mailTrans.sendMail(email, subject1, content1)
+            //   ));
 
             if (sendResult) {
                 // const delay = Math.floor(Math.random() * (300000 - 180000 + 1)) + 180000; // Random delay between 3-5 minutes
