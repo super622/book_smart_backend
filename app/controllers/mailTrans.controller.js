@@ -1,57 +1,46 @@
-var dotenv = require('dotenv');
-dotenv.config()
-const sgMail = require('@sendgrid/mail')
-sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY)
+const dotenv = require('dotenv');
+dotenv.config();
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.TWILIO_SENDGRID_API_KEY);
 
-exports.sendMail = async(email, subject, content, file = '') => {
+exports.sendMail = async (email, subject, content, file = '') => {
   try {
-    console.log("Creating Transport");
-    console.log('to => ', email + ', from  => ', process.env.SENDER_EMAIL);
+    console.log(`[sendMail] Preparing to send to: ${email}`);
+    let msg;
 
-    let msg = null;
-    if (file == '') {
+    if (file === '') {
       msg = {
         to: email,
         from: process.env.SENDER_EMAIL,
-        subject: subject,
+        subject,
         html: content,
       };
     } else {
-      let attachFile = file;
+      const attachFile = file;
       attachFile.content = attachFile.content.toString('base64');
+
       msg = {
         to: email,
         from: process.env.SENDER_EMAIL,
-        subject: subject,
+        subject,
         html: content,
-        attachments: [
-          {
-            content: attachFile?.content || '',
-            filename: attachFile?.name || '',
-            type: attachFile?.type == 'pdf' ? "application/pdf" : "image/jpeg",
-            disposition: attachFile?.cid?"inline":"attachment",
-            content_id: attachFile?.cid || 'null'
-          }
-        ]
+        attachments: [{
+          content: attachFile.content || '',
+          filename: attachFile.name || '',
+          type: attachFile.type === 'pdf' ? "application/pdf" : "image/jpeg",
+          disposition: attachFile.cid ? "inline" : "attachment",
+          content_id: attachFile.cid || 'null',
+        }]
       };
-      console.log(attachFile?.cid || 'null')
     }
 
-    sgMail
-      .send(msg)
-      .then((response) => {
-        console.log('Status Code => ', response[0].statusCode)
-        if (response[0].status == '202') {
-          console.log('success SendGrid');
-        }
-        return true;
-      })
-      .catch((error) => {
-        console.log(JSON.stringify(error));
-        return false;
-      });
+    const [response] = await sgMail.send(msg);
+    console.log(`[sendMail] Sent to ${email} | Status: ${response.statusCode}`);
+    return true;
+
   } catch (error) {
-    console.log(JSON.stringify(error));
+    console.error(`[sendMail] Error sending to ${email}`, error);
     return false;
   }
 };
+

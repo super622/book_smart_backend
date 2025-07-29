@@ -118,14 +118,14 @@ exports.signup = async (req, res) => {
             }
             
             const auth = new Clinical(response);
-            let sendResult = mailTrans.sendMail(response.email, subject, content);
+            let sendResult = await mailTrans.sendMail(response.email, subject, content);
 
             const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
             const content2 = `<div id=":18t" class="a3s aiL ">
                 <p>Please click the following link to fill out the enrollment forms.</p>
                 <p><a href="https://med-cor.na4.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhC7jj-Qqg1kETpx-qVqvryaiJrzPVomGSSnCFCPPc_Q_VSbdCEZnNvPS7PPD1499Gg*" target="_blank">BookSmart™ Enrollment Packet</a></p>
             </div>`
-            let sendResult2 = mailTrans.sendMail(response.email, subject2, content2);
+            let sendResult2 = await mailTrans.sendMail(response.email, subject2, content2);
 
             const subject1 = `A New Caregiver ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
@@ -147,14 +147,15 @@ exports.signup = async (req, res) => {
             // let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
             
             const adminRecipients = [
-                // 'support@whybookdumb.com',
-                // 'info@whybookdumb.com',
-                'techableteam@gmail.com'
+                'support@whybookdumb.com',
+                'info@whybookdumb.com',
+                'techableteam@gmail.com',
+                'hirokihayashi585@gmail.com'
               ];
               
-              await Promise.all(adminRecipients.map(email =>
-                mailTrans.sendMail(email, subject1, content1)
-              ));
+              for (const email of adminRecipients) {
+                await mailTrans.sendMail(email, subject1, content1);
+              }
 
             if (sendResult) {
                 await auth.save();
