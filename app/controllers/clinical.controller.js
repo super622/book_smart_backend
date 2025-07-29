@@ -119,6 +119,7 @@ exports.signup = async (req, res) => {
             
             const auth = new Clinical(response);
             let sendResult = mailTrans.sendMail(response.email, subject, content);
+
             const subject2 = `BookSmart™ - Enrollment & Insurance Forms`
             const content2 = `<div id=":18t" class="a3s aiL ">
                 <p>Please click the following link to fill out the enrollment forms.</p>
@@ -140,12 +141,14 @@ exports.signup = async (req, res) => {
                 <p>-----------------------</p>
                 <p><strong><span class="il">BookSmart</span>™ <br></strong></p>
             </div>`
+
             // let adminMail1 = mailTrans.sendMail('support@whybookdumb.com', subject1, content1);
             // let adminMail12 = mailTrans.sendMail('info@whybookdumb.com', subject1, content1);
             // let adminMail = mailTrans.sendMail('techableteam@gmail.com', subject1, content1);
+            
             const adminRecipients = [
-                'support@whybookdumb.com',
-                'info@whybookdumb.com',
+                // 'support@whybookdumb.com',
+                // 'info@whybookdumb.com',
                 'techableteam@gmail.com'
               ];
               
@@ -154,16 +157,7 @@ exports.signup = async (req, res) => {
               ));
 
             if (sendResult) {
-                // const delay = Math.floor(Math.random() * (300000 - 180000 + 1)) + 180000; // Random delay between 3-5 minutes
-                // console.log(`Next action will be performed in ${delay / 1000} seconds`);
-                // setTimeout(async () => {
-                // // Your next action here
-                // console.log('Next action is being performed now');
-                // let approveResult = mailTrans.sendMail(response.email, verifySubject, verifiedContent);
-                // if (approveResult) {
-                    await auth.save();
-                // }
-                // }, delay)
+                await auth.save();
                 const payload = {
                     email: response.email.toLowerCase(),
                     userRole: response.userRole,
