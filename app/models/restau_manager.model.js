@@ -75,6 +75,14 @@ module.exports = mongoose => {
         verifyTime: {
           type: Number,
           default: 0
+        },
+        shiftType: {
+            type: Array,
+            default: []
+        },
+        staffInfo: {
+            type: Array,
+            default: []
         }
     });
 

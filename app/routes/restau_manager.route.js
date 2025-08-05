@@ -12,6 +12,22 @@ module.exports = app => {
     router.post('/getAllFacilities', verifyUser, restau_manager.getAllFacilities);
     router.post('/update', verifyUser, restau_manager.Update);
     router.get('/list', verifyUser, restau_manager.managers);
+    
+    router.post('/addShiftTypeToAll', restau_manager.addShiftTypeFieldToAll);
+    router.post('/addStaffInfoFieldToAll', restau_manager.addStaffInfoFieldToAll);
 
+    router.post('/addShiftType', verifyUser, restau_manager.addShiftType);
+    router.post('/getShiftTypes', verifyUser, restau_manager.getShiftTypes);
+    router.post('/updateShiftType', verifyUser, restau_manager.updateShiftType);
+    router.post('/deleteShiftType', verifyUser, restau_manager.deleteShiftType);
+    router.get('/acknowledgedUsers', verifyUser, restau_manager.getAcknowledgedUsers);
+    router.post('/addStaffToManager', verifyUser, restau_manager.addStaffToManager);
+    router.post('/deleteStaffFromManager', verifyUser, restau_manager.deleteStaffFromManager);
+    router.post('/getAllStaffShiftInfo', verifyUser, restau_manager.getAllStaffShiftInfo);
+    router.post('/addShiftToStaff', verifyUser, restau_manager.addShiftToStaff);
+    router.post('/editShiftFromStaff', verifyUser, restau_manager.editShiftFromStaff);
+    router.post('/deleteShiftFromStaff', verifyUser, restau_manager.deleteShiftFromStaff);
+    
     app.use("/api/restau_manager", router);
+    
 };
