@@ -13,5 +13,21 @@ module.exports = app => {
     router.post('/update', verifyUser, hotel_manager.Update);
     router.get('/list', verifyUser, hotel_manager.managers);
 
+    router.post('/addShiftTypeToAll', hotel_manager.addShiftTypeFieldToAll);
+    router.post('/addStaffInfoFieldToAll', hotel_manager.addStaffInfoFieldToAll);
+
+    router.post('/addShiftType', verifyUser, hotel_manager.addShiftType);
+    router.post('/getShiftTypes', verifyUser, hotel_manager.getShiftTypes);
+    router.post('/updateShiftType', verifyUser, hotel_manager.updateShiftType);
+    router.post('/deleteShiftType', verifyUser, hotel_manager.deleteShiftType);
+    router.get('/acknowledgedUsers', verifyUser, hotel_manager.getAcknowledgedUsers);
+    router.post('/addStaffToManager', verifyUser, hotel_manager.addStaffToManager);
+    router.post('/deleteStaffFromManager', verifyUser, hotel_manager.deleteStaffFromManager);
+    router.post('/getAllStaffShiftInfo', verifyUser, hotel_manager.getAllStaffShiftInfo);
+    router.post('/addShiftToStaff', verifyUser, hotel_manager.addShiftToStaff);
+    router.post('/editShiftFromStaff', verifyUser, hotel_manager.editShiftFromStaff);
+    router.post('/deleteShiftFromStaff', verifyUser, hotel_manager.deleteShiftFromStaff);
+    
+
     app.use("/api/hotel_manager", router);
 };

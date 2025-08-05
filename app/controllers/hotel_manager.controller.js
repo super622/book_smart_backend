@@ -36,6 +36,346 @@ async function uploadToS3(file) {
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
 }
 
+exports.getAcknowledgedUsers = async (req, res) => {
+    try {
+      const users = await Restau_User.find(
+        { AcknowledgeTerm: true },
+        {
+          _id: 0,
+          aic: 1,
+          firstName: 1,
+          lastName: 1,
+          userRole: 1,
+          email: 1,
+          phoneNumber: 1
+        }
+      );
+  
+      return res.status(200).json({ message: "Success", users });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "An error occurred." });
+    }
+};
+  
+
+
+exports.addShiftTypeFieldToAll = async (req, res) => {
+    try {
+      const result = await Hotel_Manager.updateMany(
+        { shiftType: { $exists: false } },
+        { $set: { shiftType: [] } }
+      );
+      return res.status(200).json({ message: "Done", modified: result.modifiedCount });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+};
+
+exports.addStaffInfoFieldToAll = async (req, res) => {
+    try {
+      const result = await Hotel_Manager.updateMany(
+        { staffInfo: { $exists: false } },         
+        { $set: { staffInfo: [] } }                
+      );
+      return res.status(200).json({ message: "Done", modified: result.modifiedCount });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+};
+  
+  
+
+exports.addShiftType = async (req, res) => {
+    try {
+      const { aic, name, start, end } = req.body;
+  
+      const user = await Hotel_Manager.findOne({ aic });
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      user.shiftType = user.shiftType || [];
+  
+      // ✅ Get the highest numeric ID currently in use
+      let maxId = 0;
+      for (const shift of user.shiftType) {
+        const numericId = parseInt(shift.id, 10);
+        if (!isNaN(numericId) && numericId > maxId) {
+          maxId = numericId;
+        }
+      }
+  
+      const newShift = {
+        id: (maxId + 1).toString(),
+        name,
+        start,
+        end
+      };
+  
+      user.shiftType.push(newShift);
+      await user.save();
+  
+      return res.status(200).json({ message: "Shift added", shiftType: user.shiftType });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error adding shift" });
+    }
+};
+  
+
+exports.updateShiftType = async (req, res) => {
+    try {
+      const { aic, shiftId, updatedShift } = req.body;
+  
+      const user = await Hotel_Manager.findOne({ aic });
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      const index = user.shiftType.findIndex(s => s.id === shiftId);
+      if (index === -1) return res.status(404).json({ message: "Shift not found" });
+  
+      user.shiftType[index] = { ...user.shiftType[index], ...updatedShift };
+      await user.save();
+  
+      return res.status(200).json({ message: "Shift updated", shiftType: user.shiftType });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error updating shift" });
+    }
+};
+
+exports.deleteShiftType = async (req, res) => {
+    try {
+      const { aic, shiftId } = req.body;
+  
+      const user = await Hotel_Manager.findOne({ aic });
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      user.shiftType = user.shiftType.filter(s => s.id !== shiftId);
+      await user.save();
+  
+      return res.status(200).json({ message: "Shift deleted", shiftType: user.shiftType });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error deleting shift" });
+    }
+};
+
+exports.getShiftTypes = async (req, res) => {
+    try {
+      const { aic } = req.body;
+  
+      const user = await Hotel_Manager.findOne({ aic });
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      return res.status(200).json({ shiftType: user.shiftType || [] });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error fetching shifts" });
+    }
+};
+
+exports.deleteStaffFromManager = async (req, res) => {
+    try {
+      const { managerAic, staffId } = req.body; // staffId is the `id` inside staffInfo array
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      const originalLength = manager.staffInfo.length;
+  
+      manager.staffInfo = manager.staffInfo.filter(s => s.id !== staffId);
+      if (manager.staffInfo.length === originalLength) {
+        return res.status(404).json({ message: "Staff member not found in staffInfo" });
+      }
+  
+      await manager.save();
+  
+      return res.status(200).json({ message: "Staff deleted", staffInfo: manager.staffInfo });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error deleting staff", error: err.message });
+    }
+};
+  
+  
+exports.addStaffToManager = async (req, res) => {
+    try {
+      const { managerAic, staffList } = req.body;
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      manager.staffInfo = manager.staffInfo || [];
+  
+      // Get existing staff AICs
+      const existingAics = new Set(manager.staffInfo.map(s => s.aic));
+  
+      // Determine current max ID
+      let maxId = 0;
+      for (const staff of manager.staffInfo) {
+        const numericId = parseInt(staff.id, 10);
+        if (!isNaN(numericId) && numericId > maxId) maxId = numericId;
+      }
+  
+      // Only add new staff with unique AICs
+      const newStaffEntries = [];
+      let idCounter = maxId + 1;
+  
+      for (const staff of staffList) {
+        if (!existingAics.has(staff.aic)) {
+          newStaffEntries.push({
+            id: idCounter.toString(),
+            aic: staff.aic,
+            firstName: staff.firstName,
+            lastName: staff.lastName,
+            userRole: staff.userRole,
+            email: staff.email,
+            phoneNumber: staff.phoneNumber,
+            shifts: []
+          });
+          existingAics.add(staff.aic); // avoid duplicate within same request
+          idCounter++;
+        }
+      }
+  
+      if (newStaffEntries.length === 0) {
+        return res.status(409).json({ message: "All selected staff already exist in staffInfo" });
+      }
+  
+      manager.staffInfo.push(...newStaffEntries);
+      await manager.save();
+  
+      return res.status(200).json({ message: "Staff added", staffInfo: manager.staffInfo });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error adding staff", error: err.message });
+    }
+};
+
+exports.getAllStaffShiftInfo = async (req, res) => {
+    try {
+      const { managerAic } = req.body;
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      const staffInfo = manager.staffInfo || [];
+  
+      return res.status(200).json({
+        message: "Success",
+        staffInfo
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error retrieving staff info", error: err.message });
+    }
+};
+
+exports.addShiftToStaff = async (req, res) => {
+    try {
+      const { managerAic, staffId, shifts } = req.body;
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      const staff = manager.staffInfo.find(s => s.id === staffId);
+      if (!staff) return res.status(404).json({ message: "Staff not found" });
+  
+      // 🔍 Find max shift ID in current staff's shifts
+      let maxId = staff.shifts.reduce((max, shift) => Math.max(max, shift.id || 0), 0);
+  
+      let addedCount = 0;
+  
+      for (const { date, time } of shifts) {
+        const exists = staff.shifts.some(
+          shift => shift.date.trim() === date.trim() && shift.time.trim() === time.trim()
+        );
+  
+        if (!exists) {
+          maxId += 1;
+  
+          staff.shifts.push({
+            id: maxId,
+            date: date.trim(),
+            time: time.trim()
+          });
+  
+          addedCount++;
+        }
+      }
+  
+      if (addedCount > 0) {
+        manager.markModified('staffInfo');
+        await manager.save();
+      }
+  
+      return res.status(200).json({
+        message: `${addedCount} shift(s) added`,
+        staffInfo: manager.staffInfo
+      });
+  
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error adding shifts" });
+    }
+  };
+  
+  
+  exports.editShiftFromStaff = async (req, res) => {
+    try {
+      const { managerAic, staffId, shiftId, newDate, newTime } = req.body;
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      const staff = manager.staffInfo.find(s => s.id === staffId);
+      if (!staff) return res.status(404).json({ message: "Staff not found" });
+  
+      const shift = staff.shifts.find(shift => shift.id === shiftId);
+      if (!shift) return res.status(404).json({ message: "Shift not found" });
+  
+      // Update shift values
+      shift.date = newDate.trim();
+      shift.time = newTime.trim();
+  
+      manager.markModified('staffInfo');
+      await manager.save();
+  
+      return res.status(200).json({ message: "Shift updated", staffInfo: manager.staffInfo });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error updating shift" });
+    }
+  };
+  
+  exports.deleteShiftFromStaff = async (req, res) => {
+    try {
+      const { managerAic, staffId, shiftId } = req.body;
+  
+      const manager = await Hotel_Manager.findOne({ aic: managerAic });
+      if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+      const staff = manager.staffInfo.find(s => s.id === staffId);
+      if (!staff) return res.status(404).json({ message: "Staff not found" });
+  
+      const originalLength = staff.shifts.length;
+  
+      staff.shifts = staff.shifts.filter(shift => shift.id !== shiftId);
+  
+      if (staff.shifts.length === originalLength) {
+        return res.status(404).json({ message: "Shift not found or already deleted" });
+      }
+  
+      manager.markModified('staffInfo');
+      await manager.save();
+  
+      return res.status(200).json({ message: "Shift deleted", staffInfo: manager.staffInfo });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Error deleting shift" });
+    }
+  };
+  
+
 exports.signup = async (req, res) => {
     try {
         const lastFacility = await Hotel_Manager.find().sort({ aic: -1 }).limit(1);
