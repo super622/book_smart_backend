@@ -1,6 +1,7 @@
 const db = require("../models/index.js");
 const { setToken } = require('../utils/verifyToken.js');
 const Hotel_Manager = db.hotel_manager;
+const Hotel_User = db.hotel_user;
 const Job = db.restau_job;
 const mailTrans = require("./mailTrans.controller.js");
 const moment = require('moment-timezone');
@@ -38,7 +39,7 @@ async function uploadToS3(file) {
 
 exports.getAcknowledgedUsers = async (req, res) => {
     try {
-      const users = await Restau_User.find(
+      const users = await Hotel_User.find(
         { AcknowledgeTerm: true },
         {
           _id: 0,
