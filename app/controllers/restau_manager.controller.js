@@ -48,7 +48,8 @@ exports.getAcknowledgedUsers = async (req, res) => {
           lastName: 1,
           userRole: 1,
           email: 1,
-          phoneNumber: 1
+          phoneNumber: 1,
+          title: 1,
         }
       );
   

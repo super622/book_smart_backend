@@ -48,7 +48,8 @@ exports.getAcknowledgedUsers = async (req, res) => {
           lastName: 1,
           userRole: 1,
           email: 1,
-          phoneNumber: 1
+          phoneNumber: 1,
+          title: 1
         }
       );
   
@@ -228,7 +229,7 @@ exports.addStaffToManager = async (req, res) => {
             aic: staff.aic,
             firstName: staff.firstName,
             lastName: staff.lastName,
-            userRole: staff.userRole,
+            userRole: staff.title,
             email: staff.email,
             phoneNumber: staff.phoneNumber,
             shifts: []
