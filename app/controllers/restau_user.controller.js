@@ -63,6 +63,37 @@ exports.saveFCMToken = async (req, res) => {
     }
 };
 
+exports.addAssignedShiftFieldToAll = async (req, res) => {
+    try {
+      const result = await Restau_User.updateMany(
+        { assignedShift: { $exists: false } },
+        { $set: { assignedShift: [] } }
+      );
+      return res.status(200).json({ message: "Done", modified: result.modifiedCount });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+};
+
+exports.clearAssignedShiftForAll = async (req, res) => {
+    try {
+      const filter = {
+        assignedShift: { $exists: true, $type: 'array' },
+        $expr: { $gt: [ { $size: "$assignedShift" }, 0 ] } // only non-empty arrays
+      };
+  
+      const result = await Restau_User.updateMany(filter, { $set: { assignedShift: [] } });
+  
+      return res.status(200).json({
+        message: "Done",
+        matched: result.matchedCount ?? result.n,
+        modified: result.modifiedCount ?? result.nModified
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  };
+
 exports.signup = async (req, res) => {
     try {
         const lastUser = await Restau_User.find().sort({ aic: -1 }).limit(1);

@@ -285,6 +285,10 @@ module.exports = mongoose => {
         verifyPhoneTime: {
             type: Number,
             default: 0
+        },
+        assignedShift: {
+            type: Array,
+            default: []
         }
     });
   

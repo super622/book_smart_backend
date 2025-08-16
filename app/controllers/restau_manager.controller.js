@@ -85,7 +85,28 @@ exports.addStaffInfoFieldToAll = async (req, res) => {
     }
 };
   
+exports.clearShiftTypeForAll = async (req, res) => {
+    try {
+      // Option A (simple): works on most MongoDB versions
+      const filter = { shiftType: { $exists: true, $type: 'array', $ne: [] } };
   
+      // Option B (strict, if you prefer $expr):
+      // const filter = {
+      //   shiftType: { $exists: true, $type: 'array' },
+      //   $expr: { $gt: [ { $size: "$shiftType" }, 0 ] }
+      // };
+  
+      const result = await Restau_manager.updateMany(filter, { $set: { shiftType: [] } });
+  
+      return res.status(200).json({
+        message: "Done",
+        matched: result.matchedCount ?? result.n,
+        modified: result.modifiedCount ?? result.nModified
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  };
 
 exports.addShiftType = async (req, res) => {
     try {
@@ -271,110 +292,337 @@ exports.getAllStaffShiftInfo = async (req, res) => {
     }
 };
 
+// exports.addShiftToStaff = async (req, res) => {
+//     try {
+//       const { managerAic, staffId, shifts } = req.body;
+  
+//       const manager = await Restau_manager.findOne({ aic: managerAic });
+//       if (!manager) return res.status(404).json({ message: "Manager not found" });
+  
+//       const staff = manager.staffInfo.find(s => s.id === staffId);
+//       if (!staff) return res.status(404).json({ message: "Staff not found" });
+  
+//       // 🔍 Find max shift ID in current staff's shifts
+//       let maxId = staff.shifts.reduce((max, shift) => Math.max(max, shift.id || 0), 0);
+  
+//       let addedCount = 0;
+  
+//       for (const { date, time } of shifts) {
+//         const exists = staff.shifts.some(
+//           shift => shift.date.trim() === date.trim() && shift.time.trim() === time.trim()
+//         );
+  
+//         if (!exists) {
+//           maxId += 1;
+  
+//           staff.shifts.push({
+//             id: maxId,
+//             date: date.trim(),
+//             time: time.trim()
+//           });
+  
+//           addedCount++;
+//         }
+//       }
+  
+//       if (addedCount > 0) {
+//         manager.markModified('staffInfo');
+//         await manager.save();
+//       }
+  
+//       return res.status(200).json({
+//         message: `${addedCount} shift(s) added`,
+//         staffInfo: manager.staffInfo
+//       });
+  
+//     } catch (err) {
+//       console.error(err);
+//       return res.status(500).json({ message: "Error adding shifts" });
+//     }
+//   };
+
+// assumes you have imported your models:
+// const Restau_manager = require('...');
+// const Restau_user = require('...');
+
+// const Restau_manager = require('...');
+// const Restau_user = require('...');
+
 exports.addShiftToStaff = async (req, res) => {
     try {
       const { managerAic, staffId, shifts } = req.body;
   
+      // 1) Manager doc
       const manager = await Restau_manager.findOne({ aic: managerAic });
-      if (!manager) return res.status(404).json({ message: "Manager not found" });
+      if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
-      const staff = manager.staffInfo.find(s => s.id === staffId);
-      if (!staff) return res.status(404).json({ message: "Staff not found" });
+      // 2) Target staff under manager
+      const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
+      if (!staff) return res.status(404).json({ message: 'Staff not found' });
   
-      // 🔍 Find max shift ID in current staff's shifts
-      let maxId = staff.shifts.reduce((max, shift) => Math.max(max, shift.id || 0), 0);
+      // Ensure arrays exist
+      staff.shifts = staff.shifts || [];
   
+      // 3) Find the user by staff AIC
+      const staffAic = staff.aic;
+      if (staffAic == null) {
+        return res.status(400).json({ message: 'Staff AIC not set in manager.staffInfo' });
+      }
+  
+      const user = await Restau_User.findOne({ aic: staffAic });
+      if (!user) return res.status(404).json({ message: 'User (restau_user) not found for this staff AIC' });
+  
+      user.assignedShift = user.assignedShift || [];
+  
+      // 4) Compute current max IDs on both sides
+      let adminMaxId = staff.shifts.reduce((m, sh) => Math.max(m, sh?.id || 0), 0);
+      let userMaxId  = user.assignedShift.reduce((m, as) => Math.max(m, as?.id || 0), 0);
+  
+      const addedSummaries = [];
       let addedCount = 0;
   
-      for (const { date, time } of shifts) {
-        const exists = staff.shifts.some(
-          shift => shift.date.trim() === date.trim() && shift.time.trim() === time.trim()
+      for (const raw of (shifts || [])) {
+        const date = String(raw.date || '').trim();
+        const time = String(raw.time || '').trim();
+        if (!date || !time) continue;
+  
+        // De-dupe by (date, time) for this staff/manager and the same user/manager
+        const existsAdmin = staff.shifts.some(
+          sh => String(sh.date).trim() === date && String(sh.time).trim() === time
         );
+        const existsUser = user.assignedShift.some(
+          as =>
+            String(as.date).trim() === date &&
+            String(as.time).trim() === time &&
+            String(as.managerAic) === String(managerAic)
+        );
+        if (existsAdmin || existsUser) continue;
   
-        if (!exists) {
-          maxId += 1;
+        // Generate new IDs
+        adminMaxId += 1;         // admin side shift id
+        userMaxId  += 1;         // user side assignedShift id
   
-          staff.shifts.push({
-            id: maxId,
-            date: date.trim(),
-            time: time.trim()
-          });
+        // 4a) Create admin shift (includes usershiftid + status)
+        const adminShift = {
+          id: adminMaxId,
+          date,
+          time,
+          status: 'pending',
+          usershiftid: userMaxId, // link to user's assignedShift id
+        };
+        staff.shifts.push(adminShift);
   
-          addedCount++;
-        }
+        // 4b) Create user assignedShift (includes admin shift id and status)
+        const userAssigned = {
+          id: userMaxId,
+          date,
+          time,
+          companyName: String(manager.companyName || '').trim(),
+          managerAic,
+          status: 'pending',
+          adminShiftIds: [adminShift.id], // link back to admin shift
+        };
+        user.assignedShift.push(userAssigned);
+  
+        addedCount += 1;
+        addedSummaries.push({
+          date, time,
+          adminShiftId: adminShift.id,
+          userShiftId: userAssigned.id,
+          status: 'pending',
+        });
       }
   
-      if (addedCount > 0) {
-        manager.markModified('staffInfo');
-        await manager.save();
+      if (addedCount === 0) {
+        return res.status(200).json({ message: 'No new shifts to add', staffInfo: manager.staffInfo });
       }
+  
+      // 5) Persist both docs
+      manager.markModified('staffInfo');
+      await manager.save();
+  
+      user.markModified('assignedShift');
+      await user.save();
   
       return res.status(200).json({
         message: `${addedCount} shift(s) added`,
-        staffInfo: manager.staffInfo
+        added: addedSummaries,
+        staffInfo: manager.staffInfo,
+        assignedShiftCount: user.assignedShift.length,
       });
-  
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ message: "Error adding shifts" });
+      return res.status(500).json({ message: 'Error adding shifts' });
     }
   };
   
-  
-  exports.editShiftFromStaff = async (req, res) => {
+exports.editShiftFromStaff = async (req, res) => {
     try {
       const { managerAic, staffId, shiftId, newDate, newTime } = req.body;
   
       const manager = await Restau_manager.findOne({ aic: managerAic });
-      if (!manager) return res.status(404).json({ message: "Manager not found" });
+      if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
-      const staff = manager.staffInfo.find(s => s.id === staffId);
-      if (!staff) return res.status(404).json({ message: "Staff not found" });
+      const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
+      if (!staff) return res.status(404).json({ message: 'Staff not found' });
   
-      const shift = staff.shifts.find(shift => shift.id === shiftId);
-      if (!shift) return res.status(404).json({ message: "Shift not found" });
+      staff.shifts = staff.shifts || [];
+      const shift = staff.shifts.find(sh => Number(sh.id) === Number(shiftId));
+      if (!shift) return res.status(404).json({ message: 'Shift not found' });
   
-      // Update shift values
-      shift.date = newDate.trim();
-      shift.time = newTime.trim();
+      const date = String(newDate || '').trim();
+      const time = String(newTime || '').trim();
+      if (!date || !time) return res.status(400).json({ message: 'newDate/newTime required' });
   
+      // Optional: prevent duplicates after edit on admin side
+      const conflict = staff.shifts.some(
+        sh =>
+          Number(sh.id) !== Number(shiftId) &&
+          String(sh.date).trim() === date &&
+          String(sh.time).trim() === time
+      );
+      if (conflict) return res.status(409).json({ message: 'Another shift with same date/time already exists' });
+  
+      // 1) Update admin side (status stays as-is)
+      shift.date = date;
+      shift.time = time;
       manager.markModified('staffInfo');
+  
+      // 2) Update user side assignedShift
+      let userUpdated = false;
+      let userAction = 'none';
+  
+      const staffAic = staff.aic;
+      if (staffAic != null) {
+        const user = await Restau_User.findOne({ aic: staffAic });
+        if (user) {
+          user.assignedShift = user.assignedShift || [];
+  
+          // Prefer explicit backref via usershiftid
+          let as =
+            shift.usershiftid != null
+              ? user.assignedShift.find(a => Number(a.id) === Number(shift.usershiftid))
+              : null;
+  
+          // Fallback: match by adminShiftIds + managerAic
+          if (!as) {
+            as = user.assignedShift.find(
+              a =>
+                Array.isArray(a.adminShiftIds) &&
+                a.adminShiftIds.map(Number).includes(Number(shiftId)) &&
+                String(a.managerAic) === String(managerAic)
+            );
+          }
+  
+          if (as) {
+            as.date = date;
+            as.time = time;
+            user.markModified('assignedShift');
+            await user.save();
+            userUpdated = true;
+            userAction = 'updated assignedShift';
+          }
+        }
+      }
+  
       await manager.save();
   
-      return res.status(200).json({ message: "Shift updated", staffInfo: manager.staffInfo });
+      return res.status(200).json({
+        message: 'Shift updated',
+        staffInfo: manager.staffInfo,
+        userUpdated,
+        userAction,
+      });
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Error updating shift" });
+      console.error('editShiftFromStaff error:', err);
+      return res.status(500).json({ message: 'Error updating shift' });
     }
   };
   
-  exports.deleteShiftFromStaff = async (req, res) => {
+  
+exports.deleteShiftFromStaff = async (req, res) => {
     try {
       const { managerAic, staffId, shiftId } = req.body;
   
+      // 1) Manager & staff
       const manager = await Restau_manager.findOne({ aic: managerAic });
-      if (!manager) return res.status(404).json({ message: "Manager not found" });
+      if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
-      const staff = manager.staffInfo.find(s => s.id === staffId);
-      if (!staff) return res.status(404).json({ message: "Staff not found" });
+      const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
+      if (!staff) return res.status(404).json({ message: 'Staff not found' });
   
-      const originalLength = staff.shifts.length;
+      staff.shifts = staff.shifts || [];
+      const adminIdx = staff.shifts.findIndex(sh => Number(sh.id) === Number(shiftId));
+      if (adminIdx === -1) return res.status(404).json({ message: 'Shift not found or already deleted' });
   
-      staff.shifts = staff.shifts.filter(shift => shift.id !== shiftId);
+      const shift = staff.shifts[adminIdx];          // the admin-side shift to delete
+      const staffAic = staff.aic;
   
-      if (staff.shifts.length === originalLength) {
-        return res.status(404).json({ message: "Shift not found or already deleted" });
+      // 2) Delete/unlink on user side
+      let userUpdated = false;
+      let userAction  = 'none';
+  
+      if (staffAic != null) {
+        const user = await Restau_User.findOne({ aic: staffAic });
+        if (user) {
+          user.assignedShift = user.assignedShift || [];
+  
+          // Prefer the explicit backref first
+          let asIndex = -1;
+          if (shift.usershiftid != null) {
+            asIndex = user.assignedShift.findIndex(a => Number(a.id) === Number(shift.usershiftid));
+          }
+          // Fallback: find by adminShiftIds + managerAic
+          if (asIndex === -1) {
+            asIndex = user.assignedShift.findIndex(
+              a =>
+                Array.isArray(a.adminShiftIds) &&
+                a.adminShiftIds.map(Number).includes(Number(shiftId)) &&
+                String(a.managerAic) === String(managerAic)
+            );
+          }
+  
+          if (asIndex > -1) {
+            const as = user.assignedShift[asIndex];
+  
+            // If this user entry links multiple admin shifts, just unlink this one.
+            if (Array.isArray(as.adminShiftIds) &&
+                as.adminShiftIds.map(Number).includes(Number(shiftId)) &&
+                as.adminShiftIds.length > 1) {
+              as.adminShiftIds = as.adminShiftIds.filter(id => Number(id) !== Number(shiftId));
+              user.markModified('assignedShift');
+              await user.save();
+              userUpdated = true;
+              userAction = 'unlinked adminShiftId from assignedShift';
+            } else {
+              // Otherwise remove the whole assignedShift item.
+              user.assignedShift.splice(asIndex, 1);
+              user.markModified('assignedShift');
+              await user.save();
+              userUpdated = true;
+              userAction = 'deleted assignedShift';
+            }
+          }
+        }
       }
   
+      // 3) Delete on admin side
+      staff.shifts.splice(adminIdx, 1);
       manager.markModified('staffInfo');
       await manager.save();
   
-      return res.status(200).json({ message: "Shift deleted", staffInfo: manager.staffInfo });
+      return res.status(200).json({
+        message: 'Shift deleted',
+        staffInfo: manager.staffInfo,
+        userUpdated,
+        userAction,
+      });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ message: "Error deleting shift" });
+      return res.status(500).json({ message: 'Error deleting shift' });
     }
   };
+  
   
   
 

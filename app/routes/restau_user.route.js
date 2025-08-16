@@ -21,5 +21,8 @@ module.exports = app => {
     router.post('/updateUserStatus', verifyUser, restau_user.updateUserStatus);
     router.post('/getUserImage', restau_user.getUserImage);
 
+    router.post('/addAssignedShiftFieldToAll', restau_user.addAssignedShiftFieldToAll);
+    router.post('/clearAssignedShiftForAll', restau_user.clearAssignedShiftForAll);
+    
     app.use("/api/restau_user", router);
 };

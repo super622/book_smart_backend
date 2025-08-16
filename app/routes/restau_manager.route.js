@@ -15,7 +15,8 @@ module.exports = app => {
     
     router.post('/addShiftTypeToAll', restau_manager.addShiftTypeFieldToAll);
     router.post('/addStaffInfoFieldToAll', restau_manager.addStaffInfoFieldToAll);
-
+    router.post('/clearShiftTypeForAll', restau_manager.clearShiftTypeForAll);
+    
     router.post('/addShiftType', verifyUser, restau_manager.addShiftType);
     router.post('/getShiftTypes', verifyUser, restau_manager.getShiftTypes);
     router.post('/updateShiftType', verifyUser, restau_manager.updateShiftType);
