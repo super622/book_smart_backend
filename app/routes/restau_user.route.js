@@ -17,6 +17,7 @@ module.exports = app => {
     router.get('/clinician', verifyUser, restau_user.clinician);
     router.get('/getAllList', verifyUser, restau_user.getAllList);
     router.post('/getUserInfo', restau_user.getUserInfo);
+    router.post('/getAssignedShift', restau_user.getAssignedShift);
     router.post('/allCaregivers', verifyUser, restau_user.allCaregivers);
     router.post('/updateUserStatus', verifyUser, restau_user.updateUserStatus);
     router.post('/getUserImage', restau_user.getUserImage);

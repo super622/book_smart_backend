@@ -553,6 +553,35 @@ exports.getUserInfo = async (req, res) => {
     }
 };
 
+exports.getAssignedShift = async (req, res) => {
+    try {
+      const { userId } = req.body; // or use req.query.userId if you prefer GET
+      if (userId == null) {
+        return res.status(400).json({ message: "userId (AIC) is required" });
+      }
+  
+      const aic = isNaN(Number(userId)) ? String(userId) : Number(userId);
+  
+      const user = await Restau_User.findOne(
+        { aic },
+        { aic: 1, assignedShift: 1, _id: 0 }
+      ).lean();
+  
+      if (!user) {
+        return res.status(404).json({ message: "User does not exist", assignedShift: [] });
+      }
+  
+      return res.status(200).json({
+        message: "OK",
+        aic: user.aic,
+        assignedShift: Array.isArray(user.assignedShift) ? user.assignedShift : [],
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: "An Error Occured!" });
+    }
+  };
+
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.body;

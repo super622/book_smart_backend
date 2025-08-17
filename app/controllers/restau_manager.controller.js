@@ -292,62 +292,6 @@ exports.getAllStaffShiftInfo = async (req, res) => {
     }
 };
 
-// exports.addShiftToStaff = async (req, res) => {
-//     try {
-//       const { managerAic, staffId, shifts } = req.body;
-  
-//       const manager = await Restau_manager.findOne({ aic: managerAic });
-//       if (!manager) return res.status(404).json({ message: "Manager not found" });
-  
-//       const staff = manager.staffInfo.find(s => s.id === staffId);
-//       if (!staff) return res.status(404).json({ message: "Staff not found" });
-  
-//       // 🔍 Find max shift ID in current staff's shifts
-//       let maxId = staff.shifts.reduce((max, shift) => Math.max(max, shift.id || 0), 0);
-  
-//       let addedCount = 0;
-  
-//       for (const { date, time } of shifts) {
-//         const exists = staff.shifts.some(
-//           shift => shift.date.trim() === date.trim() && shift.time.trim() === time.trim()
-//         );
-  
-//         if (!exists) {
-//           maxId += 1;
-  
-//           staff.shifts.push({
-//             id: maxId,
-//             date: date.trim(),
-//             time: time.trim()
-//           });
-  
-//           addedCount++;
-//         }
-//       }
-  
-//       if (addedCount > 0) {
-//         manager.markModified('staffInfo');
-//         await manager.save();
-//       }
-  
-//       return res.status(200).json({
-//         message: `${addedCount} shift(s) added`,
-//         staffInfo: manager.staffInfo
-//       });
-  
-//     } catch (err) {
-//       console.error(err);
-//       return res.status(500).json({ message: "Error adding shifts" });
-//     }
-//   };
-
-// assumes you have imported your models:
-// const Restau_manager = require('...');
-// const Restau_user = require('...');
-
-// const Restau_manager = require('...');
-// const Restau_user = require('...');
-
 exports.addShiftToStaff = async (req, res) => {
     try {
       const { managerAic, staffId, shifts } = req.body;
@@ -420,7 +364,7 @@ exports.addShiftToStaff = async (req, res) => {
           companyName: String(manager.companyName || '').trim(),
           managerAic,
           status: 'pending',
-          adminShiftIds: [adminShift.id], // link back to admin shift
+          adminShiftIds: adminShift.id, // link back to admin shift
         };
         user.assignedShift.push(userAssigned);
   
