@@ -1,6 +1,7 @@
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
 const Restau_User = db.restau_user;
+const Restau_manager = db.restau_manager
 const Bid = db.restau_bid;
 const Job = db.restau_job;
 const mailTrans = require("../controllers/mailTrans.controller.js");
@@ -581,6 +582,162 @@ exports.getAssignedShift = async (req, res) => {
       return res.status(500).json({ message: "An Error Occured!" });
     }
   };
+
+
+//   exports.setAdminShiftStatus = async (req, res) => {
+//     try {
+//       let { managerAic, staffId, shiftId, status } = req.body;
+//       status = String(status || '').toLowerCase();
+  
+//       if (!['accept', 'reject'].includes(status)) {
+//         return res.status(400).json({ message: 'status must be "accept" or "reject"' });
+//       }
+  
+//       const manager = await Restau_manager.findOne({ aic: managerAic });
+//       if (!manager) return res.status(404).json({ message: 'Manager not found' });
+  
+//       const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
+//       if (!staff) return res.status(404).json({ message: 'Staff not found' });
+  
+//       staff.shifts = staff.shifts || [];
+//       const shift = staff.shifts.find(sh => Number(sh.id) === Number(shiftId));
+//       if (!shift) return res.status(404).json({ message: 'Shift not found' });
+  
+//       if (String(shift.status || 'pending') !== 'pending') {
+//         return res.status(409).json({ message: `Shift is already ${shift.status}` });
+//       }
+  
+//       // 1) Update admin side
+//       shift.status = status;
+//       manager.markModified('staffInfo');
+  
+//       // 2) Update user side (via usershiftid or fallback by adminShiftIds+managerAic)
+//       let userUpdated = false;
+//       const staffAic = staff.aic;
+//       if (staffAic != null) {
+//         const user = await Restau_User.findOne({ aic: staffAic });
+//         if (user) {
+//           user.assignedShift = user.assignedShift || [];
+  
+//           let row = null;
+//           if (shift.usershiftid != null) {
+//             row = user.assignedShift.find(a => Number(a.id) === Number(shift.usershiftid));
+//           }
+//           if (!row) {
+//             row = user.assignedShift.find(
+//               a =>
+//                 Array.isArray(a.adminShiftIds) &&
+//                 a.adminShiftIds.map(Number).includes(Number(shiftId)) &&
+//                 String(a.managerAic) === String(managerAic)
+//             );
+//           }
+  
+//           if (row) {
+//             if (String(row.status || 'pending') !== 'pending') {
+//               // Keep rule symmetrical; block if not pending
+//               return res.status(409).json({ message: `User assignedShift already ${row.status}` });
+//             }
+//             row.status = status;
+//             user.markModified('assignedShift');
+//             await user.save();
+//             userUpdated = true;
+//           }
+//         }
+//       }
+  
+//       await manager.save();
+  
+//       return res.status(200).json({
+//         message: 'Status updated',
+//         admin: { staffId, shiftId, status },
+//         userUpdated
+//       });
+//     } catch (err) {
+//       console.error('setAdminShiftStatus error:', err);
+//       return res.status(500).json({ message: 'Error updating status' });
+//     }
+//   };
+
+/**
+ * POST /api/shift/setStatusFromUser
+ * Body: { userAic, assignedShiftId, status }  // status: "accept" | "reject" | "pending"
+ *
+ * - Updates restau_user.assignedShift[assignedShiftId].status
+ * - Mirrors the same status to restau_managers:
+ *     managerAic = user.assignedShift[].managerAic
+ *     staffInfo[].aic == userAic
+ *     shifts[].id ∈ adminShiftIds
+ */
+exports.setStatusFromUser = async (req, res) => {
+  try {
+    let { userAic, assignedShiftId, status } = req.body;
+
+    status = String(status || '').toLowerCase();
+    if (!['pending', 'accept', 'reject'].includes(status)) {
+      return res.status(400).json({ message: 'status must be "pending", "accept", or "reject"' });
+    }
+
+    // 1) Load user and target assignedShift row
+    const aic = isNaN(Number(userAic)) ? String(userAic) : Number(userAic);
+    const user = await Restau_User.findOne({ aic });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.assignedShift = user.assignedShift || [];
+    const row = user.assignedShift.find(r => Number(r.id) === Number(assignedShiftId));
+    if (!row) return res.status(404).json({ message: 'assignedShift row not found' });
+
+    const prev = String(row.status || 'pending');
+    // Update user side (even if same, we’ll still mirror to ensure consistency)
+    row.status = status;
+    user.markModified('assignedShift');
+    await user.save();
+
+    // 2) Mirror to admin side using your exact linkage:
+    // managerAic -> staffInfo[].aic == userAic -> shifts by adminShiftIds
+    const managerAic = row.managerAic;
+    // adminShiftIds might be a number or an array; normalize to array
+    const adminIdsRaw = row.adminShiftIds;
+    const adminIds = Array.isArray(adminIdsRaw)
+      ? adminIdsRaw.map(Number)
+      : (adminIdsRaw === 0 || adminIdsRaw ? [Number(adminIdsRaw)] : []);
+
+    let adminUpdated = 0;
+    if (managerAic != null && adminIds.length) {
+      const manager = await Restau_manager.findOne({ aic: managerAic });
+      if (manager) {
+        const staff = (manager.staffInfo || []).find(s => Number(s.aic) === Number(aic));
+        if (staff) {
+          staff.shifts = staff.shifts || [];
+          let touched = false;
+
+          for (const id of adminIds) {
+            const sh = staff.shifts.find(s => Number(s.id) === Number(id));
+            if (sh) {
+              sh.status = status; // ← set exactly to new status
+              touched = true;
+              adminUpdated++;
+            }
+          }
+
+          if (touched) {
+            manager.markModified('staffInfo');
+            await manager.save();
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({
+      message: 'Status synchronized',
+      user: { aic, assignedShiftId: Number(assignedShiftId), from: prev, to: status },
+      adminRowsUpdated: adminUpdated
+    });
+  } catch (err) {
+    console.error('setStatusFromUser error:', err);
+    return res.status(500).json({ message: 'Error updating status' });
+  }
+};
+
 
 exports.getUserProfile = async (req, res) => {
     try {

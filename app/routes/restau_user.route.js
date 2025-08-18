@@ -20,6 +20,8 @@ module.exports = app => {
     router.post('/getAssignedShift', restau_user.getAssignedShift);
     router.post('/allCaregivers', verifyUser, restau_user.allCaregivers);
     router.post('/updateUserStatus', verifyUser, restau_user.updateUserStatus);
+    router.post('/setStatusFromUser', verifyUser, restau_user.setStatusFromUser);
+
     router.post('/getUserImage', restau_user.getUserImage);
 
     router.post('/addAssignedShiftFieldToAll', restau_user.addAssignedShiftFieldToAll);
