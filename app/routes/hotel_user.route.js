@@ -22,6 +22,9 @@ module.exports = app => {
     router.post('/updateUserStatus', verifyUser, hotel_user.updateUserStatus);
     router.post('/getUserImage', hotel_user.getUserImage);
 
+    router.post('/getAssignedShift', hotel_user.getAssignedShift);
+    router.post('/setStatusFromUser', verifyUser, hotel_user.setStatusFromUser);
+
     router.post('/addAssignedShiftFieldToAll', hotel_user.addAssignedShiftFieldToAll);
     router.post('/clearAssignedShiftForAll', hotel_user.clearAssignedShiftForAll);
 
