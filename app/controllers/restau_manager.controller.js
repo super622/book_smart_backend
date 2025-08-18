@@ -87,14 +87,7 @@ exports.addStaffInfoFieldToAll = async (req, res) => {
   
 exports.clearShiftTypeForAll = async (req, res) => {
     try {
-      // Option A (simple): works on most MongoDB versions
       const filter = { shiftType: { $exists: true, $type: 'array', $ne: [] } };
-  
-      // Option B (strict, if you prefer $expr):
-      // const filter = {
-      //   shiftType: { $exists: true, $type: 'array' },
-      //   $expr: { $gt: [ { $size: "$shiftType" }, 0 ] }
-      // };
   
       const result = await Restau_manager.updateMany(filter, { $set: { shiftType: [] } });
   
