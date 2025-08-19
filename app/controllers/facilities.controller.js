@@ -317,7 +317,7 @@ exports.Update = async (req, res) => {
                     <p>Your signature:</p>
                     <img src="cid:signatureImage" style="width: 300px; height: 200px;" />
                     <p>Here's the link of a copy of the BOOKSMART™ TERMS OF SERVICE:</p>
-                    <p> ${updatedDocument.selectedoption==='first' ? 'https://drive.google.com/file/d/1NFjODJEvbSG8-Q1bTXUPfmHNDb5872of/view?usp=sharing':'https://drive.google.com/file/d/1NFjODJEvbSG8-Q1bTXUPfmHNDb5872of/view?usp=sharing'}</p>
+                    <p> ${updatedDocument.selectedoption==='first' ? 'https://drive.google.com/file/d/1py7mrxVISQ6dh5AE8COqjv4Bm7sUDfMX/view?usp=sharing':'https://drive.google.com/file/d/1py7mrxVISQ6dh5AE8COqjv4Bm7sUDfMX/view?usp=sharing'}</p>
                     <p>Thanks, and have a great day!</p>
                 </div>`;
 
