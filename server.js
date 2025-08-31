@@ -8,7 +8,6 @@ const fileUpload = require("express-fileupload");
 const cron = require("node-cron");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
-
 dotenv.config();
 
 const app = express();
@@ -30,6 +29,7 @@ app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// DB bootstrap
 const db = require("./app/models");
 db.mongoose
   .connect(db.url, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -62,148 +62,244 @@ app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
 });
 
+// controllers/utils
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
-// Keep your existing senders
 const { sendSMS } = require("./app/controllers/twilio.js");
 const { sendNotification } = require("./app/utils/firebaseService.js");
+// Must expose: sendMail(email, subject, html)
+const mailTrans = require("./app/utils/mailTrans");
 
 let invoices = [];
 
+// weekly invoice example (guarded in case generateInvoice isn't present)
 cron.schedule("50 10 * * 6", () => {
-  const facilities = [
-    { id: 1, name: "Facility A", amountDue: 100 },
-    { id: 2, name: "Facility B", amountDue: 200 },
-  ];
-  facilities.forEach((facility) => {
-    const invoicePath = generateInvoice(facility); // assumed defined elsewhere
-    invoices.push({ facilityId: facility.id, path: invoicePath });
-  });
-  console.log("Invoices generated:", invoices);
-  setInvoices(invoices);
+  try {
+    const facilities = [
+      { id: 1, name: "Facility A", amountDue: 100 },
+      { id: 2, name: "Facility B", amountDue: 200 },
+    ];
+    if (typeof generateInvoice !== "function") {
+      console.log("[invoices] generateInvoice not defined. Skipping invoice creation.");
+      return;
+    }
+    facilities.forEach((facility) => {
+      const invoicePath = generateInvoice(facility);
+      invoices.push({ facilityId: facility.id, path: invoicePath });
+    });
+    console.log("Invoices generated:", invoices);
+    setInvoices(invoices);
+  } catch (e) {
+    console.error("[invoices] error:", e?.message || e);
+  }
 });
 
-/** ===== Existing helper for *jobs* (left as-is) ===== */
+/* =========================
+   Helpers used by JOBS (existing logic)
+   ========================= */
 function extractStartTime(shiftTime) {
-  if (shiftTime.match(/^\d{2}-\d{2}$/)) {
+  if (!shiftTime) return null;
+  if (/^\d{2}-\d{2}$/.test(shiftTime)) {
     const [startTime] = shiftTime.split("-");
     return moment(startTime, "HH").format("HH:mm");
   }
-  if (shiftTime.match(/^[0-9]{1,2}[ap]m/)) {
+  if (/^[0-9]{1,2}[ap]m/.test(shiftTime)) {
     const [startTime] = shiftTime.split(" - ");
     return moment(startTime, "h:mma").format("HH:mm");
   }
-  if (shiftTime.match(/[AP]M/)) {
+  if (/[AP]M/.test(shiftTime)) {
     const [startTime] = shiftTime.split(" - ");
     return moment(startTime, "h:mm A").format("HH:mm");
   }
-  if (shiftTime.match(/^[0-9]{1}[ap]m/)) {
+  if (/^[0-9]{1}[ap]m/.test(shiftTime)) {
     const [startTime] = shiftTime.split("-");
     return moment(startTime, "h a").format("HH:mm");
   }
   return null;
 }
 
-/** ===== Helpers for hotel/restau assignedShift ===== */
+/* =========================
+   Helpers for assignedShift (hotel_users/restau_users)
+   ========================= */
+
+// Normalize and parse start time from strings like:
+// "7:30 AM → 3:45 PM", "8:25 AM -> 2:25 PM", "13-19", "05:00 PM - 11:00 PM", etc.
 function extractStartTimeFromAssigned(shiftTime) {
   if (!shiftTime) return null;
-
-  // Normalize odd spaces and separators (→ ➔ ➜ -> — – "to")
   const normalized = String(shiftTime)
-    .replace(/[\u202F\u00A0]/g, " ")         // narrow/normal NBSP -> space
-    .replace(/(→|➔|➜|->|—|–|to)/gi, "-")    // unify separators to '-'
-    .replace(/\s+/g, " ")
+    .replace(/[\u202F\u00A0]/g, " ")
+    .replace(/\s*(->|→|➔|—|–|to)\s*/gi, " - ")
+    .replace(/\s*-\s*/g, " - ")
     .trim();
 
-  const startRaw = normalized.split("-")[0].trim();
-
-  // include hh formats to accept leading zeros like "05:00 PM"
-  const formats = ["h:mm A", "h A", "h:mma", "ha", "hh:mm A", "hh A", "HH:mm", "HH"];
-  for (const f of formats) {
+  const startRaw = normalized.split(" - ")[0]?.trim();
+  const strictFormats = ["h:mm A", "h A", "h:mma", "ha", "HH:mm", "HH"];
+  for (const f of strictFormats) {
     const m = moment(startRaw, f, true);
     if (m.isValid()) return m.format("HH:mm");
   }
+  // Fallbacks
+  const ap = startRaw && startRaw.match(/^(\d{1,2}(:\d{2})?\s*[AP]M)/i);
+  if (ap) return moment(ap[1].replace(/\s+/g, " "), ["h:mm A", "h A"]).format("HH:mm");
+  const h24 = startRaw && startRaw.match(/^(\d{1,2}(:\d{2})?)/);
+  if (h24) return moment(h24[1], ["H:mm", "H"]).format("HH:mm");
   return null;
 }
 
-function getShiftStartMomentFromAssigned(shift, tz) {
-  try {
-    const tzName = typeof tz === "string" && tz ? tz : "America/Toronto";
+// Shared reminder message builder (used for SMS, FCM, and EMAIL)
+function buildReminderMessage(loc) {
+  return (
+    `BookSmart Shift Reminder.\n\n` +
+    `We'll see you in 2 hours at ${loc}!\n\n` +
+    `Please be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`
+  );
+}
 
-    if (!shift?.date || !shift?.time) {
-      console.log("[parse] missing date/time on shift:", shift);
-      return null;
-    }
+// Convert the same text to simple HTML (preserves line breaks)
+function textToHtml(text) {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap">${String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>")}</div>`;
+}
 
-    const startHHmm = extractStartTimeFromAssigned(shift.time);
-    console.log(
-      "[parse] rawTime=",
-      shift.time,
-      "| startHHmm=",
-      startHHmm,
-      "| tz=",
-      tzName
-    );
-    if (!startHHmm) return null;
+const REMINDER_SUBJECT = "BookSmart Shift Reminder";
 
-    const dateFormats = [
-      "MMMM D, YYYY",
-      "MMMM DD, YYYY",
-      "MMM D, YYYY",
-      "MM/DD/YYYY",
-    ];
+// Scans a user collection (hotel_users/restau_users) for today's accepted assignedShift,
+// prints detailed console output, and sends FCM + SMS + Email when start time == now+2h.
+// Runs only at minutes 0/15/30/45 in America/Toronto.
+async function processAcceptedAssignedShifts(label, UserModel) {
+  const tz = "America/Toronto";
+  const now = moment.tz(tz).startOf("minute");
+  const minute = now.minute();
 
-    for (const df of dateFormats) {
-      const input = `${shift.date} ${startHHmm}`;
-      const fmt = `${df} HH:mm`;
+  // hard gate for exact minutes (0,15,30,45)
+  if (![0, 15, 30, 45].includes(minute)) {
+    console.log(`[${label}] Skip (minute=${minute}) — only 0/15/30/45 are processed`);
+    return;
+  }
 
-      let m;
-      try {
-        m = moment.tz(input, fmt, tzName);
-      } catch (e) {
-        console.error("[parse] moment.tz threw:", { input, fmt, tzName }, e);
-        continue;
-      }
+  const todayLong = now.format("MMMM D, YYYY"); // "August D, YYYY"
+  const targetHHmm = now.clone().add(2, "hours").format("HH:mm");
 
+  console.log(
+    `[${label}] Tick @ ${now.format("YYYY-MM-DD HH:mm")} ${tz} | today="${todayLong}" | targetStart="${targetHHmm}"`
+  );
+
+  // pull users that have at least one accepted shift today
+  const users = await UserModel.find(
+    { assignedShift: { $elemMatch: { status: "accept", date: todayLong } } },
+    { assignedShift: 1, phoneNumber: 1, fcmToken: 1, email: 1, name: 1, aic: 1 }
+  );
+
+  if (!users.length) {
+    console.log(`[${label}] No users with accepted assignedShift today.`);
+    return;
+  }
+
+  // log ALL accepted items today with parsed HH:mm
+  let acceptedTodayCount = 0;
+  users.forEach((u) => {
+    const list = (u.assignedShift || []).filter((s) => s.status === "accept" && s.date === todayLong);
+    acceptedTodayCount += list.length;
+    list.forEach((s) => {
+      const parsed = extractStartTimeFromAssigned(s.time);
       console.log(
-        "[parse] try format=",
-        fmt,
-        "| valid=",
-        m.isValid(),
-        "| parsed=",
-        m && m.isValid() ? m.format("YYYY-MM-DD HH:mm") : null
+        `[${label}] candidate user=${u.aic ?? u.email ?? u._id} | date="${s.date}" | time="${s.time}" | parsedStart="${parsed}"`
       );
-      if (m.isValid()) return m;
-    }
-    return null;
-  } catch (e) {
-    console.error(
-      "[parse] getShiftStartMomentFromAssigned error:",
-      { date: shift?.date, time: shift?.time, tzType: typeof tz, tzValue: tz },
-      e
+    });
+  });
+  console.log(`[${label}] Total accepted items today: ${acceptedTodayCount}`);
+
+  // determine matches that start exactly in 2 hours
+  const matches = [];
+  users.forEach((u) => {
+    (u.assignedShift || []).forEach((s) => {
+      if (s.status === "accept" && s.date === todayLong) {
+        const parsed = extractStartTimeFromAssigned(s.time);
+        if (parsed === targetHHmm) {
+          matches.push({ user: u, shift: s, startHHmm: parsed });
+        }
+      }
+    });
+  });
+  console.log(`[${label}] Matches starting in 2 hours (${targetHHmm}): ${matches.length}`);
+
+  // send for each match with progress logging
+  let done = 0;
+  for (const { user, shift } of matches) {
+    const who = user.aic ?? user.email ?? String(user._id);
+    const phone = user.phoneNumber || user.phone || null;
+    const token = user.fcmToken || null;
+    const email = user.email || null;
+    const loc = shift.companyName || shift.location || "your scheduled location";
+    const msg = buildReminderMessage(loc); // <-- single source of truth
+    const msgHtml = textToHtml(msg);
+
+    console.log(
+      `[${label}] >>> SEND for user=${who} | shiftId=${shift.id ?? "?"} | date="${shift.date}" | time="${shift.time}" | start="${targetHHmm}"`
     );
-    return null;
+
+    // SMS
+    if (phone) {
+      try {
+        await sendSMS(phone, loc);
+        console.log(`[${label}]   📱 SMS ✅ to ${phone}`);
+      } catch (e) {
+        console.error(`[${label}]   📱 SMS ❌ ${phone} -> ${e?.message || e}`);
+      }
+    } else {
+      console.log(`[${label}]   📱 SMS skipped (no phone)`);
+    }
+
+    // FCM
+    if (token) {
+      try {
+        await sendNotification(token, "Reminder", msg);
+        console.log(`[${label}]   🔔 FCM ✅`);
+      } catch (e) {
+        console.error(`[${label}]   🔔 FCM ❌ -> ${e?.message || e}`);
+      }
+    } else {
+      console.log(`[${label}]   🔔 FCM skipped (no token)`);
+    }
+
+    // Email — uses EXACT same message text as SMS/FCM
+    if (email) {
+      try {
+        const r = await mailTrans.sendMail(email, REMINDER_SUBJECT, msgHtml);
+        console.log(
+          `[${label}]   ✉️  Email ✅ to ${email} | result=${JSON.stringify(r)?.slice(0, 160)}...`
+        );
+      } catch (e) {
+        console.error(`[${label}]   ✉️  Email ❌ to ${email} -> ${e?.message || e}`);
+      }
+    } else {
+      console.log(`[${label}]   ✉️  Email skipped (no email)`);
+    }
+
+    done++;
+    console.log(`[${label}] <<< Progress ${done}/${matches.length}`);
+  }
+
+  if (!matches.length) {
+    console.log(`[${label}] No items to notify at this tick.`);
   }
 }
 
-/** ===== Cron: every 15 minutes ===== */
+/* =========================
+   MAIN CRON — every 15 minutes
+   ========================= */
 cron.schedule("*/15 * * * *", async () => {
-  console.log(
-    "Running job reminder check at",
-    moment().format("YYYY-MM-DD HH:mm:ss")
-  );
+  console.log("Running job reminder check at", moment().format("YYYY-MM-DD HH:mm:ss"));
 
   try {
-    const currentDate = moment
-      .tz(new Date(), "America/Toronto")
-      .format("MM/DD/YYYY");
-    const twoHoursLater = moment
-      .tz("America/Toronto")
-      .add(2, "hours")
-      .format("HH:mm");
+    // ========= EXISTING JOBS FLOWS (unchanged) =========
+    const currentDate = moment.tz(new Date(), "America/Toronto").format("MM/DD/YYYY");
+    const twoHoursLater = moment.tz("America/Toronto").add(2, "hours").format("HH:mm");
 
     console.log(`Looking for jobs with start time: ${twoHoursLater}`);
 
-    // === Existing jobs logic (UNCHANGED) ===
     const jobs = await db.jobs.find(
       { shiftDate: currentDate, jobStatus: "Awarded" },
       { jobId: 1, shiftTime: 1, location: 1 }
@@ -219,57 +315,37 @@ cron.schedule("*/15 * * * *", async () => {
 
     console.log(`Fetched ${jobs.length} jobs for ${currentDate}.`);
     console.log(`Fetched ${HotelJobs.length} hotel jobs for ${currentDate}.`);
-    console.log(
-      `Fetched ${RestauJobs.length} restaurant jobs for ${currentDate}.`
-    );
+    console.log(`Fetched ${RestauJobs.length} restaurant jobs for ${currentDate}.`);
 
-    const matchingJobs = jobs.filter(
-      (job) => extractStartTime(job.shiftTime) === twoHoursLater
-    );
-    const matchingHotelJobs = HotelJobs.filter(
-      (job) => extractStartTime(job.shiftTime) === twoHoursLater
-    );
-    const matchingRestauJobs = RestauJobs.filter(
-      (job) => extractStartTime(job.shiftTime) === twoHoursLater
-    );
+    const matchingJobs = jobs.filter((job) => extractStartTime(job.shiftTime) === twoHoursLater);
+    const matchingHotelJobs = HotelJobs.filter((job) => extractStartTime(job.shiftTime) === twoHoursLater);
+    const matchingRestauJobs = RestauJobs.filter((job) => extractStartTime(job.shiftTime) === twoHoursLater);
 
     console.log(`Found ${matchingJobs.length} matching jobs.`);
     console.log(`Found ${matchingHotelJobs.length} matching hotel jobs.`);
     console.log(`Found ${matchingRestauJobs.length} matching restaurant jobs.`);
 
-    // JOBS flow (kept: SMS + FCM)
+    // JOBS → SMS + FCM (kept as you had)
     await Promise.all(
       matchingJobs.map(async (job) => {
         const { jobId, location } = job;
         console.log("Processing jobId:", jobId);
 
-        const bidders = await db.bids.find(
-          { jobId, bidStatus: "Awarded" },
-          { caregiverId: 1 }
-        );
-
+        const bidders = await db.bids.find({ jobId, bidStatus: "Awarded" }, { caregiverId: 1 });
         const caregiverIds = bidders.map((bid) => bid.caregiverId);
         console.log("Awarded caregiver IDs:", caregiverIds);
-        if (caregiverIds.length === 0) {
+        if (!caregiverIds.length) {
           console.log(`No awarded bidders for jobId ${jobId}.`);
           return;
         }
 
-        const caregivers = await db.clinical.find(
-          { aic: { $in: caregiverIds } },
-          { phoneNumber: 1, fcmToken: 1 }
-        );
-        console.log(
-          `Found ${caregivers.length} caregivers for jobId ${jobId}.`
-        );
+        const caregivers = await db.clinical.find({ aic: { $in: caregiverIds } }, { phoneNumber: 1, fcmToken: 1 });
+        console.log(`Found ${caregivers.length} caregivers for jobId ${jobId}.`);
 
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
-            const message =
-              `BookSmart Shift Reminder.\n\n` +
-              `We'll see you in 2 hours at ${location}!\n\n` +
-              `Please be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            // const message = buildReminderMessage(location);
             await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
@@ -284,39 +360,27 @@ cron.schedule("*/15 * * * *", async () => {
         const { jobId, location } = job;
         console.log("Processing hotel jobId:", jobId);
 
-        const bidders = await db.hotel_bid.find(
-          { jobId, bidStatus: "Awarded" },
-          { caregiverId: 1 }
-        );
-
+        const bidders = await db.hotel_bid.find({ jobId, bidStatus: "Awarded" }, { caregiverId: 1 });
         const caregiverIds = bidders.map((bid) => bid.caregiverId);
         console.log("Awarded hotel caregiver IDs:", caregiverIds);
-        if (caregiverIds.length === 0) {
+        if (!caregiverIds.length) {
           console.log(`No awarded bidders for jobId ${jobId}.`);
           return;
         }
 
-        const caregivers = await db.hotel_user.find(
-          { aic: { $in: caregiverIds } },
-          { phoneNumber: 1, fcmToken: 1 }
-        );
-        console.log(
-          `Found ${caregivers.length} hotel caregivers for jobId ${jobId}.`
-        );
+        const caregivers = await db.hotel_user.find({ aic: { $in: caregiverIds } }, { phoneNumber: 1, fcmToken: 1 });
+        console.log(`Found ${caregivers.length} hotel caregivers for jobId ${jobId}.`);
 
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
-            const message =
-              `BookSmart Shift Reminder.\n\n` +
-              `We'll see you in 2 hours at ${location}!\n\n` +
-              `Please be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            // const message = buildReminderMessage(location);
             await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );
 
-        console.log(`SMS notifications sent for jobId ${jobId}.`);
+        console.log(`SMS notifications sent for hotel jobId ${jobId}.`);
       })
     );
 
@@ -325,136 +389,34 @@ cron.schedule("*/15 * * * *", async () => {
         const { jobId, location } = job;
         console.log("Processing restaurant jobId:", jobId);
 
-        const bidders = await db.restau_bid.find(
-          { jobId, bidStatus: "Awarded" },
-          { caregiverId: 1 }
-        );
-
+        const bidders = await db.restau_bid.find({ jobId, bidStatus: "Awarded" }, { caregiverId: 1 });
         const caregiverIds = bidders.map((bid) => bid.caregiverId);
         console.log("Awarded restaurant caregiver IDs:", caregiverIds);
-        if (caregiverIds.length === 0) {
+        if (!caregiverIds.length) {
           console.log(`No awarded bidders for jobId ${jobId}.`);
           return;
         }
 
-        const caregivers = await db.restau_user.find(
-          { aic: { $in: caregiverIds } },
-          { phoneNumber: 1, fcmToken: 1 }
-        );
-        console.log(
-          `Found ${caregivers.length} restaurant caregivers for jobId ${jobId}.`
-        );
+        const caregivers = await db.restau_user.find({ aic: { $in: caregiverIds } }, { phoneNumber: 1, fcmToken: 1 });
+        console.log(`Found ${caregivers.length} restaurant caregivers for jobId ${jobId}.`);
 
         await Promise.all(
           caregivers.map(async (caregiver) => {
             await sendSMS(caregiver.phoneNumber, location);
-            const message =
-              `BookSmart Shift Reminder.\n\n` +
-              `We'll see you in 2 hours at ${location}!\n\n` +
-              `Please be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
+            // const message = buildReminderMessage(location);
             await sendNotification(caregiver.fcmToken, "Reminder", message);
             console.log("phoneNumber:", caregiver.phoneNumber);
           })
         );
 
-        console.log(`SMS notifications sent for jobId ${jobId}.`);
+        console.log(`SMS notifications sent for restaurant jobId ${jobId}.`);
       })
     );
 
-    // === NEW: Accepted-shift reminders for hotel_users & restau_users ===
-    const tzName = "America/Toronto";
+    // ========= ASSIGNED SHIFT (hotel_users + restau_users) — sends FCM + SMS + Email =========
+    await processAcceptedAssignedShifts("HOTEL_USERS", db.hotel_user);
+    await processAcceptedAssignedShifts("RESTAU_USERS", db.restau_user);
 
-    const hotelUsers = await db.hotel_user.find(
-      { "assignedShift.status": "accept" },
-      { assignedShift: 1, phoneNumber: 1, fcmToken: 1, name: 1, aic: 1 }
-    );
-    console.log(
-      `[hotel] users with at least one accepted shift: ${hotelUsers.length}`
-    );
-
-    const restauUsers = await db.restau_user.find(
-      { "assignedShift.status": "accept" },
-      { assignedShift: 1, phoneNumber: 1, fcmToken: 1, name: 1, aic: 1 }
-    );
-    console.log(
-      `[restaurant] users with at least one accepted shift: ${restauUsers.length}`
-    );
-
-    async function processAcceptedShifts(users, typeLabel) {
-      const windowMinutes = 15;
-      const now = moment.tz(tzName).seconds(0).milliseconds(0); // align minute to cron
-
-      for (const user of users) {
-        const who = user.aic ?? (user._id ? String(user._id) : "(unknown user)");
-
-        for (const sh of user.assignedShift || []) {
-          // console.log(
-          //   `[${typeLabel}] user=${who} | shiftId=${sh.id ?? "(no id)"} | status=${sh.status} | date="${sh.date}" | time="${sh.time}"`
-          // );
-          if (sh.status !== "accept") {
-            // console.log(`[${typeLabel}]   ⛔ skip: status is not "accept"`);
-            continue;
-          }
-
-          const startAt = getShiftStartMomentFromAssigned(sh, tzName);
-          if (!startAt) {
-            console.log(
-              // `[${typeLabel}]   ⛔ skip: could not parse start time from date/time`
-            );
-            continue;
-          }
-
-          const notifyAt = startAt.clone().subtract(2, "hours").seconds(0).milliseconds(0);
-          const diffMin = now.diff(notifyAt, "minutes"); // 0..14 on the exact 15-min tick
-          const hit = diffMin >= 0 && diffMin < windowMinutes;
-
-          // console.log(
-          //   `[${typeLabel}]   times: startAt=${startAt.format(
-          //     "YYYY-MM-DD HH:mm"
-          //   )} | notifyAt=${notifyAt.format("YYYY-MM-DD HH:mm")} | now=${now.format(
-          //     "YYYY-MM-DD HH:mm"
-          //   )} | diffMin=${diffMin} | hit=${hit}`
-          // );
-
-          if (!hit) {
-            // console.log(
-            //   `[${typeLabel}]   ⏱️ not in window (fires only in [notifyAt, notifyAt+15m), e.g. 09:45 -> 07:45)`
-            // );
-            continue;
-          }
-
-          const locationOrName =
-            sh.location || sh.companyName || `${typeLabel} shift`;
-
-          // ===== Send SMS + FCM (no email) =====
-          try {
-            await sendSMS(user.phoneNumber, locationOrName);
-            console.log(`[${typeLabel}]   📱 SMS attempted to ${user.phoneNumber}`);
-          } catch (e) {
-            console.error(
-              `[${typeLabel}]   ❌ SMS failed for ${user.phoneNumber}:`,
-              e?.message || e
-            );
-          }
-
-          try {
-            const pushMsg =
-              `BookSmart Shift Reminder.\n\n` +
-              `We'll see you in 2 hours at ${locationOrName}!\n\n` +
-              `Please be:\n- On time\n- Dressed appropriately\n- Courteous\n- Ready to work`;
-            await sendNotification(user.fcmToken, "Reminder", pushMsg);
-            console.log(`[${typeLabel}]   🔔 FCM attempted for user=${who}`);
-          } catch (e) {
-            console.error(`[${typeLabel}]   ❌ FCM failed:`, e?.message || e);
-          }
-
-          console.log(`[${typeLabel}]   ✅ phone+FCM processed for user=${who}`);
-        }
-      }
-    }
-
-    await processAcceptedShifts(hotelUsers, "hotel");
-    await processAcceptedShifts(restauUsers, "restaurant");
   } catch (error) {
     console.error("Error processing jobs:", error.message);
   }
