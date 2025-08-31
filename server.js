@@ -67,7 +67,7 @@ const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
 const { sendNotification } = require("./app/utils/firebaseService.js");
 // Must expose: sendMail(email, subject, html)
-const mailTrans = require("./app/utils/mailTrans");
+const mailTrans = require("./app/controllers/mailTrans.controller.js");
 
 let invoices = [];
 
