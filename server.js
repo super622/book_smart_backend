@@ -12,13 +12,7 @@ dotenv.config();
 
 const app = express();
 
-// Optional HTTPS
-// const privateKey = fs.readFileSync('ssl/server.key', 'utf8');
-// const certificate = fs.readFileSync('ssl/server.crt', 'utf8');
-// const credentials = { key: privateKey, cert: certificate };
-
 const server = http.createServer(app);
-// const server = https.createServer(credentials, app);
 
 app.use(fileUpload());
 require("./app/socketServer")(server);
@@ -62,16 +56,13 @@ app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
 });
 
-// controllers/utils
 const { setInvoices } = require("./app/controllers/facilities.controller.js");
 const { sendSMS } = require("./app/controllers/twilio.js");
 const { sendNotification } = require("./app/utils/firebaseService.js");
-// Must expose: sendMail(email, subject, html)
 const mailTrans = require("./app/controllers/mailTrans.controller.js");
 
 let invoices = [];
 
-// weekly invoice example (guarded in case generateInvoice isn't present)
 cron.schedule("50 10 * * 6", () => {
   try {
     const facilities = [
@@ -116,10 +107,6 @@ function extractStartTime(shiftTime) {
   }
   return null;
 }
-
-/* =========================
-   Helpers for assignedShift (hotel_users/restau_users)
-   ========================= */
 
 // Normalize and parse start time from strings like:
 // "7:30 AM → 3:45 PM", "8:25 AM -> 2:25 PM", "13-19", "05:00 PM - 11:00 PM", etc.
