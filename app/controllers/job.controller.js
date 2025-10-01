@@ -311,7 +311,7 @@ exports.shifts = async (req, res) => {
 
       let dataArray = [];
       data.map((item, index) => {
-        console.log(user.title, item.degree);
+        // console.log(user.title, item.degree);
         if (item.jobStatus == 'Available' && item.degree == user.title) {
           dataArray.push({
             jobId: item.jobId,

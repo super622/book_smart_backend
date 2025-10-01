@@ -578,7 +578,7 @@ exports.signup = async (req, res) => {
 
             let sendResult = mailTrans.sendMail(response.contactEmail, subject, content);
 
-            const subject1 = `A New Hospitality Independent Contractor ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
+            const subject1 = `A New Hospitality Hotel Manager ${response.firstName} ${response.lastName} - Has Registered with BookSmart™`
             const content1 = `<div id=":18t" class="a3s aiL ">
                 <p>
                 <strong>Note: The Hospitality Independent Contractor will not be able to view shifts until approved by the "Administrator"<br></strong>
@@ -788,12 +788,12 @@ exports.Update = async (req, res) => {
             if (role != 'Admin') {
                 const token = setToken(payload);
                 const users = await Hotel_Manager.findOne({contactEmail: user.contactEmail}, { signature: 0 });
-                const verifySubject = "BookSmart™ - New Account signed";
-                const verifySubject1 = "BookSmart™ Terms of Service";
+                const verifySubject = `BookSmart™ Hospitality - ${updatedDocument.firstName} Has Acknowledged The Terms`;
+                const verifySubject1 = "BookSmart™ Hospitality Terms of Service";
                 const verifiedContent = `
                 <div>
                     <p>Hello Admin,</p>
-                    <p>${updatedDocument.firstName} has selected this Term: 
+                    <p>${updatedDocument.firstName} Has Acknowledged The Terms: 
                         ${updatedDocument.selectedoption === 'first' ? 
                         'Paying Net 7 with a Fee of $7/hour for CNAs, $10/hour for LPNs, or $15/hour for RNs for designated access to and use of BOOKSMART™ and processing of payments and insurances (“Service Fee”).' : 
                         'Paying Net 30 Bill rates set as: $35/hour for CNAs, $55/hour for LPNs, and $75/hour for RNs.'}
@@ -828,7 +828,7 @@ exports.Update = async (req, res) => {
                 if (updatedDocument) {
                     if (extracted.userStatus == 'activate') {
                         console.log('Activated .........');
-                        const verifySubject = "BookSmart™ - Your Account Approval"
+                        const verifySubject = "BookSmart™ Hospitality - Your Account Approval"
                         const verifiedContent = `
                         <div id=":15j" class="a3s aiL ">
                             <p>Hello ${updatedDocument.firstName},</p>
@@ -838,7 +838,7 @@ exports.Update = async (req, res) => {
                         let approveResult = mailTrans.sendMail(updatedDocument.contactEmail, verifySubject, verifiedContent);
                     } else if (extracted.userStatus == "inactivate") {
                         console.log('Activated .........');
-                        const verifySubject = "BookSmart™ - Your Account Restricted"
+                        const verifySubject = "BookSmart™ Hospitality - Your Account Restricted"
                         const verifiedContent = `
                         <div id=":15j" class="a3s aiL ">
                             <p>Hello ${updatedDocument.firstName},</p>
