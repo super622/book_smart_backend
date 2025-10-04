@@ -27,5 +27,21 @@ module.exports = app => {
   
   router.get('/facility', verifyUser, facilities.facility);
 
+  router.post('/addShiftTypeToAll', facilities.addShiftTypeFieldToAll);
+  router.post('/addStaffInfoFieldToAll', facilities.addStaffInfoFieldToAll);
+  router.post('/clearShiftTypeForAll', facilities.clearShiftTypeForAll);
+
+  router.post('/addShiftType', verifyUser, facilities.addShiftType);
+  router.post('/getShiftTypes', verifyUser, facilities.getShiftTypes);
+  router.post('/updateShiftType', verifyUser, facilities.updateShiftType);
+  router.post('/deleteShiftType', verifyUser, facilities.deleteShiftType);
+  router.get('/acknowledgedUsers', verifyUser, facilities.getAcknowledgedUsers);
+  router.post('/addStaffToManager', verifyUser, facilities.addStaffToManager);
+  router.post('/deleteStaffFromManager', verifyUser, facilities.deleteStaffFromManager);
+  router.post('/getAllStaffShiftInfo', verifyUser, facilities.getAllStaffShiftInfo);
+  router.post('/addShiftToStaff', verifyUser, facilities.addShiftToStaff);
+  router.post('/editShiftFromStaff', verifyUser, facilities.editShiftFromStaff);
+  router.post('/deleteShiftFromStaff', verifyUser, facilities.deleteShiftFromStaff);
+
   app.use("/api/facilities", router);
 };
