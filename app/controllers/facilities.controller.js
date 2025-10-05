@@ -164,7 +164,8 @@ exports.deleteShiftType = async (req, res) => {
 exports.getAcknowledgedUsers = async (req, res) => {
     try {
       const users = await Facility.find(
-        { AcknowledgeTerm: true },
+        { 
+            facilityAcknowledgeTerm: true },
         {
           _id: 0,
           aic: 1,
