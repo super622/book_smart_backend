@@ -431,7 +431,7 @@ exports.editShiftFromStaff = async (req, res) => {
   
       const staffAic = staff.aic;
       if (staffAic != null) {
-        const user = await Restau_User.findOne({ aic: staffAic });
+        const user = await Clinical.findOne({ aic: staffAic });
         if (user) {
           user.assignedShift = user.assignedShift || [];
   
@@ -500,7 +500,7 @@ exports.deleteShiftFromStaff = async (req, res) => {
       let userAction  = 'none';
   
       if (staffAic != null) {
-        const user = await Restau_User.findOne({ aic: staffAic });
+        const user = await Clinical.findOne({ aic: staffAic });
         if (user) {
           user.assignedShift = user.assignedShift || [];
   

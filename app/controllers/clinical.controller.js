@@ -39,6 +39,37 @@ async function uploadToS3(file) {
     return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
 }
 
+exports.addAssignedShiftFieldToAll = async (req, res) => {
+    try {
+      const result = await Clinical.updateMany(
+        { assignedShift: { $exists: false } },
+        { $set: { assignedShift: [] } }
+      );
+      return res.status(200).json({ message: "Done", modified: result.modifiedCount });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+};
+
+exports.clearAssignedShiftForAll = async (req, res) => {
+    try {
+      const filter = {
+        assignedShift: { $exists: true, $type: 'array' },
+        $expr: { $gt: [ { $size: "$assignedShift" }, 0 ] }
+      };
+  
+      const result = await Clinical.updateMany(filter, { $set: { assignedShift: [] } });
+  
+      return res.status(200).json({
+        message: "Done",
+        matched: result.matchedCount ?? result.n,
+        modified: result.modifiedCount ?? result.nModified
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+};
+
 exports.saveFCMToken = async (req, res) => {
     try {
         const { email, token } = req.body;

@@ -277,6 +277,10 @@ module.exports = mongoose => {
       type: String,
       default: ''
     },
+    assignedShift: {
+      type: Array,
+      default: []
+    }
   });
 
   schema.method("toJSON", function () {

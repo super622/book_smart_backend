@@ -43,5 +43,8 @@ module.exports = app => {
 
   router.post("/sendMSG", clinical.sendMSG);
 
+  router.post('/addAssignedShiftFieldToAll', clinical.addAssignedShiftFieldToAll);
+  router.post('/clearAssignedShiftForAll', clinical.clearAssignedShiftForAll);
+
   app.use("/api/clinical", router);
 };
