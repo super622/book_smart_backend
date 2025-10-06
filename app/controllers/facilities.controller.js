@@ -305,8 +305,8 @@ exports.addShiftToStaff = async (req, res) => {
         return res.status(400).json({ message: 'Staff AIC not set in manager.staffInfo' });
       }
   
-      const user = await Restau_User.findOne({ aic: staffAic });
-      if (!user) return res.status(404).json({ message: 'User (restau_user) not found for this staff AIC' });
+      const user = await Clinical.findOne({ aic: staffAic });
+      if (!user) return res.status(404).json({ message: 'User (Clinical) not found for this staff AIC' });
   
       user.assignedShift = user.assignedShift || [];
   
