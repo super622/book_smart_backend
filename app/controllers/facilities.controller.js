@@ -1,6 +1,7 @@
 const db = require("../models");
 const { setToken } = require('../utils/verifyToken');
 const Facility = db.facilities;
+const Clinical = db.clinical;
 const Job = db.jobs;
 const mailTrans = require("../controllers/mailTrans.controller.js");
 const moment = require('moment-timezone');
@@ -163,9 +164,9 @@ exports.deleteShiftType = async (req, res) => {
 
 exports.getAcknowledgedUsers = async (req, res) => {
     try {
-      const users = await Facility.find(
+      const users = await Clinical.find(
         { 
-            facilityAcknowledgeTerm: true },
+            clinicalAcknowledgeTerm: true },
         {
           _id: 0,
           aic: 1,
