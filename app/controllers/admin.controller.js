@@ -47,11 +47,10 @@ exports.updateAdminsWithAId = async () => {
         counter++;
       }
       return res.status(200).json({ message: "Done", modified: result.modifiedCount });
-      console.log('AId added to all records.');
     } catch (error) {
       console.log('Error adding AId:', error);
     }
-  };
+};
   
 
 exports.addShiftTypeFieldToAll = async (req, res) => {
@@ -655,14 +654,17 @@ exports.login = async (req, res) => {
     try {
 
         const { email, password, userRole } = req.body;
-        const isUser = await Admin.findOne({ email: email.toLowerCase(), password: password, userRole: userRole }, { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1 });
+        const isUser = await Admin.findOne(
+            { email: email.toLowerCase(), password: password, userRole: userRole }, 
+            { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1, AId: 1 });
+            
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
                     email: isUser.email,
                     userRole: isUser.userRole,
-                    iat: Math.floor(Date.now() / 1000), // Issued at time
-                    exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
+                    iat: Math.floor(Date.now() / 1000), 
+                    exp: Math.floor(Date.now() / 1000) + expirationTime
                 }
                 const token = setToken(payload);
                 console.log(token);
