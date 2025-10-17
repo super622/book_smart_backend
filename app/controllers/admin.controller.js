@@ -164,9 +164,9 @@ exports.updateShiftType = async (req, res) => {
 
 exports.deleteShiftType = async (req, res) => {
     try {
-      const { aic, shiftId } = req.body;
+      const { AId, shiftId } = req.body;
   
-      const user = await Admin.findOne({ aic });
+      const user = await Admin.findOne({ AId });
       if (!user) return res.status(404).json({ message: "User not found" });
   
       user.shiftType = user.shiftType.filter(s => s.id !== shiftId);
