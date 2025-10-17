@@ -95,7 +95,7 @@ exports.clearShiftTypeForAll = async (req, res) => {
 
 exports.addShiftType = async (req, res) => {
     try {
-      const { aic, name, start, end } = req.body;
+      const { AId, name, start, end } = req.body;
   
       const user = await Admin.findOne({ AId });
       if (!user) return res.status(404).json({ message: "User not found" });
