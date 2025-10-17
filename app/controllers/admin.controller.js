@@ -260,9 +260,9 @@ exports.addStaffToManager = async (req, res) => {
 
 exports.deleteStaffFromManager = async (req, res) => {
     try {
-      const { managerAic, staffId } = req.body; // staffId is the `id` inside staffInfo array
+      const { managerAic, staffId } = req.body;
   
-      const manager = await Admin.findOne({ aic: managerAic });
+      const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: "Manager not found" });
   
       const originalLength = manager.staffInfo.length;
