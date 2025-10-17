@@ -97,7 +97,7 @@ exports.addShiftType = async (req, res) => {
     try {
       const { aic, name, start, end } = req.body;
   
-      const user = await Admin.findOne({ aic });
+      const user = await Admin.findOne({ AId });
       if (!user) return res.status(404).json({ message: "User not found" });
   
       user.shiftType = user.shiftType || [];
@@ -130,9 +130,9 @@ exports.addShiftType = async (req, res) => {
 
 exports.getShiftTypes = async (req, res) => {
     try {
-      const { aic } = req.body;
+      const { AId } = req.body;
   
-      const user = await Admin.findOne({ aic });
+      const user = await Admin.findOne({ AId });
       if (!user) return res.status(404).json({ message: "User not found" });
   
       return res.status(200).json({ shiftType: user.shiftType || [] });
@@ -144,9 +144,9 @@ exports.getShiftTypes = async (req, res) => {
 
 exports.updateShiftType = async (req, res) => {
     try {
-      const { aic, shiftId, updatedShift } = req.body;
+      const { AId, shiftId, updatedShift } = req.body;
   
-      const user = await Admin.findOne({ aic });
+      const user = await Admin.findOne({ AId });
       if (!user) return res.status(404).json({ message: "User not found" });
   
       const index = user.shiftType.findIndex(s => s.id === shiftId);
@@ -239,7 +239,7 @@ exports.addStaffToManager = async (req, res) => {
             phoneNumber: staff.phoneNumber,
             shifts: []
           });
-          existingAics.add(staff.aic); // avoid duplicate within same request
+          existingAics.add(staff.aic);
           idCounter++;
         }
       }
@@ -285,7 +285,7 @@ exports.getAllStaffShiftInfo = async (req, res) => {
     try {
       const { managerAic } = req.body;
   
-      const manager = await Admin.findOne({ aic: managerAic });
+      const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: "Manager not found" });
   
       const staffInfo = manager.staffInfo || [];
@@ -306,7 +306,7 @@ exports.addShiftToStaff = async (req, res) => {
       const { managerAic, staffId, shifts } = req.body;
   
       // 1) Manager doc
-      const manager = await Admin.findOne({ aic: managerAic });
+      const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
       // 2) Target staff under manager
