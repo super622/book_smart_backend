@@ -208,7 +208,7 @@ exports.addStaffToManager = async (req, res) => {
     try {
       const { managerAic, staffList } = req.body;
   
-      const manager = await Admin.findOne({ aic: managerAic });
+      const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: "Manager not found" });
   
       manager.staffInfo = manager.staffInfo || [];
@@ -657,7 +657,7 @@ exports.login = async (req, res) => {
         const isUser = await Admin.findOne(
             { email: email.toLowerCase(), password: password, userRole: userRole }, 
             { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1, AId: 1 });
-            
+
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
