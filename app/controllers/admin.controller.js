@@ -499,7 +499,7 @@ exports.deleteShiftFromStaff = async (req, res) => {
       const { managerAic, staffId, shiftId } = req.body;
   
       // 1) Manager & staff
-      const manager = await Admin.findOne({ aic: managerAic });
+      const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
       const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
