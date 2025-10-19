@@ -7,6 +7,8 @@ module.exports = app => {
   // Create a new Spot
   router.get("/getList", degrees.getList);
   router.post("/addItem", degrees.addItem);
+  router.post('/updateDegreesWithDid', degrees.updateDegreesWithDid);
+  router.post('/deleteItem', degrees.deleteItem);
 
   app.use("/api/degree", router);
 };

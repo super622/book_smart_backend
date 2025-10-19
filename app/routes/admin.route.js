@@ -44,6 +44,8 @@ module.exports = app => {
   router.post('/addStaffInfoFieldToAll', admin.addStaffInfoFieldToAll);
   router.post('/clearShiftTypeForAll', admin.clearShiftTypeForAll);
 
+  router.get('/getFacilities', admin.getFacilities);
+
   router.post('/addShiftType', verifyUser, admin.addShiftType);
   router.post('/getShiftTypes', verifyUser, admin.getShiftTypes);
   router.post('/updateShiftType', verifyUser, admin.updateShiftType);

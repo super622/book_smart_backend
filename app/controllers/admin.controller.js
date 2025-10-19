@@ -93,6 +93,27 @@ exports.clearShiftTypeForAll = async (req, res) => {
     }
 };
 
+exports.getFacilities = async (req, res) => {
+    try {
+        const facilities = await Facility.find({ facilityAcknowledgeTerm: true }, 
+            {
+                aic: 1,
+                companyName: 1,
+                firstName: 1,
+                lastName: 1,
+                contactEmail: 1,
+                contactPhone: 1
+            });
+
+        // Return the facilities data
+        return res.status(200).json({ message: "Successfully retrieved facilities", data: facilities });
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({ message: "An error occurred while retrieving the facilities" });
+    }
+};
+
+
 exports.addShiftType = async (req, res) => {
     try {
       const { AId, name, start, end } = req.body;
@@ -305,18 +326,14 @@ exports.addShiftToStaff = async (req, res) => {
     try {
       const { managerAic, staffId, shifts } = req.body;
   
-      // 1) Manager doc
       const manager = await Admin.findOne({ AId: managerAic });
       if (!manager) return res.status(404).json({ message: 'Manager not found' });
   
-      // 2) Target staff under manager
       const staff = manager.staffInfo?.find(s => String(s.id) === String(staffId));
       if (!staff) return res.status(404).json({ message: 'Staff not found' });
   
-      // Ensure arrays exist
       staff.shifts = staff.shifts || [];
   
-      // 3) Find the user by staff AIC
       const staffAic = staff.aic;
       if (staffAic == null) {
         return res.status(400).json({ message: 'Staff AIC not set in manager.staffInfo' });
@@ -327,7 +344,6 @@ exports.addShiftToStaff = async (req, res) => {
   
       user.assignedShift = user.assignedShift || [];
   
-      // 4) Compute current max IDs on both sides
       let adminMaxId = staff.shifts.reduce((m, sh) => Math.max(m, sh?.id || 0), 0);
       let userMaxId  = user.assignedShift.reduce((m, as) => Math.max(m, as?.id || 0), 0);
   
@@ -339,7 +355,6 @@ exports.addShiftToStaff = async (req, res) => {
         const time = String(raw.time || '').trim();
         if (!date || !time) continue;
   
-        // De-dupe by (date, time) for this staff/manager and the same user/manager
         const existsAdmin = staff.shifts.some(
           sh => String(sh.date).trim() === date && String(sh.time).trim() === time
         );

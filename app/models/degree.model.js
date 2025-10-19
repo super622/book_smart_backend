@@ -1,5 +1,8 @@
 module.exports = mongoose => {
     var schema = mongoose.Schema({
+        Did: {
+            type: Number,
+        },
         degreeName: {
             type: String,
             default: ''
