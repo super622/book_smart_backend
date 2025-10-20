@@ -37,6 +37,7 @@ db.mongoose
 require("./app/routes/clinical.route")(app);
 require("./app/routes/facilities.route")(app);
 require("./app/routes/job.routes")(app);
+require("./app/routes/djob.route")(app);
 require("./app/routes/admin.route.js")(app);
 require("./app/routes/bid.route.js")(app);
 require("./app/routes/degree.route.js")(app);
