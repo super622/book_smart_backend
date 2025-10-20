@@ -10,14 +10,13 @@ module.exports = (mongoose) => {
   
     const schema = new mongoose.Schema({
       DJobId: { type: Number, required: true, unique: true, index: true },
-  
       shift: { type: ShiftSchema, required: true },
-  
       degree:      { type: Number, required: true },
       adminId:     { type: Number, required: true },
       adminMade:   { type: Boolean, default: false },
       facilitiesId:{ type: Number, default: 0 },
       clinicianId: { type: Number, default: 0 },
+      status: { type: String, default: '' },
     }, { timestamps: true });
   
     schema.method("toJSON", function () {
@@ -27,7 +26,7 @@ module.exports = (mongoose) => {
     });
   
     schema.index({ DJobId: 1 });
-  
+    if (mongoose.models.DJob) mongoose.deleteModel('DJob');
     return mongoose.model("DJob", schema);
-  };
+};
   
