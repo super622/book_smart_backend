@@ -1,5 +1,11 @@
 const db = require("../models");
 const DJob = db.Djobs;
+const Admin = db.admins;
+
+const Facility = db.facilities;
+const Clinician = db.clinical;
+const Degree = db.degree;
+
 
 async function nextDJobId() {
   const last = await DJob.findOne().sort({ DJobId: -1 }).select('DJobId').lean();
@@ -15,16 +21,39 @@ function normalizeShift(input) {
   return { date: String(input.date).trim(), time: String(input.time).trim() };
 }
 
-// READ (all)
 exports.getDJobs = async (_req, res) => {
     try {
         const docs = await DJob.find().sort({ DJobId: 1 });
-        return res.status(200).json({ message: "Success", data: docs });
+
+        const enrichedDocs = await Promise.all(docs.map(async (dJob) => {
+            const admin = await Admin.findOne({ AId: dJob.adminId });
+            const companyName = admin ? admin.companyName : null;
+
+            const facility = await Facility.findOne({ aic: dJob.facilitiesId });
+            const facilityCompanyName = facility ? facility.companyName : null;
+
+            const clinician = await Clinician.findOne({ aic: dJob.clinicianId });
+            const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
+
+            const degree = await Degree.findOne({ Did: dJob.degree });
+            const degreeName = degree ? degree.degreeName : null;
+
+            return {
+                ...dJob.toObject(),
+                companyName,
+                facilityCompanyName,
+                clinicianNames,
+                degreeName
+            };
+        }));
+
+        return res.status(200).json({ message: "Success", data: enrichedDocs });
     } catch (e) {
         console.error(e);
         return res.status(500).json({ message: "Error fetching DJobs" });
     }
 };
+
   
 // READ (single)
 exports.getDJobById = async (req, res) => {
