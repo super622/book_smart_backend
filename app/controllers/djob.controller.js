@@ -55,7 +55,6 @@ exports.getDJobs = async (_req, res) => {
 };
 
   
-// READ (single)
 exports.getDJobById = async (req, res) => {
     try {
         const id = Number(req.params.id);
@@ -79,6 +78,8 @@ exports.createDJob = async (req, res) => {
     if (adminId == null) return res.status(400).json({ message: "adminId is required" });
 
     const DJobId = await nextDJobId();
+
+    const status = clinicianId == null ? "NotSelect" : "pending";
 
     const doc = await DJob.create({
       DJobId,
