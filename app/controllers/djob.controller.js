@@ -79,7 +79,7 @@ exports.createDJob = async (req, res) => {
 
     const DJobId = await nextDJobId();
 
-    const status = clinicianId == null ? "NotSelect" : "pending";
+    const status = clinicianId == 0 ? "NotSelect" : "pending";
 
     const doc = await DJob.create({
       DJobId,
@@ -89,7 +89,7 @@ exports.createDJob = async (req, res) => {
       adminMade: Boolean(adminMade),
       facilitiesId: facilitiesId ?? 0,
       clinicianId:  clinicianId ?? 0,
-      status: "pending",
+      status: status,
     });
 
     return res.status(201).json({ message: "DJob created", data: doc });
