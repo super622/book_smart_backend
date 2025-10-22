@@ -23,17 +23,14 @@ function normalizeShift(input) {
 
 exports.getDJobs = async (req, res) => {
     try {
-        // Retrieve adminId from the URL parameter
         const adminId = req.params.adminId;
 
         if (!adminId) {
             return res.status(400).json({ message: "Admin AId is required" });
         }
 
-        // Fetch DJobs specific to the given adminId
         const docs = await DJob.find({ adminId }).sort({ DJobId: 1 });
 
-        // Enrich the documents by fetching related data
         const enrichedDocs = await Promise.all(docs.map(async (dJob) => {
             const admin = await Admin.findOne({ AId: dJob.adminId });
             const companyName = admin ? admin.companyName : null;
@@ -62,6 +59,47 @@ exports.getDJobs = async (req, res) => {
         return res.status(500).json({ message: "Error fetching DJobs" });
     }
 };
+
+exports.getClinicianDJobs = async (req, res) => {
+    try {
+        const { aic } = req.body;  
+        if (!aic) {
+            return res.status(400).json({ message: "Clinician AIC is required" });
+        }
+
+        const docsWithClinicianIdZero = await DJob.find({ clinicianId: 0 }).sort({ DJobId: 1 });
+        const docsWithClinicianAic = await DJob.find({ clinicianId: aic }).sort({ DJobId: 1 });
+        const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic];
+
+        const enrichedDocs = await Promise.all(combinedDocs.map(async (dJob) => {
+            const admin = await Admin.findOne({ AId: dJob.adminId });
+            const companyName = admin ? admin.companyName : null;
+
+            const facility = await Facility.findOne({ aic: dJob.facilitiesId });
+            const facilityCompanyName = facility ? facility.companyName : null;
+
+            const clinician = await Clinician.findOne({ aic });
+            const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
+
+            const degree = await Degree.findOne({ Did: dJob.degree });
+            const degreeName = degree ? degree.degreeName : null;
+
+            return {
+                ...dJob.toObject(),
+                companyName,
+                facilityCompanyName,
+                clinicianNames,
+                degreeName
+            };
+        }));
+
+        return res.status(200).json({ message: "Success", data: enrichedDocs });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ message: "Error fetching clinician-specific DJobs" });
+    }
+};
+
 
 
 exports.getDJobById = async (req, res) => {

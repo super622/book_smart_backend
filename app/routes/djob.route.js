@@ -15,5 +15,7 @@ module.exports = app => {
 
     router.post("/delete", verifyUser, djobs.deleteDJob);
 
+    router.post("/cliniciandjobs", verifyUser, djobs.getClinicianDJobs);
+
     app.use("/api/djobs", router);
 };
