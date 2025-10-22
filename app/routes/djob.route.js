@@ -7,7 +7,7 @@ module.exports = app => {
 
     router.post("/", verifyUser, djobs.createDJob);
 
-    router.get("/", verifyUser, djobs.getDJobs);
+    router.get('/admin/:adminId', djobs.getDJobs);
 
     router.get("/:id", verifyUser, djobs.getDJobById);
 

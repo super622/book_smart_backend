@@ -21,10 +21,19 @@ function normalizeShift(input) {
   return { date: String(input.date).trim(), time: String(input.time).trim() };
 }
 
-exports.getDJobs = async (_req, res) => {
+exports.getDJobs = async (req, res) => {
     try {
-        const docs = await DJob.find().sort({ DJobId: 1 });
+        // Retrieve adminId from the URL parameter
+        const adminId = req.params.adminId;
 
+        if (!adminId) {
+            return res.status(400).json({ message: "Admin AId is required" });
+        }
+
+        // Fetch DJobs specific to the given adminId
+        const docs = await DJob.find({ adminId }).sort({ DJobId: 1 });
+
+        // Enrich the documents by fetching related data
         const enrichedDocs = await Promise.all(docs.map(async (dJob) => {
             const admin = await Admin.findOne({ AId: dJob.adminId });
             const companyName = admin ? admin.companyName : null;
@@ -54,7 +63,7 @@ exports.getDJobs = async (_req, res) => {
     }
 };
 
-  
+
 exports.getDJobById = async (req, res) => {
     try {
         const id = Number(req.params.id);
