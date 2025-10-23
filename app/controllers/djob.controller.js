@@ -115,13 +115,13 @@ exports.getFacilitiesDJobs = async (req, res) => {
           const admin = await Admin.findOne({ AId: dJob.adminId });
           const companyName = admin ? admin.companyName : null;
   
-          const facility = await Facility.findOne({ aic: dJob.shift.facilitiesId });
+          const facility = await Facility.findOne({ aic: aic });
           const facilityCompanyName = facility ? facility.companyName : null;
   
-          const clinician = await Clinician.findOne({ aic: dJob.shift.clinicianId });
+          const clinician = await Clinician.findOne({ aic: dJob.clinicianId });
           const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
   
-          const degree = await Degree.findOne({ Did: dJob.shift.degree });
+          const degree = await Degree.findOne({ Did: dJob.degree });
           const degreeName = degree ? degree.degreeName : null;
   
           return {
