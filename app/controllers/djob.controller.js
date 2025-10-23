@@ -100,7 +100,50 @@ exports.getClinicianDJobs = async (req, res) => {
     }
 };
 
-
+exports.getFacilitiesDJobs = async (req, res) => {
+    try {
+      const { aic } = req.body; 
+  
+      if (!aic) {
+        return res.status(400).json({ message: "Facility AIC is required" });
+      }
+  
+      const docsWithFacilitiesAic = await DJob.find({ facilitiesId: aic }).sort({ DJobId: 1 });
+  
+      const enrichedDocs = await Promise.all(
+        docsWithFacilitiesAic.map(async (dJob) => {
+          const admin = await Admin.findOne({ AId: dJob.adminId });
+          const companyName = admin ? admin.companyName : null;
+  
+          const facility = await Facility.findOne({ aic: dJob.shift.facilitiesId });
+          const facilityCompanyName = facility ? facility.companyName : null;
+  
+          const clinician = await Clinician.findOne({ aic: dJob.shift.clinicianId });
+          const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
+  
+          const degree = await Degree.findOne({ Did: dJob.shift.degree });
+          const degreeName = degree ? degree.degreeName : null;
+  
+          return {
+            ...dJob.toObject(),
+            companyName,
+            facilityCompanyName,
+            clinicianNames,
+            degreeName,
+          };
+        })
+      );
+  
+      return res.status(200).json({
+        message: "Success",
+        data: enrichedDocs,
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: "Error fetching facility-specific DJobs" });
+    }
+  };
+  
 
 exports.getDJobById = async (req, res) => {
     try {
