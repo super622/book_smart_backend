@@ -67,8 +67,35 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(400).json({ message: "Clinician AIC is required" });
         }
 
-        const docsWithClinicianIdZero = await DJob.find({ clinicianId: 0 }).sort({ DJobId: 1 });
-        const docsWithClinicianAic = await DJob.find({ clinicianId: aic }).sort({ DJobId: 1 });
+        // Get the clinician's title (RN, CNA, LPN, etc.)
+        const clinician = await Clinician.findOne({ aic });
+        if (!clinician) {
+            return res.status(404).json({ message: "Clinician not found" });
+        }
+        const clinicianTitle = clinician.title;
+
+        // Find degrees that match the clinician's title
+        const matchingDegrees = await Degree.find({ 
+            degreeName: { $regex: new RegExp(`^${clinicianTitle}$`, 'i') } 
+        });
+        const matchingDegreeIds = matchingDegrees.map(d => d.Did);
+
+        if (matchingDegreeIds.length === 0) {
+            // No matching degrees found, return empty array
+            return res.status(200).json({ message: "Success", data: [] });
+        }
+
+        // Get DJobs that match the clinician's degree AND are either unassigned or assigned to this clinician
+        const docsWithClinicianIdZero = await DJob.find({ 
+            clinicianId: 0,
+            degree: { $in: matchingDegreeIds }
+        }).sort({ DJobId: 1 });
+        
+        const docsWithClinicianAic = await DJob.find({ 
+            clinicianId: aic,
+            degree: { $in: matchingDegreeIds }
+        }).sort({ DJobId: 1 });
+        
         const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic];
 
         const enrichedDocs = await Promise.all(combinedDocs.map(async (dJob) => {
@@ -78,8 +105,7 @@ exports.getClinicianDJobs = async (req, res) => {
             const facility = await Facility.findOne({ aic: dJob.facilitiesId });
             const facilityCompanyName = facility ? facility.companyName : null;
 
-            const clinician = await Clinician.findOne({ aic });
-            const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
+            const clinicianNames = `${clinician.firstName} ${clinician.lastName}`;
 
             const degree = await Degree.findOne({ Did: dJob.degree });
             const degreeName = degree ? degree.degreeName : null;
@@ -101,48 +127,48 @@ exports.getClinicianDJobs = async (req, res) => {
 };
 
 exports.getFacilitiesDJobs = async (req, res) => {
-    try {
-      const { aic } = req.body; 
-  
-      if (!aic) {
-        return res.status(400).json({ message: "Facility AIC is required" });
-      }
-  
-      const docsWithFacilitiesAic = await DJob.find({ facilitiesId: aic }).sort({ DJobId: 1 });
-  
-      const enrichedDocs = await Promise.all(
-        docsWithFacilitiesAic.map(async (dJob) => {
-          const admin = await Admin.findOne({ AId: dJob.adminId });
-          const companyName = admin ? admin.companyName : null;
-  
-          const facility = await Facility.findOne({ aic: aic });
-          const facilityCompanyName = facility ? facility.companyName : null;
-  
-          const clinician = await Clinician.findOne({ aic: dJob.clinicianId });
-          const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
-  
-          const degree = await Degree.findOne({ Did: dJob.degree });
-          const degreeName = degree ? degree.degreeName : null;
-  
-          return {
-            ...dJob.toObject(),
-            companyName,
-            facilityCompanyName,
-            clinicianNames,
-            degreeName,
-          };
-        })
-      );
-  
-      return res.status(200).json({
-        message: "Success",
-        data: enrichedDocs,
-      });
-    } catch (e) {
-      console.error(e);
-      return res.status(500).json({ message: "Error fetching facility-specific DJobs" });
+  try {
+    const { aic } = req.body; 
+
+    if (!aic) {
+      return res.status(400).json({ message: "Facility AIC is required" });
     }
-  };
+
+    const docsWithFacilitiesAic = await DJob.find({ facilitiesId: aic }).sort({ DJobId: 1 });
+
+    const enrichedDocs = await Promise.all(
+      docsWithFacilitiesAic.map(async (dJob) => {
+        const admin = await Admin.findOne({ AId: dJob.adminId });
+        const companyName = admin ? admin.companyName : null;
+
+        const facility = await Facility.findOne({ aic: aic });
+        const facilityCompanyName = facility ? facility.companyName : null;
+
+        const clinician = await Clinician.findOne({ aic: dJob.clinicianId });
+        const clinicianNames = clinician ? `${clinician.firstName} ${clinician.lastName}` : null;
+
+        const degree = await Degree.findOne({ Did: dJob.degree });
+        const degreeName = degree ? degree.degreeName : null;
+
+        return {
+          ...dJob.toObject(),
+          companyName,
+          facilityCompanyName,
+          clinicianNames,
+          degreeName,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      message: "Success",
+      data: enrichedDocs,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Error fetching facility-specific DJobs" });
+  }
+};
   
 
 exports.getDJobById = async (req, res) => {
@@ -181,6 +207,36 @@ exports.createDJob = async (req, res) => {
       clinicianId:  clinicianId ?? 0,
       status: status,
     });
+
+    if (clinicianId != 0) {
+      const clinician = await Clinician.findOne(
+        { clinicianId: clinicianId },
+        { email: 1, firstName: 1, lastName: 1 }
+      );
+
+      const facility = await Facility.findOne(
+        { aic: facilitiesId },
+        { companyName: 1 }
+      );
+
+      if (clinician && facility) {
+        const clinicianEmail = clinician.email;
+        const companyName = facility.companyName || "Your Facility";
+        const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
+
+        const emailSubject = `Shift Assigned by ${companyName}`;
+        const emailContent = `
+          <p>Dear ${clinicianName || "Clinician"},</p>
+          <p>You have been assigned to a new shift on <strong>${shift.date}</strong> by <strong>${companyName}</strong>.</p>
+          <p>Please review and approve the shift assignment.</p>
+        `;
+
+        const emailSuccess = await sendMail(clinicianEmail, emailSubject, emailContent);
+        console.log(emailSuccess
+          ? `[createDJob] Email sent successfully to ${clinicianEmail}`
+          : `[createDJob] Failed to send email to ${clinicianEmail}`);
+      }
+    }
 
     return res.status(201).json({ message: "DJob created", data: doc });
   } catch (e) {
