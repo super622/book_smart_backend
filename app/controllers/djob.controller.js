@@ -73,15 +73,18 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(404).json({ message: "Clinician not found" });
         }
         const clinicianTitle = clinician.title;
+        console.log(`[getClinicianDJobs] Clinician AIC: ${aic}, Title: ${clinicianTitle}`);
 
         // Find degrees that match the clinician's title
         const matchingDegrees = await Degree.find({ 
             degreeName: { $regex: new RegExp(`^${clinicianTitle}$`, 'i') } 
         });
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
+        console.log(`[getClinicianDJobs] Matching Degree IDs: ${matchingDegreeIds.join(', ')}`);
 
         if (matchingDegreeIds.length === 0) {
             // No matching degrees found, return empty array
+            console.log('[getClinicianDJobs] No matching degrees found');
             return res.status(200).json({ message: "Success", data: [] });
         }
 
@@ -90,11 +93,13 @@ exports.getClinicianDJobs = async (req, res) => {
             clinicianId: 0,
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
+        console.log(`[getClinicianDJobs] Unassigned jobs found: ${docsWithClinicianIdZero.length}`);
         
         const docsWithClinicianAic = await DJob.find({ 
             clinicianId: aic,
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
+        console.log(`[getClinicianDJobs] Assigned jobs found: ${docsWithClinicianAic.length}`);
         
         const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic];
 
@@ -210,7 +215,7 @@ exports.createDJob = async (req, res) => {
 
     if (clinicianId != 0) {
       const clinician = await Clinician.findOne(
-        { clinicianId: clinicianId },
+        { aic: clinicianId },
         { email: 1, firstName: 1, lastName: 1 }
       );
 
@@ -231,10 +236,7 @@ exports.createDJob = async (req, res) => {
           <p>Please review and approve the shift assignment.</p>
         `;
 
-        const emailSuccess = await sendMail(clinicianEmail, emailSubject, emailContent);
-        console.log(emailSuccess
-          ? `[createDJob] Email sent successfully to ${clinicianEmail}`
-          : `[createDJob] Failed to send email to ${clinicianEmail}`);
+        await sendMail(clinicianEmail, emailSubject, emailContent);
       }
     }
 
