@@ -201,7 +201,7 @@ exports.createDJob = async (req, res) => {
 
     const DJobId = await nextDJobId();
 
-    const status = clinicianId == 0 ? "NotSelect" : "pending";
+    const status = clinicianId == 0 ? "NotSelect" : "applied";
 
     const doc = await DJob.create({
       DJobId,
