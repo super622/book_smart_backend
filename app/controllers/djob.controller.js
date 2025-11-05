@@ -5,6 +5,7 @@ const Admin = db.admins;
 const Facility = db.facilities;
 const Clinician = db.clinical;
 const Degree = db.degree;
+const mailTrans = require("./mailTrans.controller");
 
 
 async function nextDJobId() {
@@ -236,7 +237,7 @@ exports.createDJob = async (req, res) => {
           <p>Please review and approve the shift assignment.</p>
         `;
 
-        await sendMail(clinicianEmail, emailSubject, emailContent);
+        await mailTrans.sendMail(clinicianEmail, emailSubject, emailContent);
       }
     }
 
