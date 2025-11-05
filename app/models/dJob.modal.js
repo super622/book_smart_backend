@@ -8,16 +8,26 @@ module.exports = (mongoose) => {
       { _id: false }
     );
   
-    const schema = new mongoose.Schema({
-      DJobId: { type: Number, required: true, unique: true, index: true },
-      shift: { type: ShiftSchema, required: true },
-      degree:      { type: Number, required: true },
-      adminId:     { type: Number, required: true },
-      adminMade:   { type: Boolean, default: false },
-      facilitiesId:{ type: Number, default: 0 },
-      clinicianId: { type: Number, default: 0 },
-      status: { type: String, default: '' },
-    }, { timestamps: true });
+  const ApplicantSchema = new mongoose.Schema(
+    {
+      clinicianId: { type: Number, required: true },
+      appliedAt: { type: Date, default: Date.now },
+      status: { type: String, default: 'pending' }, // pending, accepted, rejected
+    },
+    { _id: false }
+  );
+
+  const schema = new mongoose.Schema({
+    DJobId: { type: Number, required: true, unique: true, index: true },
+    shift: { type: ShiftSchema, required: true },
+    degree:      { type: Number, required: true },
+    adminId:     { type: Number, required: true },
+    adminMade:   { type: Boolean, default: false },
+    facilitiesId:{ type: Number, default: 0 },
+    clinicianId: { type: Number, default: 0 },
+    applicants: { type: [ApplicantSchema], default: [] },
+    status: { type: String, default: '' },
+  }, { timestamps: true });
   
     schema.method("toJSON", function () {
       const { _id, __v, ...object } = this.toObject();

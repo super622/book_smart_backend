@@ -74,35 +74,46 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(404).json({ message: "Clinician not found" });
         }
         const clinicianTitle = clinician.title;
-        console.log(`[getClinicianDJobs] Clinician AIC: ${aic}, Title: ${clinicianTitle}`);
 
         // Find degrees that match the clinician's title
         const matchingDegrees = await Degree.find({ 
             degreeName: { $regex: new RegExp(`^${clinicianTitle}$`, 'i') } 
         });
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
-        console.log(`[getClinicianDJobs] Matching Degree IDs: ${matchingDegreeIds.join(', ')}`);
 
         if (matchingDegreeIds.length === 0) {
             // No matching degrees found, return empty array
-            console.log('[getClinicianDJobs] No matching degrees found');
             return res.status(200).json({ message: "Success", data: [] });
         }
 
-        // Get DJobs that match the clinician's degree AND are either unassigned or assigned to this clinician
+        // Get DJobs that match the clinician's degree AND are either:
+        // 1. Unassigned (clinicianId: 0)
+        // 2. Assigned to this clinician
+        // 3. Clinician has applied (in applicants array)
         const docsWithClinicianIdZero = await DJob.find({ 
             clinicianId: 0,
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
-        console.log(`[getClinicianDJobs] Unassigned jobs found: ${docsWithClinicianIdZero.length}`);
         
         const docsWithClinicianAic = await DJob.find({ 
             clinicianId: aic,
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
-        console.log(`[getClinicianDJobs] Assigned jobs found: ${docsWithClinicianAic.length}`);
-        
-        const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic];
+
+        // Also get jobs where this clinician has applied
+        const docsWithApplicant = await DJob.find({
+            'applicants.clinicianId': aic,
+            degree: { $in: matchingDegreeIds }
+        }).sort({ DJobId: 1 });
+
+        // Combine and remove duplicates (using Set with DJobId as key)
+        const seenIds = new Set();
+        const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic, ...docsWithApplicant]
+          .filter(doc => {
+            if (seenIds.has(doc.DJobId)) return false;
+            seenIds.add(doc.DJobId);
+            return true;
+          });
 
         const enrichedDocs = await Promise.all(combinedDocs.map(async (dJob) => {
             const admin = await Admin.findOne({ AId: dJob.adminId });
@@ -111,17 +122,33 @@ exports.getClinicianDJobs = async (req, res) => {
             const facility = await Facility.findOne({ aic: dJob.facilitiesId });
             const facilityCompanyName = facility ? facility.companyName : null;
 
-            const clinicianNames = `${clinician.firstName} ${clinician.lastName}`;
+            const assignedClinician = await Clinician.findOne({ aic: dJob.clinicianId });
+            const clinicianNames = assignedClinician ? `${assignedClinician.firstName} ${assignedClinician.lastName}` : null;
 
             const degree = await Degree.findOne({ Did: dJob.degree });
             const degreeName = degree ? degree.degreeName : null;
+
+            // Enrich applicants with clinician details
+            const enrichedApplicants = await Promise.all(
+              (dJob.applicants || []).map(async (applicant) => {
+                const appClinician = await Clinician.findOne({ aic: applicant.clinicianId });
+                return {
+                  ...applicant.toObject(),
+                  firstName: appClinician?.firstName || '',
+                  lastName: appClinician?.lastName || '',
+                  email: appClinician?.email || '',
+                  title: appClinician?.title || '',
+                };
+              })
+            );
 
             return {
                 ...dJob.toObject(),
                 companyName,
                 facilityCompanyName,
                 clinicianNames,
-                degreeName
+                degreeName,
+                applicants: enrichedApplicants,
             };
         }));
 
@@ -156,12 +183,27 @@ exports.getFacilitiesDJobs = async (req, res) => {
         const degree = await Degree.findOne({ Did: dJob.degree });
         const degreeName = degree ? degree.degreeName : null;
 
+        // Enrich applicants with clinician details
+        const enrichedApplicants = await Promise.all(
+          (dJob.applicants || []).map(async (applicant) => {
+            const appClinician = await Clinician.findOne({ aic: applicant.clinicianId });
+            return {
+              ...applicant.toObject(),
+              firstName: appClinician?.firstName || '',
+              lastName: appClinician?.lastName || '',
+              email: appClinician?.email || '',
+              title: appClinician?.title || '',
+            };
+          })
+        );
+
         return {
           ...dJob.toObject(),
           companyName,
           facilityCompanyName,
           clinicianNames,
           degreeName,
+          applicants: enrichedApplicants,
         };
       })
     );
@@ -254,7 +296,7 @@ exports.updateDJob = async (req, res) => {
     const id = Number(req.body.DJobId ?? req.params.id);
     if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid or missing DJobId" });
 
-    const allowed = ["shift", "degree", "adminId", "adminMade", "facilitiesId", "clinicianId", "status"];
+    const allowed = ["shift", "degree", "adminId", "adminMade", "facilitiesId", "clinicianId", "status", "applicants"];
     const update = {};
     for (const k of allowed) if (k in req.body) update[k] = req.body[k];
 
@@ -282,6 +324,103 @@ exports.updateDJob = async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: "Error updating DJob" });
+  }
+};
+
+// Add clinician as applicant to a shift
+exports.applyForShift = async (req, res) => {
+  try {
+    const { DJobId, clinicianId } = req.body;
+    
+    if (!DJobId || !clinicianId) {
+      return res.status(400).json({ message: "DJobId and clinicianId are required" });
+    }
+
+    const job = await DJob.findOne({ DJobId: Number(DJobId) });
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // Check if already applied
+    const alreadyApplied = job.applicants.some(a => a.clinicianId === Number(clinicianId));
+    if (alreadyApplied) {
+      return res.status(400).json({ message: "Already applied for this shift" });
+    }
+
+    // Add to applicants array
+    job.applicants.push({
+      clinicianId: Number(clinicianId),
+      appliedAt: new Date(),
+      status: 'pending'
+    });
+
+    // Update job status to pending if it was NotSelect
+    if (job.status.toLowerCase() === 'notselect') {
+      job.status = 'pending';
+    }
+
+    await job.save();
+
+    return res.status(200).json({ message: "Applied successfully", data: job });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Error applying for shift", error: e.message });
+  }
+};
+
+// Accept/Reject a specific applicant
+exports.reviewApplicant = async (req, res) => {
+  try {
+    const { DJobId, clinicianId, action } = req.body;
+    
+    if (!DJobId || !clinicianId || !action) {
+      return res.status(400).json({ message: "DJobId, clinicianId, and action are required" });
+    }
+
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ message: "Action must be 'accept' or 'reject'" });
+    }
+
+    const job = await DJob.findOne({ DJobId: Number(DJobId) });
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    const applicant = job.applicants.find(a => a.clinicianId === Number(clinicianId));
+    if (!applicant) {
+      return res.status(404).json({ message: "Applicant not found" });
+    }
+
+    if (action === 'accept') {
+      // Accept this applicant
+      applicant.status = 'accepted';
+      job.clinicianId = Number(clinicianId);
+      job.status = 'approved';
+      
+      // Reject all other applicants
+      job.applicants.forEach(a => {
+        if (a.clinicianId !== Number(clinicianId)) {
+          a.status = 'rejected';
+        }
+      });
+    } else {
+      // Reject this applicant
+      applicant.status = 'rejected';
+      
+      // If no applicants are left pending, set job back to NotSelect
+      const hasPendingApplicants = job.applicants.some(a => a.status === 'pending');
+      if (!hasPendingApplicants) {
+        job.status = 'NotSelect';
+        job.clinicianId = 0;
+      }
+    }
+
+    await job.save();
+
+    return res.status(200).json({ message: `Applicant ${action}ed`, data: job });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "Error reviewing applicant", error: e.message });
   }
 };
 
