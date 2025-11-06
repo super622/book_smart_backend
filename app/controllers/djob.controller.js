@@ -87,11 +87,12 @@ exports.getClinicianDJobs = async (req, res) => {
         }
 
         // Get DJobs that match the clinician's degree AND are either:
-        // 1. Unassigned (clinicianId: 0)
+        // 1. Unassigned AND status is "NotSelect" (available to all)
         // 2. Assigned to this clinician
-        // 3. Clinician has applied (in applicants array)
-        const docsWithClinicianIdZero = await DJob.find({ 
+        // 3. Clinician has applied (in applicants array) - can see their own applications
+        const docsNotSelected = await DJob.find({ 
             clinicianId: 0,
+            status: 'NotSelect',
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
         
@@ -100,7 +101,7 @@ exports.getClinicianDJobs = async (req, res) => {
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
 
-        // Also get jobs where this clinician has applied
+        // Jobs where this clinician has applied (can still see their application)
         const docsWithApplicant = await DJob.find({
             'applicants.clinicianId': aic,
             degree: { $in: matchingDegreeIds }
@@ -108,7 +109,7 @@ exports.getClinicianDJobs = async (req, res) => {
 
         // Combine and remove duplicates (using Set with DJobId as key)
         const seenIds = new Set();
-        const combinedDocs = [...docsWithClinicianIdZero, ...docsWithClinicianAic, ...docsWithApplicant]
+        const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic, ...docsWithApplicant]
           .filter(doc => {
             if (seenIds.has(doc.DJobId)) return false;
             seenIds.add(doc.DJobId);
