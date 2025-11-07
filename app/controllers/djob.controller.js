@@ -87,9 +87,8 @@ exports.getClinicianDJobs = async (req, res) => {
         }
 
         // Get DJobs that match the clinician's degree AND are either:
-        // 1. Unassigned AND status is "NotSelect" (available to all)
+        // 1. Unassigned AND status is "NotSelect" (available to all, even if others have applied)
         // 2. Assigned to this clinician
-        // 3. Clinician has applied (in applicants array) - can see their own applications
         const docsNotSelected = await DJob.find({ 
             clinicianId: 0,
             status: 'NotSelect',
@@ -101,15 +100,9 @@ exports.getClinicianDJobs = async (req, res) => {
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
 
-        // Jobs where this clinician has applied (can still see their application)
-        const docsWithApplicant = await DJob.find({
-            'applicants.clinicianId': aic,
-            degree: { $in: matchingDegreeIds }
-        }).sort({ DJobId: 1 });
-
         // Combine and remove duplicates (using Set with DJobId as key)
         const seenIds = new Set();
-        const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic, ...docsWithApplicant]
+        const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic]
           .filter(doc => {
             if (seenIds.has(doc.DJobId)) return false;
             seenIds.add(doc.DJobId);
@@ -355,10 +348,9 @@ exports.applyForShift = async (req, res) => {
       status: 'pending'
     });
 
-    // Update job status to pending if it was NotSelect
-    if (job.status.toLowerCase() === 'notselect') {
-      job.status = 'pending';
-    }
+    // DO NOT change the DJob status - it should remain "NotSelect"
+    // so other clinicians can still apply
+    // Status only changes when admin accepts/rejects someone
 
     await job.save();
 
