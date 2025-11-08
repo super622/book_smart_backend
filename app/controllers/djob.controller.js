@@ -82,13 +82,10 @@ exports.getClinicianDJobs = async (req, res) => {
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
 
         if (matchingDegreeIds.length === 0) {
-            // No matching degrees found, return empty array
             return res.status(200).json({ message: "Success", data: [] });
         }
 
-        // Get DJobs that match the clinician's degree AND are either:
-        // 1. Unassigned AND status is "NotSelect" (available to all, even if others have applied)
-        // 2. Assigned to this clinician
+        
         const docsNotSelected = await DJob.find({ 
             clinicianId: 0,
             status: 'NotSelect',
@@ -100,7 +97,6 @@ exports.getClinicianDJobs = async (req, res) => {
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
 
-        // Combine and remove duplicates (using Set with DJobId as key)
         const seenIds = new Set();
         const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic]
           .filter(doc => {
@@ -122,7 +118,6 @@ exports.getClinicianDJobs = async (req, res) => {
             const degree = await Degree.findOne({ Did: dJob.degree });
             const degreeName = degree ? degree.degreeName : null;
 
-            // Enrich applicants with clinician details
             const enrichedApplicants = await Promise.all(
               (dJob.applicants || []).map(async (applicant) => {
                 const appClinician = await Clinician.findOne({ aic: applicant.clinicianId });
