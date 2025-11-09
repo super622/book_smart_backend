@@ -6,6 +6,8 @@ const Facility = db.facilities;
 const Clinician = db.clinical;
 const Degree = db.degree;
 const mailTrans = require("./mailTrans.controller");
+const { pushNotification } = require('./twilio');
+const { sendNotification } = require('../utils/firebaseService');
 
 
 async function nextDJobId() {
@@ -68,23 +70,22 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(400).json({ message: "Clinician AIC is required" });
         }
 
-        // Get the clinician's title (RN, CNA, LPN, etc.)
+        // Get the clinician's userRole (RN, CNA, LPN, etc.)
         const clinician = await Clinician.findOne({ aic });
         if (!clinician) {
             return res.status(404).json({ message: "Clinician not found" });
         }
-        const clinicianTitle = clinician.title;
+        const clinicianRole = clinician.userRole || clinician.title;
 
-        // Find degrees that match the clinician's title
+        // Find degrees that match the clinician's userRole
         const matchingDegrees = await Degree.find({ 
-            degreeName: { $regex: new RegExp(`^${clinicianTitle}$`, 'i') } 
+            degreeName: { $regex: new RegExp(`^${clinicianRole}$`, 'i') } 
         });
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
 
         if (matchingDegreeIds.length === 0) {
             return res.status(200).json({ message: "Success", data: [] });
         }
-
         
         const docsNotSelected = await DJob.find({ 
             clinicianId: 0,
@@ -245,30 +246,82 @@ exports.createDJob = async (req, res) => {
       status: status,
     });
 
+    // Get facility and degree info for notifications
+    const facility = await Facility.findOne({ aic: facilitiesId }, { companyName: 1 });
+    const facilityName = facility?.companyName || "Your Facility";
+    
+    const degreeDoc = await Degree.findOne({ Did: degree });
+    const degreeName = degreeDoc?.degreeName || "Staff";
+
     if (clinicianId != 0) {
+      // Shift assigned to specific clinician - notify that person only
       const clinician = await Clinician.findOne(
         { aic: clinicianId },
-        { email: 1, firstName: 1, lastName: 1 }
+        { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1 }
       );
 
-      const facility = await Facility.findOne(
-        { aic: facilitiesId },
-        { companyName: 1 }
-      );
-
-      if (clinician && facility) {
-        const clinicianEmail = clinician.email;
-        const companyName = facility.companyName || "Your Facility";
+      if (clinician) {
         const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
 
-        const emailSubject = `Shift Assigned by ${companyName}`;
+        // Email notification
+        const emailSubject = `Shift Assigned by ${facilityName}`;
         const emailContent = `
           <p>Dear ${clinicianName || "Clinician"},</p>
-          <p>You have been assigned to a new shift on <strong>${shift.date}</strong> by <strong>${companyName}</strong>.</p>
-          <p>Please review and approve the shift assignment.</p>
+          <p>You have been assigned to a new shift on <strong>${normShift.date}</strong> at <strong>${normShift.time}</strong> by <strong>${facilityName}</strong>.</p>
+          <p>Please review and respond in the app.</p>
         `;
+        await mailTrans.sendMail(clinician.email, emailSubject, emailContent);
 
-        await mailTrans.sendMail(clinicianEmail, emailSubject, emailContent);
+        // SMS notification
+        if (clinician.phoneNumber) {
+          const smsMessage = `BookSmart: You've been assigned a ${degreeName} shift on ${normShift.date} at ${normShift.time} by ${facilityName}. Check the app to respond.`;
+          await pushNotification(smsMessage, clinician.phoneNumber);
+        }
+
+        // FCM push notification
+        if (clinician.fcmToken) {
+          await sendNotification(
+            clinician.fcmToken,
+            `New Shift Assignment`,
+            `${facilityName} assigned you a shift on ${normShift.date}`
+          );
+        }
+      }
+    } else {
+      // Shift created with no staff (NOTSELECT) - notify all eligible clinicians
+      const eligibleClinicians = await Clinician.find(
+        { 
+          userRole: { $regex: new RegExp(`^${degreeName}$`, 'i') },
+          userStatus: 'active'
+        },
+        { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1, userRole: 1 }
+      );
+
+      if (eligibleClinicians.length > 0) {
+        // Send notifications to all eligible clinicians
+        await Promise.all(
+          eligibleClinicians.map(async (clinician) => {
+            const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
+
+            // Email
+            const emailSubject = `New ${degreeName} Shift Available`;
+            const emailContent = `
+              <p>Dear ${clinicianName || "Clinician"},</p>
+              <p>A new ${degreeName} shift is available on <strong>${normShift.date}</strong> at <strong>${normShift.time}</strong> from <strong>${facilityName}</strong>.</p>
+              <p>Login to the app to apply for this shift before someone else does!</p>
+            `;
+            await mailTrans.sendMail(clinician.email, emailSubject, emailContent);
+
+            // FCM Push
+            if (clinician.fcmToken) {
+              await sendNotification(
+                clinician.fcmToken,
+                `New ${degreeName} Shift Available`,
+                `${facilityName} posted a shift on ${normShift.date}. Apply now!`
+              );
+            }
+          })
+        );
       }
     }
 
@@ -379,21 +432,115 @@ exports.reviewApplicant = async (req, res) => {
       return res.status(404).json({ message: "Applicant not found" });
     }
 
+    // Get facility and degree info for notifications
+    const facility = await Facility.findOne({ aic: job.facilitiesId }, { companyName: 1 });
+    const facilityName = facility?.companyName || "Your Facility";
+    
+    const degreeDoc = await Degree.findOne({ Did: job.degree });
+    const degreeName = degreeDoc?.degreeName || "Staff";
+
+    const shiftDate = job.shift?.date || 'your shift';
+    const shiftTime = job.shift?.time || '';
+
     if (action === 'accept') {
       // Accept this applicant
       applicant.status = 'accepted';
       job.clinicianId = Number(clinicianId);
       job.status = 'approved';
       
-      // Reject all other applicants
-      job.applicants.forEach(a => {
-        if (a.clinicianId !== Number(clinicianId)) {
-          a.status = 'rejected';
+      // Get accepted clinician info
+      const acceptedClinician = await Clinician.findOne(
+        { aic: clinicianId },
+        { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1 }
+      );
+
+      if (acceptedClinician) {
+        const clinicianName = `${acceptedClinician.firstName || ""} ${acceptedClinician.lastName || ""}`.trim();
+
+        // Notify accepted clinician
+        const emailSubject = `Shift Application Accepted!`;
+        const emailContent = `
+          <p>Dear ${clinicianName || "Clinician"},</p>
+          <p>Congratulations! Your application for the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> has been <strong>accepted</strong> by <strong>${facilityName}</strong>.</p>
+          <p>Please check the app for more details.</p>
+        `;
+        await mailTrans.sendMail(acceptedClinician.email, emailSubject, emailContent);
+
+        // FCM Push
+        if (acceptedClinician.fcmToken) {
+          await sendNotification(
+            acceptedClinician.fcmToken,
+            `Shift Application Accepted!`,
+            `${facilityName} accepted your application for ${shiftDate}`
+          );
         }
-      });
+      }
+      
+      // Reject all other applicants and notify them
+      const rejectedApplicants = job.applicants.filter(a => a.clinicianId !== Number(clinicianId));
+      
+      await Promise.all(
+        rejectedApplicants.map(async (otherApplicant) => {
+          otherApplicant.status = 'rejected';
+          
+          const rejectedClinician = await Clinician.findOne(
+            { aic: otherApplicant.clinicianId },
+            { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1 }
+          );
+
+          if (rejectedClinician) {
+            const clinicianName = `${rejectedClinician.firstName || ""} ${rejectedClinician.lastName || ""}`.trim();
+
+            // Notify rejected clinician
+            const emailSubject = `Shift Application Update`;
+            const emailContent = `
+              <p>Dear ${clinicianName || "Clinician"},</p>
+              <p>Thank you for your interest in the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> with <strong>${facilityName}</strong>.</p>
+              <p>Unfortunately, this position has been filled. Please check the app for other available shifts.</p>
+            `;
+            await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
+
+            // FCM Push
+            if (rejectedClinician.fcmToken) {
+              await sendNotification(
+                rejectedClinician.fcmToken,
+                `Shift Application Update`,
+                `The shift on ${shiftDate} has been filled`
+              );
+            }
+          }
+        })
+      );
     } else {
       // Reject this applicant
       applicant.status = 'rejected';
+      
+      const rejectedClinician = await Clinician.findOne(
+        { aic: clinicianId },
+        { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1 }
+      );
+
+      if (rejectedClinician) {
+        const clinicianName = `${rejectedClinician.firstName || ""} ${rejectedClinician.lastName || ""}`.trim();
+
+        // Notify rejected clinician
+        const emailSubject = `Shift Application Update`;
+        const emailContent = `
+          <p>Dear ${clinicianName || "Clinician"},</p>
+          <p>Thank you for your interest in the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> with <strong>${facilityName}</strong>.</p>
+          <p>Your application has been declined. Please check the app for other available shifts.</p>
+        `;
+        await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
+
+        // FCM Push
+        if (rejectedClinician.fcmToken) {
+          await sendNotification(
+            rejectedClinician.fcmToken,
+            `Shift Application Update`,
+            `Your application for ${shiftDate} was declined`
+          );
+        }
+      }
       
       // If no applicants are left pending, set job back to NotSelect
       const hasPendingApplicants = job.applicants.some(a => a.status === 'pending');
