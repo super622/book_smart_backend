@@ -476,10 +476,10 @@ exports.reviewApplicant = async (req, res) => {
     const shiftTime = job.shift?.time || '';
 
     if (action === 'accept') {
-      // Accept this applicant
+      // Accept this applicant - set to approved (FINAL)
       applicant.status = 'accepted';
       job.clinicianId = Number(clinicianId);
-      job.status = 'assigned-pending';
+      job.status = 'approved';
       
       // Get accepted clinician info
       const acceptedClinician = await Clinician.findOne(
@@ -491,11 +491,11 @@ exports.reviewApplicant = async (req, res) => {
         const clinicianName = `${acceptedClinician.firstName || ""} ${acceptedClinician.lastName || ""}`.trim();
 
         // Notify accepted clinician
-        const emailSubject = `Shift Application Accepted!`;
+        const emailSubject = `Shift Application Accepted - You're Scheduled!`;
         const emailContent = `
           <p>Dear ${clinicianName || "Clinician"},</p>
           <p>Congratulations! Your application for the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> has been <strong>accepted</strong> by <strong>${facilityName}</strong>.</p>
-          <p>Please check the app for more details.</p>
+          <p>You are now scheduled for this shift. Please check the app for details.</p>
         `;
         await mailTrans.sendMail(acceptedClinician.email, emailSubject, emailContent);
 
@@ -503,8 +503,8 @@ exports.reviewApplicant = async (req, res) => {
         if (acceptedClinician.fcmToken) {
           await sendNotification(
             acceptedClinician.fcmToken,
-            `Shift Application Accepted!`,
-            `${facilityName} accepted your application for ${shiftDate}`
+            `Shift Approved - You're Scheduled!`,
+            `${facilityName} approved your application for ${shiftDate}`
           );
         }
       }
