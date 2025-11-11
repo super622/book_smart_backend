@@ -76,14 +76,19 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(404).json({ message: "Clinician not found" });
         }
         const clinicianRole = clinician.userRole || clinician.title;
+        
+        console.log(`[getClinicianDJobs] Clinician ${aic} - Role: "${clinicianRole}"`);
 
         // Find degrees that match the clinician's userRole
         const matchingDegrees = await Degree.find({ 
             degreeName: { $regex: new RegExp(`^${clinicianRole}$`, 'i') } 
         });
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
+        
+        console.log(`[getClinicianDJobs] Matching degrees:`, matchingDegrees.map(d => `${d.Did}:${d.degreeName}`));
 
         if (matchingDegreeIds.length === 0) {
+            console.log(`[getClinicianDJobs] No matching degrees found for role: "${clinicianRole}"`);
             return res.status(200).json({ message: "Success", data: [] });
         }
         
@@ -93,10 +98,14 @@ exports.getClinicianDJobs = async (req, res) => {
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
         
+        console.log(`[getClinicianDJobs] Found ${docsNotSelected.length} NotSelect jobs`);
+        
         const docsWithClinicianAic = await DJob.find({ 
             clinicianId: aic,
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
+        
+        console.log(`[getClinicianDJobs] Found ${docsWithClinicianAic.length} jobs assigned to clinician`);
 
         const seenIds = new Set();
         const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic]
@@ -142,9 +151,11 @@ exports.getClinicianDJobs = async (req, res) => {
             };
         }));
 
+        console.log(`[getClinicianDJobs] Returning ${enrichedDocs.length} total jobs to clinician ${aic}`);
+        
         return res.status(200).json({ message: "Success", data: enrichedDocs });
     } catch (e) {
-        console.error(e);
+        console.error('[getClinicianDJobs] Error:', e);
         return res.status(500).json({ message: "Error fetching clinician-specific DJobs" });
     }
 };
