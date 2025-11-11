@@ -233,7 +233,7 @@ exports.createDJob = async (req, res) => {
 
     const DJobId = await nextDJobId();
 
-    const status = clinicianId == 0 ? "NotSelect" : "applied";
+    const status = clinicianId == 0 ? "NotSelect" : "assigned-pending";
 
     const doc = await DJob.create({
       DJobId,
@@ -353,7 +353,29 @@ exports.updateDJob = async (req, res) => {
         if (!s.length) {
           return res.status(400).json({ message: "Invalid status value" });
         }
-        update.status = s;
+        
+        // Handle status transitions
+        // When clinician accepts assigned shift: assigned-pending → assigned-approved
+        if (s === 'accept' || s === 'approved') {
+          const currentJob = await DJob.findOne({ DJobId: id });
+          if (currentJob?.status === 'assigned-pending') {
+            update.status = 'assigned-approved';
+          } else {
+            update.status = 'approved';
+          }
+        }
+        // When clinician declines assigned shift: assigned-pending → NotSelect (back to pool)
+        else if (s === 'reject' || s === 'rejected') {
+          const currentJob = await DJob.findOne({ DJobId: id });
+          if (currentJob?.status === 'assigned-pending') {
+            update.status = 'NotSelect';
+            update.clinicianId = 0;
+          } else {
+            update.status = 'rejected';
+          }
+        } else {
+          update.status = s;
+        }
     }
 
     const doc = await DJob.findOneAndUpdate(
@@ -446,7 +468,7 @@ exports.reviewApplicant = async (req, res) => {
       // Accept this applicant
       applicant.status = 'accepted';
       job.clinicianId = Number(clinicianId);
-      job.status = 'approved';
+      job.status = 'assigned-pending';
       
       // Get accepted clinician info
       const acceptedClinician = await Clinician.findOne(
