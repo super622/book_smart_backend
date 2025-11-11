@@ -299,14 +299,16 @@ exports.createDJob = async (req, res) => {
         }
       }
     } else {
-      // Shift created with no staff (NOTSELECT) - notify all eligible clinicians
+      console.log('degreeName', degreeName);
       const eligibleClinicians = await Clinician.find(
+        
         { 
-          userRole: { $regex: new RegExp(`^${degreeName}$`, 'i') },
-          userStatus: 'active'
+          title: { $regex: new RegExp(`^${degreeName}$`, 'i') },
+          userStatus: 'activate'
         },
         { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1, userRole: 1 }
       );
+      console.log(`[createDJob] Eligible clinicians:`, eligibleClinicians.length);
 
       if (eligibleClinicians.length > 0) {
         // Send notifications to all eligible clinicians
@@ -359,30 +361,31 @@ exports.updateDJob = async (req, res) => {
       update.shift = ns;
     }
 
+    let notifyFacilityAdmin = null; // Track if we need to notify
+
     if (update.status !== undefined) {
         const s = String(update.status).trim().toLowerCase();
         if (!s.length) {
           return res.status(400).json({ message: "Invalid status value" });
         }
         
+        const currentJob = await DJob.findOne({ DJobId: id });
+        
         // Handle status transitions
         // When clinician accepts assigned shift: assigned-pending → assigned-approved
         if (s === 'accept' || s === 'approved') {
-          const currentJob = await DJob.findOne({ DJobId: id });
           if (currentJob?.status === 'assigned-pending') {
             update.status = 'assigned-approved';
+            notifyFacilityAdmin = { action: 'accepted', job: currentJob };
           } else {
             update.status = 'approved';
           }
         }
-        // When clinician declines assigned shift: assigned-pending → NotSelect (back to pool)
+        // When clinician declines assigned shift: assigned-pending → rejected
         else if (s === 'reject' || s === 'rejected') {
-          const currentJob = await DJob.findOne({ DJobId: id });
+          update.status = 'rejected';
           if (currentJob?.status === 'assigned-pending') {
-            update.status = 'NotSelect';
-            update.clinicianId = 0;
-          } else {
-            update.status = 'rejected';
+            notifyFacilityAdmin = { action: 'rejected', job: currentJob };
           }
         } else {
           update.status = s;
@@ -395,6 +398,51 @@ exports.updateDJob = async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!doc) return res.status(404).json({ message: "DJob not found" });
+
+    // Send notification to facility/admin if clinician responded to assigned shift
+    if (notifyFacilityAdmin) {
+      const { action, job } = notifyFacilityAdmin;
+      const clinician = await Clinician.findOne({ aic: job.clinicianId });
+      const facility = await Facility.findOne({ aic: job.facilitiesId });
+      const admin = await Admin.findOne({ AId: job.adminId });
+      const degreeDoc = await Degree.findOne({ Did: job.degree });
+
+      if (clinician) {
+        const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
+        const facilityName = facility?.companyName || "Your Facility";
+        const degreeName = degreeDoc?.degreeName || "Staff";
+        const shiftDate = job.shift?.date || 'the shift';
+        const shiftTime = job.shift?.time || '';
+
+        // Notify facility
+        if (facility?.email) {
+          const emailSubject = action === 'accepted' 
+            ? `Clinician Accepted Shift Assignment`
+            : `Clinician Declined Shift Assignment`;
+          const emailContent = `
+            <p>Dear ${facilityName},</p>
+            <p><strong>${clinicianName}</strong> has <strong>${action}</strong> the ${degreeName} shift assignment on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong>.</p>
+            ${action === 'rejected' ? '<p>You may need to reassign this shift.</p>' : ''}
+          `;
+          await mailTrans.sendMail(facility.email, emailSubject, emailContent);
+        }
+
+        // Notify admin ONLY if adminMade is true
+        if (job.adminMade && admin?.email && admin.email !== facility?.email) {
+          const adminName = admin.companyName || "Admin";
+          const emailSubject = action === 'accepted' 
+            ? `Clinician Accepted Shift Assignment`
+            : `Clinician Declined Shift Assignment`;
+          const emailContent = `
+            <p>Dear ${adminName},</p>
+            <p><strong>${clinicianName}</strong> has <strong>${action}</strong> the ${degreeName} shift assignment on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> at <strong>${facilityName}</strong>.</p>
+            ${action === 'rejected' ? '<p>The shift may need to be reassigned.</p>' : ''}
+          `;
+          await mailTrans.sendMail(admin.email, emailSubject, emailContent);
+        }
+      }
+    }
+
     return res.status(200).json({ message: "Updated", data: doc });
   } catch (e) {
     console.error(e);
@@ -434,6 +482,43 @@ exports.applyForShift = async (req, res) => {
     // Status only changes when admin accepts/rejects someone
 
     await job.save();
+
+    // Notify facility/admin about the new application
+    const appliedClinician = await Clinician.findOne({ aic: clinicianId });
+    const facility = await Facility.findOne({ aic: job.facilitiesId });
+    const admin = await Admin.findOne({ AId: job.adminId });
+    const degreeDoc = await Degree.findOne({ Did: job.degree });
+
+    if (appliedClinician && facility) {
+      const clinicianName = `${appliedClinician.firstName || ""} ${appliedClinician.lastName || ""}`.trim();
+      const facilityName = facility.companyName || "Facility";
+      const degreeName = degreeDoc?.degreeName || "Staff";
+      const shiftDate = job.shift?.date || 'the shift';
+      const shiftTime = job.shift?.time || '';
+
+      // Notify facility
+      if (facility.email) {
+        const emailSubject = `New Application for ${degreeName} Shift`;
+        const emailContent = `
+          <p>Dear ${facilityName},</p>
+          <p><strong>${clinicianName}</strong> has applied for the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong>.</p>
+          <p>Please review the application in the admin portal.</p>
+        `;
+        await mailTrans.sendMail(facility.email, emailSubject, emailContent);
+      }
+
+      // Notify admin ONLY if adminMade is true
+      if (job.adminMade && admin && admin.email && admin.email !== facility.email) {
+        const adminName = admin.companyName || "Admin";
+        const emailSubject = `New Application for ${degreeName} Shift`;
+        const emailContent = `
+          <p>Dear ${adminName},</p>
+          <p><strong>${clinicianName}</strong> has applied for the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> at <strong>${facilityName}</strong>.</p>
+          <p>Please review the application in the admin portal.</p>
+        `;
+        await mailTrans.sendMail(admin.email, emailSubject, emailContent);
+      }
+    }
 
     return res.status(200).json({ message: "Applied successfully", data: job });
   } catch (e) {
