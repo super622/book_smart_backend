@@ -75,7 +75,7 @@ exports.getClinicianDJobs = async (req, res) => {
         if (!clinician) {
             return res.status(404).json({ message: "Clinician not found" });
         }
-        const clinicianRole = clinician.userRole || clinician.title;
+        const clinicianRole = clinician.title;
         
         console.log(`[getClinicianDJobs] Clinician ${aic} - Role: "${clinicianRole}"`);
 
