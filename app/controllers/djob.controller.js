@@ -1,10 +1,10 @@
 const db = require("../models");
 const DJob = db.Djobs;
 const Admin = db.admins;
-
 const Facility = db.facilities;
 const Clinician = db.clinical;
 const Degree = db.degree;
+const StaffInfo = db.staffInfo;
 const mailTrans = require("./mailTrans.controller");
 const { pushNotification } = require('./twilio');
 const { sendNotification } = require('../utils/firebaseService');
@@ -299,42 +299,56 @@ exports.createDJob = async (req, res) => {
         }
       }
     } else {
-      console.log('degreeName', degreeName);
-      const eligibleClinicians = await Clinician.find(
+      // Shift created with no staff (AVAILABLE) - notify only facility's staff with matching degree
+      const StaffInfo = db.staffInfo;
+      
+      // Get the facility's staff list
+      const facilityStaff = await StaffInfo.find({ 
+        managerAic: facilitiesId 
+      });
+      
+      if (facilityStaff && facilityStaff.length > 0) {
+        // Get all clinician AICs from facility's staff
+        const staffAics = facilityStaff
+          .map(staff => staff.userAic)
+          .filter(Boolean);
         
-        { 
-          title: { $regex: new RegExp(`^${degreeName}$`, 'i') },
-          userStatus: 'activate'
-        },
-        { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1, userRole: 1 }
-      );
-      console.log(`[createDJob] Eligible clinicians:`, eligibleClinicians.length);
-
-      if (eligibleClinicians.length > 0) {
-        // Send notifications to all eligible clinicians
-        await Promise.all(
-          eligibleClinicians.map(async (clinician) => {
-            const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
-
-            // Email
-            const emailSubject = `New ${degreeName} Shift Available`;
-            const emailContent = `
-              <p>Dear ${clinicianName || "Clinician"},</p>
-              <p>A new ${degreeName} shift is available on <strong>${normShift.date}</strong> at <strong>${normShift.time}</strong> from <strong>${facilityName}</strong>.</p>
-              <p>Login to the app to apply for this shift before someone else does!</p>
-            `;
-            await mailTrans.sendMail(clinician.email, emailSubject, emailContent);
-
-            // FCM Push
-            if (clinician.fcmToken) {
-              await sendNotification(
-                clinician.fcmToken,
-                `New ${degreeName} Shift Available`,
-                `${facilityName} posted a shift on ${normShift.date}. Apply now!`
-              );
-            }
-          })
+        // Find clinicians who are in the facility's staff AND have matching userRole
+        const eligibleClinicians = await Clinician.find(
+          { 
+            aic: { $in: staffAics },
+            userRole: { $regex: new RegExp(`^${degreeName}$`, 'i') },
+            userStatus: 'active'
+          },
+          { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1, userRole: 1 }
         );
+
+        if (eligibleClinicians.length > 0) {
+          // Send notifications only to facility's eligible staff
+          await Promise.all(
+            eligibleClinicians.map(async (clinician) => {
+              const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
+
+              // Email
+              const emailSubject = `New ${degreeName} Shift Available`;
+              const emailContent = `
+                <p>Dear ${clinicianName || "Clinician"},</p>
+                <p>A new ${degreeName} shift is available on <strong>${normShift.date}</strong> at <strong>${normShift.time}</strong> from <strong>${facilityName}</strong>.</p>
+                <p>Login to the app to apply for this shift before someone else does!</p>
+              `;
+              await mailTrans.sendMail(clinician.email, emailSubject, emailContent);
+
+              // FCM Push
+              if (clinician.fcmToken) {
+                await sendNotification(
+                  clinician.fcmToken,
+                  `New ${degreeName} Shift Available`,
+                  `${facilityName} posted a shift on ${normShift.date}. Apply now!`
+                );
+              }
+            })
+          );
+        }
       }
     }
 
