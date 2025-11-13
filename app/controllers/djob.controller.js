@@ -91,28 +91,47 @@ exports.getClinicianDJobs = async (req, res) => {
             return res.status(200).json({ message: "Success", data: [] });
         }
         
-        const docsNotSelected = await DJob.find({ 
-            clinicianId: 0,
-            status: 'NotSelect',
+        // Get ALL DJobs with matching degrees
+        const allMatchingDjobs = await DJob.find({ 
             degree: { $in: matchingDegreeIds }
         }).sort({ DJobId: 1 });
         
-        console.log(`[getClinicianDJobs] Found ${docsNotSelected.length} NotSelect jobs`);
+        console.log(`[getClinicianDJobs] Found ${allMatchingDjobs.length} jobs with matching degrees`);
         
-        const docsWithClinicianAic = await DJob.find({ 
-            clinicianId: aic,
-            degree: { $in: matchingDegreeIds }
-        }).sort({ DJobId: 1 });
+        // Filter: Only include djobs where:
+        // 1. Assigned to this clinician, OR
+        // 2. Unassigned AND clinician is in that facility's staffInfo
+        const filteredDocs = [];
         
-        console.log(`[getClinicianDJobs] Found ${docsWithClinicianAic.length} jobs assigned to clinician`);
-
-        const seenIds = new Set();
-        const combinedDocs = [...docsNotSelected, ...docsWithClinicianAic]
-          .filter(doc => {
-            if (seenIds.has(doc.DJobId)) return false;
-            seenIds.add(doc.DJobId);
-            return true;
-          });
+        for (const dJob of allMatchingDjobs) {
+          const isAssignedToMe = dJob.clinicianId === aic;
+          
+          // If assigned to me, always show
+          if (isAssignedToMe) {
+            filteredDocs.push(dJob);
+            continue;
+          }
+          
+          // If unassigned (AVAILABLE), check if I'm in this facility's staff
+          if (dJob.clinicianId === 0 && dJob.facilitiesId) {
+            const facilityDoc = await Facility.findOne({ aic: dJob.facilitiesId });
+            
+            if (facilityDoc && Array.isArray(facilityDoc.staffInfo)) {
+              // Check if clinician's AIC is in this facility's staffInfo
+              const isInFacilityStaff = facilityDoc.staffInfo.some(
+                staff => Number(staff.aic || staff.userAic) === Number(aic)
+              );
+              
+              if (isInFacilityStaff) {
+                filteredDocs.push(dJob);
+              }
+            }
+          }
+        }
+        
+        console.log(`[getClinicianDJobs] Filtered to ${filteredDocs.length} jobs (clinician is in facility staff or assigned)`);
+        
+        const combinedDocs = filteredDocs;
 
         const enrichedDocs = await Promise.all(combinedDocs.map(async (dJob) => {
             const admin = await Admin.findOne({ AId: dJob.adminId });
