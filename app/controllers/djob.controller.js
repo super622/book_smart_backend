@@ -4,7 +4,6 @@ const Admin = db.admins;
 const Facility = db.facilities;
 const Clinician = db.clinical;
 const Degree = db.degree;
-const StaffInfo = db.staffInfo;
 const mailTrans = require("./mailTrans.controller");
 const { pushNotification } = require('./twilio');
 const { sendNotification } = require('../utils/firebaseService');
@@ -300,17 +299,14 @@ exports.createDJob = async (req, res) => {
       }
     } else {
       // Shift created with no staff (AVAILABLE) - notify only facility's staff with matching degree
-      const StaffInfo = db.staffInfo;
       
-      // Get the facility's staff list
-      const facilityStaff = await StaffInfo.find({ 
-        managerAic: facilitiesId 
-      });
+      // Get the facility document with its staffInfo array
+      const facilityDoc = await Facility.findOne({ aic: facilitiesId });
       
-      if (facilityStaff && facilityStaff.length > 0) {
-        // Get all clinician AICs from facility's staff
-        const staffAics = facilityStaff
-          .map(staff => staff.userAic)
+      if (facilityDoc && Array.isArray(facilityDoc.staffInfo) && facilityDoc.staffInfo.length > 0) {
+        // Get all clinician AICs from facility's staffInfo array
+        const staffAics = facilityDoc.staffInfo
+          .map(staff => staff.aic || staff.userAic)
           .filter(Boolean);
         
         // Find clinicians who are in the facility's staff AND have matching userRole
