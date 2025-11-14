@@ -580,7 +580,7 @@ exports.reviewApplicant = async (req, res) => {
     }
 
     // Get facility and degree info for notifications
-    const facility = await Facility.findOne({ aic: job.facilitiesId }, { companyName: 1 });
+    const facility = await Facility.findOne({ aic: job.facilitiesId });
     const facilityName = facility?.companyName || "Your Facility";
     
     const degreeDoc = await Degree.findOne({ Did: job.degree });
@@ -588,6 +588,8 @@ exports.reviewApplicant = async (req, res) => {
 
     const shiftDate = job.shift?.date || 'your shift';
     const shiftTime = job.shift?.time || '';
+
+    console.log('[reviewApplicant] Facility:', facility?.companyName, 'Action:', action);
 
     if (action === 'accept') {
       // Accept this applicant - set to approved (FINAL)
@@ -600,6 +602,7 @@ exports.reviewApplicant = async (req, res) => {
         { aic: clinicianId },
         { email: 1, firstName: 1, lastName: 1, phoneNumber: 1, fcmToken: 1 }
       );
+      console.log('[reviewApplicant] Accepted clinician:', acceptedClinician?.firstName, acceptedClinician?.email);
 
       if (acceptedClinician) {
         const clinicianName = `${acceptedClinician.firstName || ""} ${acceptedClinician.lastName || ""}`.trim();
@@ -623,16 +626,10 @@ exports.reviewApplicant = async (req, res) => {
           
           <p>Thank you and keep booking smart!</p>
         `;
-        await mailTrans.sendMail(acceptedClinician.email, emailSubject, emailContent);
-
-        // FCM Push
-        if (acceptedClinician.fcmToken) {
-          await sendNotification(
-            acceptedClinician.fcmToken,
-            `Shift Approved - You're Scheduled!`,
-            `${facilityName} approved your application for ${shiftDate}`
-          );
-        }
+        
+        console.log('[reviewApplicant] Sending acceptance email to:', acceptedClinician.email);
+        const emailResult = await mailTrans.sendMail(acceptedClinician.email, emailSubject, emailContent);
+        console.log('[reviewApplicant] Email send result:', emailResult);
       }
       
       // Reject all other applicants and notify them
@@ -661,16 +658,10 @@ exports.reviewApplicant = async (req, res) => {
               
               <p>Thank you and as always - keep booking smart!</p>
             `;
-            await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
-
-            // FCM Push
-            if (rejectedClinician.fcmToken) {
-              await sendNotification(
-                rejectedClinician.fcmToken,
-                `Shift Application Update`,
-                `The shift on ${shiftDate} has been filled`
-              );
-            }
+            
+            console.log('[reviewApplicant] Sending rejection email to:', rejectedClinician.email);
+            const emailResult = await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
+            console.log('[reviewApplicant] Email send result:', emailResult);
           }
         })
       );
@@ -697,16 +688,10 @@ exports.reviewApplicant = async (req, res) => {
           
           <p>Thank you and as always - keep booking smart!</p>
         `;
-        await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
-
-        // FCM Push
-        if (rejectedClinician.fcmToken) {
-          await sendNotification(
-            rejectedClinician.fcmToken,
-            `Shift Application Update`,
-            `Your application for ${shiftDate} was declined`
-          );
-        }
+        
+        console.log('[reviewApplicant] Sending rejection email to:', rejectedClinician.email);
+        const emailResult = await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
+        console.log('[reviewApplicant] Email send result:', emailResult);
       }
       
       // If no applicants are left pending, set job back to NotSelect
