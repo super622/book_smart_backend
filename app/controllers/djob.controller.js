@@ -605,11 +605,23 @@ exports.reviewApplicant = async (req, res) => {
         const clinicianName = `${acceptedClinician.firstName || ""} ${acceptedClinician.lastName || ""}`.trim();
 
         // Notify accepted clinician
-        const emailSubject = `Shift Application Accepted - You're Scheduled!`;
+        const facilityAddress = facility?.address ? 
+          `${facility.address.streetAddress || ''} ${facility.address.city || ''}, ${facility.address.state || ''} ${facility.address.zip || ''}`.trim() : 
+          facilityName;
+        
+        const emailSubject = `Congrats! Shift Application at ${facilityName} on ${shiftDate} at ${shiftTime} Has Been Accepted!`;
         const emailContent = `
-          <p>Dear ${clinicianName || "Clinician"},</p>
-          <p>Congratulations! Your application for the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> has been <strong>accepted</strong> by <strong>${facilityName}</strong>.</p>
-          <p>You are now scheduled for this shift. Please check the app for details.</p>
+          <p>Hi ${clinicianName || "Clinician"},</p>
+          
+          <p>Congrats on being accepted for the shift you opted for at ${facilityName}. You agree to be at ${facilityAddress} on ${shiftDate} at ${shiftTime}.</p>
+          
+          <p>You agree to be on time, in scrubs, and ready to work. Understand ${facilityName} is a valued client of MedCor and their residents need care. Please be aware we are counting on you, and no one else, to be there for this shift and all scheduled shifts moving forward.</p>
+          
+          <p>You promise to show up, at your best, and to deliver care with professionalism, courtesy and compassion.</p>
+          
+          <p><strong>By not living up to these expectations you will be banned from SmartPay for 90 days and potentially banned permanently from the app itself.</strong></p>
+          
+          <p>Thank you and keep booking smart!</p>
         `;
         await mailTrans.sendMail(acceptedClinician.email, emailSubject, emailContent);
 
@@ -639,11 +651,15 @@ exports.reviewApplicant = async (req, res) => {
             const clinicianName = `${rejectedClinician.firstName || ""} ${rejectedClinician.lastName || ""}`.trim();
 
             // Notify rejected clinician
-            const emailSubject = `Shift Application Update`;
+            const emailSubject = `Sorry, Shift Application at ${facilityName} at ${shiftTime} on ${shiftDate} Has Been Awarded to Someone Else`;
             const emailContent = `
-              <p>Dear ${clinicianName || "Clinician"},</p>
-              <p>Thank you for your interest in the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> with <strong>${facilityName}</strong>.</p>
-              <p>Unfortunately, this position has been filled. Please check the app for other available shifts.</p>
+              <p>Hi ${clinicianName || "Clinician"},</p>
+              
+              <p>Thank you for applying for the shift at ${facilityName} at ${shiftTime} on ${shiftDate} but we had another caretaker apply first and always accept in order of those in que.</p>
+              
+              <p>You will be next in line if other opportunities arise within this shift.</p>
+              
+              <p>Thank you and as always - keep booking smart!</p>
             `;
             await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
 
@@ -671,11 +687,15 @@ exports.reviewApplicant = async (req, res) => {
         const clinicianName = `${rejectedClinician.firstName || ""} ${rejectedClinician.lastName || ""}`.trim();
 
         // Notify rejected clinician
-        const emailSubject = `Shift Application Update`;
+        const emailSubject = `Sorry, Shift Application at ${facilityName} at ${shiftTime} on ${shiftDate} Has Been Awarded to Someone Else`;
         const emailContent = `
-          <p>Dear ${clinicianName || "Clinician"},</p>
-          <p>Thank you for your interest in the ${degreeName} shift on <strong>${shiftDate}</strong> at <strong>${shiftTime}</strong> with <strong>${facilityName}</strong>.</p>
-          <p>Your application has been declined. Please check the app for other available shifts.</p>
+          <p>Hi ${clinicianName || "Clinician"},</p>
+          
+          <p>Thank you for applying for the shift at ${facilityName} at ${shiftTime} on ${shiftDate} but we had another caretaker apply first and always accept in order of those in que.</p>
+          
+          <p>You will be next in line if other opportunities arise within this shift.</p>
+          
+          <p>Thank you and as always - keep booking smart!</p>
         `;
         await mailTrans.sendMail(rejectedClinician.email, emailSubject, emailContent);
 
