@@ -24,4 +24,5 @@ db.restau_bid = require('./restau_bid.model.js')(mongoose);
 db.restau_job = require('./restau_job.model.js')(mongoose);
 db.hotel_bid = require('./hotel_bid.model.js')(mongoose);
 db.hotel_job = require('./hotel_job.model.js')(mongoose);
+db.terms = require('./terms.model.js')(mongoose);
 module.exports = db;

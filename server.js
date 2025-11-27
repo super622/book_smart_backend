@@ -52,6 +52,7 @@ require("./app/routes/restau_job.route.js")(app);
 require("./app/routes/hotel_bid.route.js")(app);
 require("./app/routes/hotel_job.route.js")(app);
 require("./app/routes/hospitality.route.js")(app);
+require("./app/routes/terms.route.js")(app);
 
 app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
