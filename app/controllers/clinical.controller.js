@@ -613,6 +613,9 @@ console.log('updating....');
 console.log(extracted);
 console.log(request.email, user.email);
         
+        // Get existing user before update for comparison
+        const existUser = await Clinical.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
+        
         // If terms are being accepted, get the latest published terms version and set signed date
         if (extracted.clinicalAcknowledgeTerm === true) {
             try {
@@ -641,7 +644,7 @@ console.log(request.email, user.email);
                 console.log('sending mail');
                 let updatedData = updatedDocument;
 
-                if (role == "Admin" && extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
+                if (role == "Admin" && existUser && extracted.userStatus == "activate" && extracted.userStatus != existUser.userStatus) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Approval"
                     const verifiedContent = `
@@ -651,7 +654,7 @@ console.log(request.email, user.email);
                     </div>`
                     let approveResult = mailTrans.sendMail(updatedData.email, verifySubject, verifiedContent);
                 }
-                if (role == "Admin" && extracted.userStatus == "inactivate" && extracted.userStatus != existUser.userStatus) {
+                if (role == "Admin" && existUser && extracted.userStatus == "inactivate" && extracted.userStatus != existUser.userStatus) {
                     console.log('Activated .........');
                     const verifySubject = "BookSmart™ - Your Account Restricted"
                     const verifiedContent = `

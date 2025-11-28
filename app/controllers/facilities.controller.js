@@ -662,9 +662,31 @@ exports.login = async (req, res) => {
     try {
         console.log("LogIn");
         const { contactEmail, password, userRole } = req.body;
-        const isUser = await Facility.findOne({ contactEmail: contactEmail.toLowerCase(), password: password, userRole: userRole }, 
-        { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1, password: 1, contactPassword: 1, facilityAcknowledgeTerm: 1, address: 1});
-        console.log(isUser);
+        console.log("Login attempt:", { contactEmail: contactEmail?.toLowerCase(), userRole, passwordLength: password?.length });
+        
+        const isUser = await Facility.findOne({ 
+            contactEmail: contactEmail.toLowerCase(), 
+            password: password, 
+            userRole: userRole 
+        }, { 
+            aic: 1, 
+            userStatus: 1, 
+            userRole: 1, 
+            entryDate: 1, 
+            companyName: 1, 
+            firstName: 1, 
+            lastName: 1, 
+            contactEmail: 1, 
+            contactPhone: 1, 
+            password: 1, 
+            contactPassword: 1, 
+            facilityAcknowledgeTerm: 1, 
+            address: 1
+        });
+        console.log("Found user:", isUser ? "Yes" : "No");
+        if (isUser) {
+            console.log("User status:", isUser.userStatus);
+        }
         if (isUser) {
             if (isUser.userStatus === 'activate') {
                 const payload = {
@@ -683,12 +705,24 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait until the admin accept you."})
             }
         } else {
+            // Check if user exists with email and role
             const isExist = await Facility.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
-      
+            console.log("User exists check:", isExist ? "Yes" : "No");
+            
             if (isExist) {
+                // User exists but password is wrong
+                console.log("Password mismatch for:", contactEmail.toLowerCase());
                 res.status(401).json({ message: "Login information is incorrect." })
             } else {
-                res.status(404).json({ message: "User Not Found! Please Register First." })
+                // Check if email exists at all
+                const emailExists = await Facility.findOne({ contactEmail: contactEmail.toLowerCase() });
+                console.log("Email exists:", emailExists ? "Yes" : "No");
+                if (emailExists) {
+                    console.log("Email exists but userRole mismatch. DB role:", emailExists.userRole, "Requested role:", userRole);
+                    res.status(401).json({ message: "Login information is incorrect." })
+                } else {
+                    res.status(404).json({ message: "User Not Found! Please Register First." })
+                }
             }
         }
     } catch (e) {

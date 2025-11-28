@@ -3,10 +3,6 @@ module.exports = mongoose => {
         aic: {
             type: Number,
         },
-        userStatus: {
-            type: String,
-            default: 'inactivate'
-        },
         userRole: {
             type: String,
             default: '',
