@@ -334,13 +334,12 @@ exports.publishTerms = async (req, res) => {
     try {
       if (savedTerms.type === 'clinician') {
         // Reset clinicalAcknowledgeTerm to false for all clinicians
-        // Set logined to false to logout all clinicians
+        // Users will see new terms on next login (no auto-logout)
         const updateResult = await db.clinical.updateMany(
           {},
           { 
             $set: { 
-              clinicalAcknowledgeTerm: false,
-              logined: false
+              clinicalAcknowledgeTerm: false
             } 
           }
         );
