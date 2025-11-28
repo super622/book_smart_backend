@@ -12,6 +12,7 @@ module.exports = app => {
   router.get("/all", verifyUser, terms.getAllTerms);
   router.get("/overview", verifyUser, terms.getTermsOverview);
   router.get("/draft", verifyUser, terms.getDraftTerms);
+  router.get("/status", verifyUser, terms.getTermsStatus); // Admin only - get terms status for all users (MUST be before /:id)
   router.get("/:id", verifyUser, terms.getTermsById);
   router.post("/save-draft", verifyUser, terms.saveDraftTerms);
   router.post("/publish", verifyUser, terms.publishTerms);
@@ -19,7 +20,6 @@ module.exports = app => {
   router.put("/:id", verifyUser, terms.updateTerms);
   router.delete("/:id", verifyUser, terms.deleteTerms);
   router.post("/acknowledge", verifyUser, terms.acknowledgeNewTerms);
-  router.get("/status", verifyUser, terms.getTermsStatus); // Admin only - get terms status for all users
   router.post("/test-notification", terms.testFCMNotification); // Public test endpoint
 
   app.use("/api/terms", router);

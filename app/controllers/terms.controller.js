@@ -722,17 +722,21 @@ exports.getTermsStatus = async (req, res) => {
     const db = require('../models');
     
     // Get latest published terms versions
-    const latestClinicianTerms = await db.terms
-      .findOne({ type: 'clinician', status: 'published' })
-      .select('version publishedDate')
+    const clinicianTermsList = await db.terms
+      .find({ type: 'clinician', status: 'published' })
       .sort({ publishedDate: -1 })
+      .limit(1)
+      .select('version publishedDate')
       .lean();
+    const latestClinicianTerms = clinicianTermsList.length > 0 ? clinicianTermsList[0] : null;
     
-    const latestFacilityTerms = await db.terms
-      .findOne({ type: 'facility', status: 'published' })
-      .select('version publishedDate')
+    const facilityTermsList = await db.terms
+      .find({ type: 'facility', status: 'published' })
       .sort({ publishedDate: -1 })
+      .limit(1)
+      .select('version publishedDate')
       .lean();
+    const latestFacilityTerms = facilityTermsList.length > 0 ? facilityTermsList[0] : null;
     
     // Get all clinicians with terms info
     const clinicians = await db.clinical
