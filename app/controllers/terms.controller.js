@@ -325,6 +325,92 @@ exports.publishTerms = async (req, res) => {
     terms.lastModifiedDate = new Date();
     await terms.save();
 
+    // Send notifications to users based on terms type
+    const { sendNotificationToMultipleUsers } = require('../utils/firebaseService');
+    const db = require('../models');
+    
+    try {
+      if (terms.type === 'clinician') {
+        // Notify all active clinicians
+        const clinicians = await db.clinical.find(
+          { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
+          { fcmToken: 1 }
+        );
+        
+        const tokens = clinicians.map(c => c.fcmToken).filter(Boolean);
+        
+        if (tokens.length > 0) {
+          await sendNotificationToMultipleUsers(
+            tokens,
+            'New Terms of Service Available',
+            `A new version (${terms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
+            {
+              type: 'new_terms',
+              termsType: 'clinician',
+              version: terms.version,
+              termsId: terms._id.toString()
+            }
+          );
+          console.log(`Sent new terms notification to ${tokens.length} clinicians`);
+        }
+      } else if (terms.type === 'facility') {
+        // Notify all active facilities
+        // Note: Facilities may not have fcmToken field, check the model structure
+        const facilities = await db.facilities.find(
+          { userStatus: 'activate' },
+          { contactEmail: 1, companyName: 1 }
+        );
+        
+        // For now, we'll send email notifications to facilities
+        // If facilities have fcmToken, uncomment the FCM code below
+        const mailTrans = require('../controllers/mailTrans.controller');
+        
+        for (const facility of facilities) {
+          try {
+            const emailSubject = 'New Terms of Service Available';
+            const emailContent = `
+              <p>Dear ${facility.companyName || 'Facility Manager'},</p>
+              <p>A new version (${terms.version}) of the Facility Terms of Service has been released.</p>
+              <p>Please log in to the app to review and accept the new terms.</p>
+              <p>You will be logged out and required to accept the new terms upon your next login.</p>
+            `;
+            await mailTrans.sendMail(facility.contactEmail, emailSubject, emailContent);
+          } catch (emailError) {
+            console.error(`Error sending email to facility ${facility.contactEmail}:`, emailError);
+          }
+        }
+        
+        console.log(`Sent new terms notification to ${facilities.length} facilities via email`);
+        
+        // If facilities have fcmToken field, use this instead:
+        /*
+        const facilities = await db.facilities.find(
+          { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
+          { fcmToken: 1 }
+        );
+        
+        const tokens = facilities.map(f => f.fcmToken).filter(Boolean);
+        
+        if (tokens.length > 0) {
+          await sendNotificationToMultipleUsers(
+            tokens,
+            'New Terms of Service Available',
+            `A new version (${terms.version}) of the Facility Terms of Service has been released. Please review and accept the new terms.`,
+            {
+              type: 'new_terms',
+              termsType: 'facility',
+              version: terms.version,
+              termsId: terms._id.toString()
+            }
+          );
+        }
+        */
+      }
+    } catch (notificationError) {
+      console.error('Error sending notifications:', notificationError);
+      // Don't fail the publish if notifications fail
+    }
+
     return res.status(200).json({ 
       message: 'Terms published successfully',
       terms 
@@ -481,6 +567,54 @@ exports.deleteTerms = async (req, res) => {
     return res.status(200).json({ message: 'Terms deleted successfully' });
   } catch (error) {
     console.error('Error deleting terms:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Handle new terms acknowledgment - reset flags and logout users
+exports.acknowledgeNewTerms = async (req, res) => {
+  try {
+    const { termsType } = req.body; // 'clinician' or 'facility'
+    
+    if (!termsType || !['clinician', 'facility'].includes(termsType)) {
+      return res.status(400).json({ error: 'Terms type is required and must be "clinician" or "facility"' });
+    }
+
+    const db = require('../models');
+
+    if (termsType === 'clinician') {
+      // Reset clinicalAcknowledgeTerm to false for all clinicians
+      // Set logined to false to logout all clinicians
+      await db.clinical.updateMany(
+        {},
+        { 
+          $set: { 
+            clinicalAcknowledgeTerm: false,
+            logined: false
+          } 
+        }
+      );
+      
+      console.log('Reset clinicalAcknowledgeTerm and logged out all clinicians');
+    } else if (termsType === 'facility') {
+      // Reset facilityAcknowledgeTerm to false for all facilities
+      await db.facilities.updateMany(
+        {},
+        { 
+          $set: { 
+            facilityAcknowledgeTerm: false
+          } 
+        }
+      );
+      
+      console.log('Reset facilityAcknowledgeTerm for all facilities');
+    }
+
+    return res.status(200).json({ 
+      message: `Successfully reset ${termsType} terms acknowledgment. All ${termsType}s will be required to accept new terms on next login.` 
+    });
+  } catch (error) {
+    console.error('Error acknowledging new terms:', error);
     return res.status(500).json({ error: error.message });
   }
 };

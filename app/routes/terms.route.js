@@ -18,6 +18,7 @@ module.exports = app => {
   router.post("/create", verifyUser, terms.createTerms);
   router.put("/:id", verifyUser, terms.updateTerms);
   router.delete("/:id", verifyUser, terms.deleteTerms);
+  router.post("/acknowledge", verifyUser, terms.acknowledgeNewTerms);
 
   app.use("/api/terms", router);
 };
