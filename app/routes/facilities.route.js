@@ -7,6 +7,8 @@ module.exports = app => {
 
   router.post('/login', facilities.login);
 
+  router.post('/saveFCMToken', facilities.saveFCMToken);
+
   router.post('/signup', facilities.signup);
 
   router.post('/forgotPassword', facilities.forgotPassword);

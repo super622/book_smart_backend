@@ -87,6 +87,10 @@ module.exports = mongoose => {
         staffInfo: {
             type: Array,
             default: []
+        },
+        fcmToken: {
+            type: String,
+            default: ''
         }
     });
 

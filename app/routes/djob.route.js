@@ -19,5 +19,9 @@ module.exports = app => {
 
     router.post("/getfacilitydjobs", verifyUser, djobs.getFacilitiesDJobs); 
 
+    router.post("/apply", verifyUser, djobs.applyForShift);
+
+    router.post("/reviewapplicant", verifyUser, djobs.reviewApplicant);
+
     app.use("/api/djobs", router);
 };
