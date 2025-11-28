@@ -328,9 +328,42 @@ exports.publishTerms = async (req, res) => {
     const savedTerms = await terms.save();
     console.log('Terms published successfully. Status:', savedTerms.status, 'ID:', savedTerms._id);
 
+    // Automatically reset acknowledge flags when new terms are published
+    const db = require('../models');
+    
+    try {
+      if (savedTerms.type === 'clinician') {
+        // Reset clinicalAcknowledgeTerm to false for all clinicians
+        // Set logined to false to logout all clinicians
+        const updateResult = await db.clinical.updateMany(
+          {},
+          { 
+            $set: { 
+              clinicalAcknowledgeTerm: false,
+              logined: false
+            } 
+          }
+        );
+        console.log(`Reset clinicalAcknowledgeTerm for ${updateResult.modifiedCount} clinicians`);
+      } else if (savedTerms.type === 'facility') {
+        // Reset facilityAcknowledgeTerm to false for all facilities
+        const updateResult = await db.facilities.updateMany(
+          {},
+          { 
+            $set: { 
+              facilityAcknowledgeTerm: false
+            } 
+          }
+        );
+        console.log(`Reset facilityAcknowledgeTerm for ${updateResult.modifiedCount} facilities`);
+      }
+    } catch (acknowledgeError) {
+      console.error('Error resetting acknowledge flags:', acknowledgeError);
+      // Don't fail the publish if this fails, but log it
+    }
+
     // Send notifications to users based on terms type
     const { sendNotificationToMultipleUsers } = require('../utils/firebaseService');
-    const db = require('../models');
     
     try {
       if (savedTerms.type === 'clinician') {
@@ -340,9 +373,12 @@ exports.publishTerms = async (req, res) => {
           { fcmToken: 1 }
         );
         
-        const tokens = clinicians.map(c => c.fcmToken).filter(Boolean);
+        const tokens = clinicians
+          .map(c => c.fcmToken)
+          .filter(token => token && token.trim() !== '');
         
         console.log(`Found ${tokens.length} clinicians with FCM tokens to notify`);
+        console.log('Sample tokens:', tokens.slice(0, 3));
         
         if (tokens.length > 0) {
           // FCM data must have all values as strings
@@ -353,13 +389,34 @@ exports.publishTerms = async (req, res) => {
             termsId: savedTerms._id.toString()
           };
           
-          await sendNotificationToMultipleUsers(
-            tokens,
-            'New Terms of Service Available',
-            `A new version (${savedTerms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
-            notificationData
-          );
-          console.log(`Sent new terms notification to ${tokens.length} clinicians`);
+          try {
+            const result = await sendNotificationToMultipleUsers(
+              tokens,
+              'New Terms of Service Available',
+              `A new version (${savedTerms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
+              notificationData
+            );
+            console.log(`Notification result - Success: ${result?.successCount || 0}, Failed: ${result?.failureCount || 0}`);
+          } catch (notifError) {
+            console.error('Error sending FCM notifications to clinicians:', notifError);
+            // Try sending individually if batch fails
+            const { sendNotification } = require('../utils/firebaseService');
+            let successCount = 0;
+            for (const token of tokens.slice(0, 10)) { // Limit to first 10 to avoid too many calls
+              try {
+                await sendNotification(
+                  token,
+                  'New Terms of Service Available',
+                  `A new version (${savedTerms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
+                  notificationData
+                );
+                successCount++;
+              } catch (individualError) {
+                console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualError.message);
+              }
+            }
+            console.log(`Sent ${successCount} individual notifications`);
+          }
         } else {
           console.log('No clinicians with FCM tokens found');
         }
@@ -380,7 +437,7 @@ exports.publishTerms = async (req, res) => {
             const emailSubject = 'New Terms of Service Available';
             const emailContent = `
               <p>Dear ${facility.companyName || 'Facility Manager'},</p>
-              <p>A new version (${terms.version}) of the Facility Terms of Service has been released.</p>
+              <p>A new version (${savedTerms.version}) of the Facility Terms of Service has been released.</p>
               <p>Please log in to the app to review and accept the new terms.</p>
               <p>You will be logged out and required to accept the new terms upon your next login.</p>
             `;
