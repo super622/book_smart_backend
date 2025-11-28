@@ -632,6 +632,31 @@ exports.signup = async (req, res) => {
     }
 }
 
+// Save FCM Token
+exports.saveFCMToken = async (req, res) => {
+    try {
+        const { email, token } = req.body;
+    
+        if (!email || !token) {
+            return res.status(400).json({ message: "Email and Token is required" });
+        }
+    
+        const user = await Facility.findOne({ contactEmail: email.toLowerCase() });
+    
+        if (user) {
+            const updateUser = await Facility.updateOne({ contactEmail: email.toLowerCase() }, { $set: { fcmToken: token } });
+            return res.status(200).json({ message: "Token Updated!" });
+        } else {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
 //Login Account
 exports.login = async (req, res) => {
     try {

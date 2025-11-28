@@ -378,7 +378,6 @@ exports.publishTerms = async (req, res) => {
           .filter(token => token && token.trim() !== '');
         
         console.log(`Found ${tokens.length} clinicians with FCM tokens to notify`);
-        console.log('Sample tokens:', tokens.slice(0, 3));
         
         if (tokens.length > 0) {
           // FCM data must have all values as strings
@@ -421,57 +420,58 @@ exports.publishTerms = async (req, res) => {
           console.log('No clinicians with FCM tokens found');
         }
       } else if (savedTerms.type === 'facility') {
-        // Notify all active facilities
-        // Note: Facilities may not have fcmToken field, check the model structure
+        // Notify all facilities (no userStatus filter)
         const facilities = await db.facilities.find(
-          { userStatus: 'activate' },
-          { contactEmail: 1, companyName: 1 }
-        );
-        
-        // For now, we'll send email notifications to facilities
-        // If facilities have fcmToken, uncomment the FCM code below
-        const mailTrans = require('../controllers/mailTrans.controller');
-        
-        for (const facility of facilities) {
-          try {
-            const emailSubject = 'New Terms of Service Available';
-            const emailContent = `
-              <p>Dear ${facility.companyName || 'Facility Manager'},</p>
-              <p>A new version (${savedTerms.version}) of the Facility Terms of Service has been released.</p>
-              <p>Please log in to the app to review and accept the new terms.</p>
-              <p>You will be logged out and required to accept the new terms upon your next login.</p>
-            `;
-            await mailTrans.sendMail(facility.contactEmail, emailSubject, emailContent);
-          } catch (emailError) {
-            console.error(`Error sending email to facility ${facility.contactEmail}:`, emailError);
-          }
-        }
-        
-        console.log(`Sent new terms notification to ${facilities.length} facilities via email`);
-        
-        // If facilities have fcmToken field, use this instead:
-        /*
-        const facilities = await db.facilities.find(
-          { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
+          { fcmToken: { $exists: true, $ne: null, $ne: '' } },
           { fcmToken: 1 }
         );
         
-        const tokens = facilities.map(f => f.fcmToken).filter(Boolean);
+        const tokens = facilities
+          .map(f => f.fcmToken)
+          .filter(token => token && token.trim() !== '');
+        
+        console.log(`Found ${tokens.length} facilities with FCM tokens to notify`);
         
         if (tokens.length > 0) {
-          await sendNotificationToMultipleUsers(
-            tokens,
-            'New Terms of Service Available',
-            `A new version (${terms.version}) of the Facility Terms of Service has been released. Please review and accept the new terms.`,
-            {
-              type: 'new_terms',
-              termsType: 'facility',
-              version: terms.version,
-              termsId: terms._id.toString()
+          // FCM data must have all values as strings
+          const notificationData = {
+            type: 'new_terms',
+            termsType: 'facility',
+            version: savedTerms.version.toString(),
+            termsId: savedTerms._id.toString()
+          };
+          
+          try {
+            const result = await sendNotificationToMultipleUsers(
+              tokens,
+              'New Terms of Service Available',
+              `A new version (${savedTerms.version}) of the Facility Terms of Service has been released. Please review and accept the new terms.`,
+              notificationData
+            );
+            console.log(`Notification result - Success: ${result?.successCount || 0}, Failed: ${result?.failureCount || 0}`);
+          } catch (notifError) {
+            console.error('Error sending FCM notifications to facilities:', notifError);
+            // Try sending individually if batch fails
+            const { sendNotification } = require('../utils/firebaseService');
+            let successCount = 0;
+            for (const token of tokens.slice(0, 10)) { // Limit to first 10 to avoid too many calls
+              try {
+                await sendNotification(
+                  token,
+                  'New Terms of Service Available',
+                  `A new version (${savedTerms.version}) of the Facility Terms of Service has been released. Please review and accept the new terms.`,
+                  notificationData
+                );
+                successCount++;
+              } catch (individualError) {
+                console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualError.message);
+              }
             }
-          );
+            console.log(`Sent ${successCount} individual notifications`);
+          }
+        } else {
+          console.log('No facilities with FCM tokens found');
         }
-        */
       }
     } catch (notificationError) {
       console.error('Error sending notifications:', notificationError);
