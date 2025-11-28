@@ -86,7 +86,7 @@ module.exports = mongoose => {
     },
     signature: {
       type: Buffer,
-      require: true,
+      required: false,
       default: '',
     },
     logined: {

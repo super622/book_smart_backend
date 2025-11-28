@@ -319,12 +319,15 @@ exports.signup = async (req, res) => {
 //Login Account
 exports.login = async (req, res) => {
     try {
-        console.log('started');
+        console.log('Clinical Login started');
         const { email, password, userRole, device } = req.body;
+        console.log('Login attempt:', { email: email?.toLowerCase(), userRole, passwordLength: password?.length, device });
+        
         let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password }, 
                                             { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, clinicalAcknowledgeTerm: 1, password: 1 });
-        console.log('got userdata');
+        console.log('got userdata:', userData ? "Yes" : "No");
         if (userData) {
+            console.log('User status:', userData.userStatus);
             if (userData.userStatus === 'activate') {
 
                 let devices = userData.device || [];
@@ -352,18 +355,22 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Clinical.findOne({ email: email.toLowerCase() }, { email: 1 });
-            console.log('isExist => ', typeof isExist);
-
+            // Check if email exists
+            const isExist = await Clinical.findOne({ email: email.toLowerCase() }, { email: 1, userRole: 1, password: 1 });
+            console.log('Email exists check:', isExist ? "Yes" : "No");
             if (isExist) {
+                console.log('Email exists but login failed. DB userRole:', isExist.userRole, 'Requested userRole:', userRole);
+                console.log('Password match:', isExist.password === password);
                 res.status(401).json({ message: "Login information is incorrect." })
             } else {
+                console.log('Email not found in database');
                 res.status(404).json({ message: "User Not Found! Please Register First." })
             }
         }
     } catch (e) {
-        console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" })
+        console.error('Clinical login error:', e);
+        console.error('Error stack:', e.stack);
+        return res.status(500).json({ message: "An Error Occured!", error: e.message })
     }
 }
 

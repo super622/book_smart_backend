@@ -726,8 +726,9 @@ exports.login = async (req, res) => {
             }
         }
     } catch (e) {
-        console.log(e);
-        return res.status(500).json({ message: "An Error Occured!" })
+        console.error('Facility login error:', e);
+        console.error('Error stack:', e.stack);
+        return res.status(500).json({ message: "An Error Occured!", error: e.message })
     }
 }
 
