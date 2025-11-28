@@ -377,6 +377,9 @@ exports.publishTerms = async (req, res) => {
           .filter(token => token && token.trim() !== '');
         
         console.log(`Found ${tokens.length} clinicians with FCM tokens to notify`);
+        if (tokens.length > 0) {
+          console.log('Sample token (first 30 chars):', tokens[0]?.substring(0, 30) + '...');
+        }
         
         if (tokens.length > 0) {
           // FCM data must have all values as strings
@@ -395,25 +398,36 @@ exports.publishTerms = async (req, res) => {
               notificationData
             );
             console.log(`Notification result - Success: ${result?.successCount || 0}, Failed: ${result?.failureCount || 0}`);
+            if (result?.failureCount > 0) {
+              console.log('Some notifications failed. Check logs above for details.');
+            }
           } catch (notifError) {
             console.error('Error sending FCM notifications to clinicians:', notifError);
+            console.error('Error details:', notifError.message);
             // Try sending individually if batch fails
             const { sendNotification } = require('../utils/firebaseService');
             let successCount = 0;
+            let failureCount = 0;
             for (const token of tokens.slice(0, 10)) { // Limit to first 10 to avoid too many calls
               try {
-                await sendNotification(
+                const individualResult = await sendNotification(
                   token,
                   'New Terms of Service Available',
                   `A new version (${savedTerms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
                   notificationData
                 );
-                successCount++;
+                if (individualResult?.success) {
+                  successCount++;
+                } else {
+                  failureCount++;
+                  console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualResult?.error || 'Unknown error');
+                }
               } catch (individualError) {
+                failureCount++;
                 console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualError.message);
               }
             }
-            console.log(`Sent ${successCount} individual notifications`);
+            console.log(`Individual notifications - Success: ${successCount}, Failed: ${failureCount}`);
           }
         } else {
           console.log('No clinicians with FCM tokens found');
@@ -430,6 +444,9 @@ exports.publishTerms = async (req, res) => {
           .filter(token => token && token.trim() !== '');
         
         console.log(`Found ${tokens.length} facilities with FCM tokens to notify`);
+        if (tokens.length > 0) {
+          console.log('Sample token (first 30 chars):', tokens[0]?.substring(0, 30) + '...');
+        }
         
         if (tokens.length > 0) {
           // FCM data must have all values as strings
@@ -448,25 +465,36 @@ exports.publishTerms = async (req, res) => {
               notificationData
             );
             console.log(`Notification result - Success: ${result?.successCount || 0}, Failed: ${result?.failureCount || 0}`);
+            if (result?.failureCount > 0) {
+              console.log('Some notifications failed. Check logs above for details.');
+            }
           } catch (notifError) {
             console.error('Error sending FCM notifications to facilities:', notifError);
+            console.error('Error details:', notifError.message);
             // Try sending individually if batch fails
             const { sendNotification } = require('../utils/firebaseService');
             let successCount = 0;
+            let failureCount = 0;
             for (const token of tokens.slice(0, 10)) { // Limit to first 10 to avoid too many calls
               try {
-                await sendNotification(
+                const individualResult = await sendNotification(
                   token,
                   'New Terms of Service Available',
                   `A new version (${savedTerms.version}) of the Facility Terms of Service has been released. Please review and accept the new terms.`,
                   notificationData
                 );
-                successCount++;
+                if (individualResult?.success) {
+                  successCount++;
+                } else {
+                  failureCount++;
+                  console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualResult?.error || 'Unknown error');
+                }
               } catch (individualError) {
+                failureCount++;
                 console.error(`Failed to send to token ${token.substring(0, 20)}...:`, individualError.message);
               }
             }
-            console.log(`Sent ${successCount} individual notifications`);
+            console.log(`Individual notifications - Success: ${successCount}, Failed: ${failureCount}`);
           }
         } else {
           console.log('No facilities with FCM tokens found');
@@ -684,6 +712,49 @@ exports.acknowledgeNewTerms = async (req, res) => {
     });
   } catch (error) {
     console.error('Error acknowledging new terms:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Test FCM notification (for debugging)
+exports.testFCMNotification = async (req, res) => {
+  try {
+    const { token, type } = req.body; // type: 'clinician' or 'facility'
+    
+    if (!token) {
+      return res.status(400).json({ error: 'FCM token is required' });
+    }
+
+    const { sendNotification } = require('../utils/firebaseService');
+    
+    const notificationData = {
+      type: 'new_terms',
+      termsType: type || 'clinician',
+      version: '1.0.0',
+      termsId: 'test'
+    };
+    
+    const result = await sendNotification(
+      token,
+      'Test Notification',
+      'This is a test notification from BookSmart',
+      notificationData
+    );
+    
+    if (result.success) {
+      return res.status(200).json({ 
+        message: 'Test notification sent successfully',
+        messageId: result.messageId
+      });
+    } else {
+      return res.status(500).json({ 
+        error: 'Failed to send test notification',
+        details: result.error,
+        code: result.code
+      });
+    }
+  } catch (error) {
+    console.error('Error in testFCMNotification:', error);
     return res.status(500).json({ error: error.message });
   }
 };

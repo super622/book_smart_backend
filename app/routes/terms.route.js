@@ -19,6 +19,7 @@ module.exports = app => {
   router.put("/:id", verifyUser, terms.updateTerms);
   router.delete("/:id", verifyUser, terms.deleteTerms);
   router.post("/acknowledge", verifyUser, terms.acknowledgeNewTerms);
+  router.post("/test-notification", terms.testFCMNotification); // Public test endpoint
 
   app.use("/api/terms", router);
 };

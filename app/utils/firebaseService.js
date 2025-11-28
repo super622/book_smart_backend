@@ -6,24 +6,50 @@ admin.initializeApp({
 });
 
 exports.sendNotification = async (token, title, body, data = {}) => {
+    // Convert all data values to strings (FCM requirement)
+    const stringData = {};
+    for (const [key, value] of Object.entries(data)) {
+        stringData[key] = String(value);
+    }
+    
     const message = {
         notification: {
             title,
             body,
         },
-        data,
+        data: stringData,
         token
     };
     
     try {
         const response = await admin.messaging().send(message);
-        console.log("FCM message sent successfully:", response);
+        console.log("FCM message sent successfully. Message ID:", response);
+        return { success: true, messageId: response };
     } catch (error) {
         console.error("Error sending FCM message:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        
+        // Common error codes:
+        // - messaging/invalid-registration-token: Token is invalid
+        // - messaging/registration-token-not-registered: Token is not registered
+        // - messaging/invalid-argument: Invalid arguments
+        
+        if (error.code === 'messaging/invalid-registration-token' || 
+            error.code === 'messaging/registration-token-not-registered') {
+            console.error("Token is invalid or not registered. Token:", token.substring(0, 20) + "...");
+        }
+        
+        return { success: false, error: error.message, code: error.code };
     }
 }
 
 exports.sendNotificationToMultipleUsers = async (tokens, title, body, data = {}) => {
+    if (!tokens || tokens.length === 0) {
+        console.log("No tokens provided for notification");
+        return { successCount: 0, failureCount: 0, responses: [] };
+    }
+    
     // Convert all data values to strings (FCM requirement)
     const stringData = {};
     for (const [key, value] of Object.entries(data)) {
@@ -40,14 +66,31 @@ exports.sendNotificationToMultipleUsers = async (tokens, title, body, data = {})
     };
     
     try {
+        console.log(`Attempting to send notification to ${tokens.length} tokens`);
         const response = await admin.messaging().sendEachForMulticast(message);
         console.log("FCM multicast message sent successfully. Success count:", response.successCount, "Failure count:", response.failureCount);
+        
         if (response.failureCount > 0) {
-            console.log("Failed tokens:", response.responses.filter(r => !r.success).map(r => r.error));
+            const failedResponses = response.responses.filter(r => !r.success);
+            console.log(`Failed tokens count: ${failedResponses.length}`);
+            failedResponses.forEach((failed, index) => {
+                console.error(`Failed token ${index + 1}:`, {
+                    error: failed.error?.code || 'Unknown error',
+                    message: failed.error?.message || 'No error message',
+                    tokenPreview: tokens[response.responses.indexOf(failed)]?.substring(0, 20) + "..."
+                });
+            });
         }
+        
+        if (response.successCount > 0) {
+            console.log(`Successfully sent to ${response.successCount} devices`);
+        }
+        
         return response;
     } catch (error) {
         console.error("Error sending FCM multicast:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
         throw error;
     }
 }
