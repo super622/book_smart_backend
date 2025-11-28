@@ -159,17 +159,24 @@ exports.saveDraftTerms = async (req, res) => {
     }
     
     // Get adminId from body, req.user, or query Admin document
-    let adminId = bodyAdminId;
-    if (!adminId) {
-      adminId = req.user?.AId || req.user?.id;
-    }
+    let adminId = bodyAdminId ? Number(bodyAdminId) : null;
     
-    // If still no adminId, try to get it from Admin document
+    // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
       const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
-      if (adminDoc) {
-        adminId = adminDoc.AId;
+      if (adminDoc && adminDoc.AId) {
+        adminId = Number(adminDoc.AId);
       }
+    }
+    
+    // Fallback: try req.user.AId if available
+    if (!adminId && req.user?.AId) {
+      adminId = Number(req.user.AId);
+    }
+    
+    // If still no adminId, return error
+    if (!adminId) {
+      return res.status(400).json({ error: 'Unable to determine admin ID. Please ensure you are logged in as an admin.' });
     }
 
     if (!content) {
@@ -245,17 +252,24 @@ exports.publishTerms = async (req, res) => {
     const { id, adminId: bodyAdminId } = req.body;
     
     // Get adminId from body, req.user, or query Admin document
-    let adminId = bodyAdminId;
-    if (!adminId) {
-      adminId = req.user?.AId || req.user?.id;
-    }
+    let adminId = bodyAdminId ? Number(bodyAdminId) : null;
     
-    // If still no adminId, try to get it from Admin document
+    // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
       const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
-      if (adminDoc) {
-        adminId = adminDoc.AId;
+      if (adminDoc && adminDoc.AId) {
+        adminId = Number(adminDoc.AId);
       }
+    }
+    
+    // Fallback: try req.user.AId if available
+    if (!adminId && req.user?.AId) {
+      adminId = Number(req.user.AId);
+    }
+    
+    // If still no adminId, return error
+    if (!adminId) {
+      return res.status(400).json({ error: 'Unable to determine admin ID. Please ensure you are logged in as an admin.' });
     }
 
     if (!id) {
@@ -320,17 +334,24 @@ exports.createTerms = async (req, res) => {
     }
     
     // Get adminId from body, req.user, or query Admin document
-    let finalAdminId = adminId;
-    if (!finalAdminId) {
-      finalAdminId = req.user?.AId || req.user?.id;
-    }
+    let finalAdminId = adminId ? Number(adminId) : null;
     
-    // If still no adminId, try to get it from Admin document
+    // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!finalAdminId && req.user?.email) {
       const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
-      if (adminDoc) {
-        finalAdminId = adminDoc.AId;
+      if (adminDoc && adminDoc.AId) {
+        finalAdminId = Number(adminDoc.AId);
       }
+    }
+    
+    // Fallback: try req.user.AId if available
+    if (!finalAdminId && req.user?.AId) {
+      finalAdminId = Number(req.user.AId);
+    }
+    
+    // If still no adminId, return error
+    if (!finalAdminId) {
+      return res.status(400).json({ error: 'Unable to determine admin ID. Please ensure you are logged in as an admin.' });
     }
 
     if (!content) {
@@ -384,17 +405,24 @@ exports.updateTerms = async (req, res) => {
     const { content, version, adminId: bodyAdminId } = req.body;
     
     // Get adminId from body, req.user, or query Admin document
-    let adminId = bodyAdminId;
-    if (!adminId) {
-      adminId = req.user?.AId || req.user?.id;
-    }
+    let adminId = bodyAdminId ? Number(bodyAdminId) : null;
     
-    // If still no adminId, try to get it from Admin document
+    // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
       const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
-      if (adminDoc) {
-        adminId = adminDoc.AId;
+      if (adminDoc && adminDoc.AId) {
+        adminId = Number(adminDoc.AId);
       }
+    }
+    
+    // Fallback: try req.user.AId if available
+    if (!adminId && req.user?.AId) {
+      adminId = Number(req.user.AId);
+    }
+    
+    // If still no adminId, return error
+    if (!adminId) {
+      return res.status(400).json({ error: 'Unable to determine admin ID. Please ensure you are logged in as an admin.' });
     }
 
     const terms = await Terms.findById(id);
