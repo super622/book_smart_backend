@@ -722,52 +722,31 @@ exports.getTermsStatus = async (req, res) => {
     const db = require('../models');
     
     // Get latest published terms versions
-    const latestClinicianTerms = await db.terms.findOne(
-      { type: 'clinician', status: 'published' },
-      { version: 1, publishedDate: 1 },
-      { sort: { publishedDate: -1 } }
-    );
+    const latestClinicianTerms = await db.terms
+      .findOne({ type: 'clinician', status: 'published' })
+      .select('version publishedDate')
+      .sort({ publishedDate: -1 })
+      .lean();
     
-    const latestFacilityTerms = await db.terms.findOne(
-      { type: 'facility', status: 'published' },
-      { version: 1, publishedDate: 1 },
-      { sort: { publishedDate: -1 } }
-    );
+    const latestFacilityTerms = await db.terms
+      .findOne({ type: 'facility', status: 'published' })
+      .select('version publishedDate')
+      .sort({ publishedDate: -1 })
+      .lean();
     
     // Get all clinicians with terms info
-    const clinicians = await db.clinical.find(
-      {},
-      {
-        aic: 1,
-        firstName: 1,
-        lastName: 1,
-        email: 1,
-        phoneNumber: 1,
-        userRole: 1,
-        title: 1,
-        clinicalAcknowledgeTerm: 1,
-        clinicalTermsVersion: 1,
-        clinicalTermsSignedDate: 1,
-        userStatus: 1
-      }
-    ).sort({ lastName: 1, firstName: 1 });
+    const clinicians = await db.clinical
+      .find({})
+      .select('aic firstName lastName email phoneNumber userRole title clinicalAcknowledgeTerm clinicalTermsVersion clinicalTermsSignedDate userStatus')
+      .sort({ lastName: 1, firstName: 1 })
+      .lean();
     
     // Get all facilities with terms info
-    const facilities = await db.facilities.find(
-      {},
-      {
-        aic: 1,
-        firstName: 1,
-        lastName: 1,
-        companyName: 1,
-        contactEmail: 1,
-        contactPhone: 1,
-        facilityAcknowledgeTerm: 1,
-        facilityTermsVersion: 1,
-        facilityTermsSignedDate: 1,
-        userStatus: 1
-      }
-    ).sort({ companyName: 1, lastName: 1, firstName: 1 });
+    const facilities = await db.facilities
+      .find({})
+      .select('aic firstName lastName companyName contactEmail contactPhone facilityAcknowledgeTerm facilityTermsVersion facilityTermsSignedDate userStatus')
+      .sort({ companyName: 1, lastName: 1, firstName: 1 })
+      .lean();
     
     return res.status(200).json({
       latestClinicianTerms: latestClinicianTerms ? {
