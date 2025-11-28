@@ -323,14 +323,17 @@ exports.publishTerms = async (req, res) => {
     terms.publishedDate = new Date();
     terms.lastModifiedBy = adminId;
     terms.lastModifiedDate = new Date();
-    await terms.save();
+    
+    // Save the terms
+    const savedTerms = await terms.save();
+    console.log('Terms published successfully. Status:', savedTerms.status, 'ID:', savedTerms._id);
 
     // Send notifications to users based on terms type
     const { sendNotificationToMultipleUsers } = require('../utils/firebaseService');
     const db = require('../models');
     
     try {
-      if (terms.type === 'clinician') {
+      if (savedTerms.type === 'clinician') {
         // Notify all active clinicians
         const clinicians = await db.clinical.find(
           { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
@@ -339,21 +342,28 @@ exports.publishTerms = async (req, res) => {
         
         const tokens = clinicians.map(c => c.fcmToken).filter(Boolean);
         
+        console.log(`Found ${tokens.length} clinicians with FCM tokens to notify`);
+        
         if (tokens.length > 0) {
+          // FCM data must have all values as strings
+          const notificationData = {
+            type: 'new_terms',
+            termsType: 'clinician',
+            version: savedTerms.version.toString(),
+            termsId: savedTerms._id.toString()
+          };
+          
           await sendNotificationToMultipleUsers(
             tokens,
             'New Terms of Service Available',
-            `A new version (${terms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
-            {
-              type: 'new_terms',
-              termsType: 'clinician',
-              version: terms.version,
-              termsId: terms._id.toString()
-            }
+            `A new version (${savedTerms.version}) of the Clinician Terms of Service has been released. Please review and accept the new terms.`,
+            notificationData
           );
           console.log(`Sent new terms notification to ${tokens.length} clinicians`);
+        } else {
+          console.log('No clinicians with FCM tokens found');
         }
-      } else if (terms.type === 'facility') {
+      } else if (savedTerms.type === 'facility') {
         // Notify all active facilities
         // Note: Facilities may not have fcmToken field, check the model structure
         const facilities = await db.facilities.find(
@@ -411,9 +421,12 @@ exports.publishTerms = async (req, res) => {
       // Don't fail the publish if notifications fail
     }
 
+    // Reload terms to ensure we have the latest data
+    const publishedTerms = await Terms.findById(id);
+    
     return res.status(200).json({ 
       message: 'Terms published successfully',
-      terms 
+      terms: publishedTerms 
     });
   } catch (error) {
     console.error('Error publishing terms:', error);

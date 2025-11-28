@@ -24,19 +24,30 @@ exports.sendNotification = async (token, title, body, data = {}) => {
 }
 
 exports.sendNotificationToMultipleUsers = async (tokens, title, body, data = {}) => {
+    // Convert all data values to strings (FCM requirement)
+    const stringData = {};
+    for (const [key, value] of Object.entries(data)) {
+        stringData[key] = String(value);
+    }
+    
     const message = {
         notification: {
             title,
             body,
         },
-        data,
+        data: stringData,
         tokens,
     };
     
     try {
         const response = await admin.messaging().sendEachForMulticast(message);
-        console.log("FCM multicast message sent:", response);
+        console.log("FCM multicast message sent successfully. Success count:", response.successCount, "Failure count:", response.failureCount);
+        if (response.failureCount > 0) {
+            console.log("Failed tokens:", response.responses.filter(r => !r.success).map(r => r.error));
+        }
+        return response;
     } catch (error) {
         console.error("Error sending FCM multicast:", error);
+        throw error;
     }
 }
