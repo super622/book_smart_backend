@@ -832,6 +832,25 @@ exports.Update = async (req, res) => {
                             ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
                             : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
         
+            // If terms are being accepted, get the latest published terms version and set signed date
+            if (extracted.facilityAcknowledgeTerm === true) {
+                try {
+                    const db = require('../models');
+                    const latestTerms = await db.terms.findOne(
+                        { type: 'facility', status: 'published' },
+                        {},
+                        { sort: { publishedDate: -1 } }
+                    );
+                    if (latestTerms) {
+                        extracted.facilityTermsVersion = latestTerms.version;
+                        extracted.facilityTermsSignedDate = new Date();
+                    }
+                } catch (termsError) {
+                    console.error('Error fetching latest terms version:', termsError);
+                    // Continue without version if error occurs
+                }
+            }
+        
             // Set the fields to update
             const updateFields = { $set: extracted };
 

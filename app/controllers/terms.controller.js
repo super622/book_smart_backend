@@ -716,6 +716,102 @@ exports.acknowledgeNewTerms = async (req, res) => {
   }
 };
 
+// Get terms status for all users (admin only)
+exports.getTermsStatus = async (req, res) => {
+  try {
+    const db = require('../models');
+    
+    // Get latest published terms versions
+    const latestClinicianTerms = await db.terms.findOne(
+      { type: 'clinician', status: 'published' },
+      { version: 1, publishedDate: 1 },
+      { sort: { publishedDate: -1 } }
+    );
+    
+    const latestFacilityTerms = await db.terms.findOne(
+      { type: 'facility', status: 'published' },
+      { version: 1, publishedDate: 1 },
+      { sort: { publishedDate: -1 } }
+    );
+    
+    // Get all clinicians with terms info
+    const clinicians = await db.clinical.find(
+      {},
+      {
+        aic: 1,
+        firstName: 1,
+        lastName: 1,
+        email: 1,
+        phoneNumber: 1,
+        userRole: 1,
+        title: 1,
+        clinicalAcknowledgeTerm: 1,
+        clinicalTermsVersion: 1,
+        clinicalTermsSignedDate: 1,
+        userStatus: 1
+      }
+    ).sort({ lastName: 1, firstName: 1 });
+    
+    // Get all facilities with terms info
+    const facilities = await db.facilities.find(
+      {},
+      {
+        aic: 1,
+        firstName: 1,
+        lastName: 1,
+        companyName: 1,
+        contactEmail: 1,
+        contactPhone: 1,
+        facilityAcknowledgeTerm: 1,
+        facilityTermsVersion: 1,
+        facilityTermsSignedDate: 1,
+        userStatus: 1
+      }
+    ).sort({ companyName: 1, lastName: 1, firstName: 1 });
+    
+    return res.status(200).json({
+      latestClinicianTerms: latestClinicianTerms ? {
+        version: latestClinicianTerms.version,
+        publishedDate: latestClinicianTerms.publishedDate
+      } : null,
+      latestFacilityTerms: latestFacilityTerms ? {
+        version: latestFacilityTerms.version,
+        publishedDate: latestFacilityTerms.publishedDate
+      } : null,
+      clinicians: clinicians.map(c => ({
+        aic: c.aic,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: c.email,
+        phoneNumber: c.phoneNumber,
+        userRole: c.userRole,
+        title: c.title,
+        hasAccepted: c.clinicalAcknowledgeTerm || false,
+        termsVersion: c.clinicalTermsVersion || '',
+        termsSignedDate: c.clinicalTermsSignedDate || null,
+        userStatus: c.userStatus || 'inactive',
+        isUpToDate: latestClinicianTerms ? (c.clinicalTermsVersion === latestClinicianTerms.version) : false
+      })),
+      facilities: facilities.map(f => ({
+        aic: f.aic,
+        firstName: f.firstName,
+        lastName: f.lastName,
+        companyName: f.companyName || '',
+        contactEmail: f.contactEmail,
+        contactPhone: f.contactPhone,
+        hasAccepted: f.facilityAcknowledgeTerm || false,
+        termsVersion: f.facilityTermsVersion || '',
+        termsSignedDate: f.facilityTermsSignedDate || null,
+        userStatus: f.userStatus || 'inactive',
+        isUpToDate: latestFacilityTerms ? (f.facilityTermsVersion === latestFacilityTerms.version) : false
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching terms status:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 // Test FCM notification (for debugging)
 exports.testFCMNotification = async (req, res) => {
     console.log('Test FCM Notification');

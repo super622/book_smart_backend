@@ -76,6 +76,14 @@ module.exports = mongoose => {
       type: Boolean,
       default: false
     },
+    clinicalTermsVersion: {
+      type: String,
+      default: ''
+    },
+    clinicalTermsSignedDate: {
+      type: Date,
+      default: null
+    },
     signature: {
       type: Buffer,
       require: true,

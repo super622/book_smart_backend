@@ -49,6 +49,14 @@ module.exports = mongoose => {
             type: Boolean,
             default: false
         },
+        facilityTermsVersion: {
+            type: String,
+            default: ''
+        },
+        facilityTermsSignedDate: {
+            type: Date,
+            default: null
+        },
         selectedoption: {
             type: String,
         },
