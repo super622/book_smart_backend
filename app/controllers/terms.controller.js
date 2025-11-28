@@ -249,7 +249,7 @@ exports.saveDraftTerms = async (req, res) => {
 // Publish Terms (update draft to published)
 exports.publishTerms = async (req, res) => {
   try {
-    const { id, adminId: bodyAdminId } = req.body;
+    const { id, content, version, type, adminId: bodyAdminId } = req.body;
     
     // Get adminId from body, req.user, or query Admin document
     let adminId = bodyAdminId ? Number(bodyAdminId) : null;
@@ -282,29 +282,41 @@ exports.publishTerms = async (req, res) => {
       return res.status(404).json({ error: 'Terms not found' });
     }
 
+    // Update content and version if provided (ensures latest content is saved before publishing)
+    if (content !== undefined) {
+      terms.content = content;
+    }
+    if (version !== undefined) {
+      terms.version = version;
+    }
+    if (type !== undefined) {
+      terms.type = type;
+    }
+
     // Validate version - must not be lower than latest published version of the same type
+    // Use the updated version if provided, otherwise use existing version
+    const versionToValidate = version || terms.version;
+    const typeToValidate = type || terms.type;
+    
     const latestPublished = await Terms.findOne({ 
       status: 'published',
-      type: terms.type,
+      type: typeToValidate,
       _id: { $ne: id } // Exclude current terms being published
     })
       .sort({ publishedDate: -1, version: -1 })
       .exec();
     
     if (latestPublished) {
-      const versionComparison = compareVersions(terms.version, latestPublished.version);
+      const versionComparison = compareVersions(versionToValidate, latestPublished.version);
       if (versionComparison < 0) {
         return res.status(400).json({ 
-          error: `Version ${terms.version} is lower than the latest published ${terms.type} version ${latestPublished.version}. Please use a higher version number.` 
+          error: `Version ${versionToValidate} is lower than the latest published ${typeToValidate} version ${latestPublished.version}. Please use a higher version number.` 
         });
       }
     }
 
-    // Set all other published terms of the same type to draft (only one published at a time per type)
-    await Terms.updateMany(
-      { status: 'published', type: terms.type, _id: { $ne: id } },
-      { status: 'draft' }
-    );
+    // DO NOT change previous published terms to draft - keep them as published
+    // The app will show the most recent published version first based on publishedDate sorting
 
     // Publish the selected terms
     terms.status = 'published';

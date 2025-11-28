@@ -13,7 +13,8 @@ module.exports = mongoose => {
     content: {
       type: String,
       required: true,
-      default: ''
+      default: '',
+      // String type in MongoDB can handle very large text (up to 16MB per document)
     },
     status: {
       type: String,
