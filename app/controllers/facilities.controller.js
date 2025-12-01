@@ -641,15 +641,29 @@ exports.saveFCMToken = async (req, res) => {
             return res.status(400).json({ message: "Email and Token is required" });
         }
     
-        const user = await Facility.findOne({ contactEmail: email.toLowerCase() });
+        // Determine if user is a test user and get appropriate model
+        const { getTestModeContext } = require('../utils/testMode');
+        const testContext = await getTestModeContext(email.toLowerCase(), 'facility');
+        const FacilityModel = testContext.models.facilities;
+        const isTest = testContext.isTest;
+        
+        console.log('Saving FCM token for facility:', { email: email.toLowerCase(), isTest, database: isTest ? 'test_facilities' : 'facilities' });
+    
+        const user = await FacilityModel.findOne({ contactEmail: email.toLowerCase() });
     
         if (user) {
-            const updateUser = await Facility.updateOne({ contactEmail: email.toLowerCase() }, { $set: { fcmToken: token } });
+            const updateUser = await FacilityModel.updateOne(
+                { contactEmail: email.toLowerCase() }, 
+                { $set: { fcmToken: token } }
+            );
+            console.log('FCM token saved successfully for facility');
             return res.status(200).json({ message: "Token Updated!" });
         } else {
+            console.error('Facility not found for FCM token save:', { email: email.toLowerCase(), isTest });
             return res.status(404).json({ message: "User does not exist" });
         }
     } catch (error) {
+        console.error('Error saving FCM token for facility:', error);
         res.status(500).json({
             message: "Server error",
             error: error.message,

@@ -180,15 +180,29 @@ exports.saveFCMToken = async (req, res) => {
             return res.status(400).json({ message: "Email and Token is required" });
         }
     
-        const user = await Clinical.findOne({ email: email });
+        // Determine if user is a test user and get appropriate model
+        const { getTestModeContext } = require('../utils/testMode');
+        const testContext = await getTestModeContext(email.toLowerCase(), 'clinical');
+        const ClinicalModel = testContext.models.clinical;
+        const isTest = testContext.isTest;
+        
+        console.log('Saving FCM token:', { email: email.toLowerCase(), isTest, database: isTest ? 'test_clinicals' : 'clinicals' });
+    
+        const user = await ClinicalModel.findOne({ email: email.toLowerCase() });
     
         if (user) {
-            const updateUser = await Clinical.updateOne({ email: email }, { $set: { fcmToken: token } });
+            const updateUser = await ClinicalModel.updateOne(
+                { email: email.toLowerCase() }, 
+                { $set: { fcmToken: token } }
+            );
+            console.log('FCM token saved successfully');
             return res.status(200).json({ message: "Token Updated!" });
         } else {
+            console.error('User not found for FCM token save:', { email: email.toLowerCase(), isTest });
             return res.status(404).json({ message: "User does not exist" });
         }
     } catch (error) {
+        console.error('Error saving FCM token:', error);
         res.status(500).json({
             message: "Server error",
             error: error.message,
