@@ -410,13 +410,32 @@ exports.publishTerms = async (req, res) => {
     // Send notifications to users based on terms type
     const { sendNotificationToMultipleUsers } = require('../utils/firebaseService');
     
+    // Determine if admin is in test mode
+    const isTestAdmin = req.user?.isTest === true;
+    console.log('Publishing terms - Admin test mode:', isTestAdmin);
+    console.log('Using ClinicalModel:', isTestAdmin ? 'test_clinicals' : 'clinicals');
+    
     try {
       if (savedTerms.type === 'clinician') {
-        // Notify all active clinicians (only test users if in test mode)
-        const clinicians = await ClinicalModel.find(
-          { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
-          { fcmToken: 1 }
-        );
+        // Build query based on test mode
+        // If test admin: ClinicalModel is already db.test_clinical (all users are test users)
+        // If production admin: ClinicalModel is db.clinical (need to exclude test users)
+        const query = {
+          userStatus: 'activate',
+          fcmToken: { $exists: true, $ne: null, $ne: '' }
+        };
+        
+        if (!isTestAdmin) {
+          // Production admin: exclude test users from production database
+          query.isTestAccount = { $ne: true };
+          console.log('Notifying production clinicians only (excluding test users)');
+        } else {
+          // Test admin: using test_clinicals collection, all users are test users
+          console.log('Notifying test clinicians only');
+        }
+        
+        // Notify all active clinicians (filtered by test mode)
+        const clinicians = await ClinicalModel.find(query, { fcmToken: 1, email: 1, isTestAccount: 1 });
         
         const tokens = clinicians
           .map(c => c.fcmToken)
@@ -479,11 +498,24 @@ exports.publishTerms = async (req, res) => {
           console.log('No clinicians with FCM tokens found');
         }
       } else if (savedTerms.type === 'facility') {
-        // Notify all facilities (only test users if in test mode)
-        const facilities = await FacilitiesModel.find(
-          { fcmToken: { $exists: true, $ne: null, $ne: '' } },
-          { fcmToken: 1 }
-        );
+        // Build query based on test mode
+        // If test admin: FacilitiesModel is already db.test_facilities (all users are test users)
+        // If production admin: FacilitiesModel is db.facilities (need to exclude test users)
+        const query = {
+          fcmToken: { $exists: true, $ne: null, $ne: '' }
+        };
+        
+        if (!isTestAdmin) {
+          // Production admin: exclude test users from production database
+          query.isTestAccount = { $ne: true };
+          console.log('Notifying production facilities only (excluding test users)');
+        } else {
+          // Test admin: using test_facilities collection, all users are test users
+          console.log('Notifying test facilities only');
+        }
+        
+        // Notify all facilities (filtered by test mode)
+        const facilities = await FacilitiesModel.find(query, { fcmToken: 1, contactEmail: 1, isTestAccount: 1 });
         
         const tokens = facilities
           .map(f => f.fcmToken)
