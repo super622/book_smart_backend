@@ -27,8 +27,10 @@ exports.getPublishedTerms = async (req, res) => {
       isTest = await isTestUser(req.query.email, type === 'clinician' ? 'clinical' : 'facility');
     }
     
-    const models = getTermsDbModels(req);
-    const TermsModel = isTest ? models.terms : Terms;
+    // Use test database if user is in test mode
+    const { getDbModels } = require('../utils/testMode');
+    const models = getDbModels(isTest);
+    const TermsModel = models.terms;
 
     const terms = await TermsModel.findOne({ 
       status: 'published',
@@ -51,7 +53,9 @@ exports.getPublishedTerms = async (req, res) => {
 // Get all Terms (for admin - includes drafts)
 exports.getAllTerms = async (req, res) => {
   try {
-    const terms = await Terms.find()
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const terms = await TermsModel.find()
       .sort({ createdAt: -1 })
       .exec();
     
@@ -81,15 +85,19 @@ const compareVersions = (v1, v2) => {
 // Get Terms overview for admin (published + drafts separately, grouped by type)
 exports.getTermsOverview = async (req, res) => {
   try {
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const AdminModel = models.admins;
+    
     // Get currently published terms for each type (most recent by publishedDate, then by version)
-    const publishedClinicianTerms = await Terms.findOne({ 
+    const publishedClinicianTerms = await TermsModel.findOne({ 
       status: 'published',
       type: 'clinician'
     })
       .sort({ publishedDate: -1, version: -1 })
       .exec();
     
-    const publishedFacilityTerms = await Terms.findOne({ 
+    const publishedFacilityTerms = await TermsModel.findOne({ 
       status: 'published',
       type: 'facility'
     })
@@ -97,14 +105,14 @@ exports.getTermsOverview = async (req, res) => {
       .exec();
     
     // Get all draft terms grouped by type
-    const draftClinicianTerms = await Terms.find({ 
+    const draftClinicianTerms = await TermsModel.find({ 
       status: 'draft',
       type: 'clinician'
     })
       .sort({ updatedAt: -1 })
       .exec();
     
-    const draftFacilityTerms = await Terms.find({ 
+    const draftFacilityTerms = await TermsModel.find({ 
       status: 'draft',
       type: 'facility'
     })
@@ -114,7 +122,7 @@ exports.getTermsOverview = async (req, res) => {
     // Populate admin info for published terms
     const enrichTerms = async (terms) => {
       if (!terms) return null;
-      const admin = await Admin.findOne({ AId: terms.createdBy }, { firstName: 1, lastName: 1 });
+      const admin = await AdminModel.findOne({ AId: terms.createdBy }, { firstName: 1, lastName: 1 });
       return {
         ...terms.toObject(),
         createdByName: admin ? `${admin.firstName} ${admin.lastName}` : 'Unknown'
@@ -139,7 +147,9 @@ exports.getTermsOverview = async (req, res) => {
 // Get current draft Terms (for admin editing)
 exports.getDraftTerms = async (req, res) => {
   try {
-    const terms = await Terms.findOne({ status: 'draft' })
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const terms = await TermsModel.findOne({ status: 'draft' })
       .sort({ updatedAt: -1 })
       .exec();
     
@@ -154,12 +164,14 @@ exports.getDraftTerms = async (req, res) => {
 exports.getTermsById = async (req, res) => {
   try {
     const { id } = req.params;
-    const terms = await Terms.findById(id);
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const terms = await TermsModel.findById(id);
     
     if (!terms) {
       return res.status(404).json({ error: 'Terms not found' });
     }
-
+    
     return res.status(200).json({ terms });
   } catch (error) {
     console.error('Error getting terms by ID:', error);
@@ -171,6 +183,9 @@ exports.getTermsById = async (req, res) => {
 exports.saveDraftTerms = async (req, res) => {
   try {
     const { content, version, type, adminId: bodyAdminId } = req.body;
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const AdminModel = models.admins;
     
     // Validate type
     if (!type || !['clinician', 'facility'].includes(type)) {
@@ -182,7 +197,7 @@ exports.saveDraftTerms = async (req, res) => {
     
     // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
-      const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
+      const adminDoc = await AdminModel.findOne({ email: req.user.email }, { AId: 1 });
       if (adminDoc && adminDoc.AId) {
         adminId = Number(adminDoc.AId);
       }
@@ -204,7 +219,7 @@ exports.saveDraftTerms = async (req, res) => {
 
     // Validate version - must not be lower than latest published version of the same type
     if (version) {
-      const latestPublished = await Terms.findOne({ 
+      const latestPublished = await TermsModel.findOne({ 
         status: 'published',
         type: type
       })
@@ -222,7 +237,7 @@ exports.saveDraftTerms = async (req, res) => {
     }
 
     // Find existing draft of the same type
-    let draftTerms = await Terms.findOne({ 
+    let draftTerms = await TermsModel.findOne({ 
       status: 'draft',
       type: type
     })
@@ -243,7 +258,7 @@ exports.saveDraftTerms = async (req, res) => {
       });
     } else {
       // Create new draft
-      const newTerms = new Terms({
+      const newTerms = new TermsModel({
         type,
         content,
         version: version || '1.0.0',
@@ -273,13 +288,14 @@ exports.publishTerms = async (req, res) => {
     const TermsModel = models.terms;
     const ClinicalModel = models.clinical;
     const FacilitiesModel = models.facilities;
+    const AdminModel = models.admins;
     
     // Get adminId from body, req.user, or query Admin document
     let adminId = bodyAdminId ? Number(bodyAdminId) : null;
     
     // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
-      const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
+      const adminDoc = await AdminModel.findOne({ email: req.user.email }, { AId: 1 });
       if (adminDoc && adminDoc.AId) {
         adminId = Number(adminDoc.AId);
       }
@@ -543,6 +559,9 @@ exports.publishTerms = async (req, res) => {
 exports.createTerms = async (req, res) => {
   try {
     const { content, version, type, adminId } = req.body;
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const AdminModel = models.admins;
     
     // Validate type
     if (!type || !['clinician', 'facility'].includes(type)) {
@@ -554,7 +573,7 @@ exports.createTerms = async (req, res) => {
     
     // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!finalAdminId && req.user?.email) {
-      const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
+      const adminDoc = await AdminModel.findOne({ email: req.user.email }, { AId: 1 });
       if (adminDoc && adminDoc.AId) {
         finalAdminId = Number(adminDoc.AId);
       }
@@ -577,7 +596,7 @@ exports.createTerms = async (req, res) => {
     const termsVersion = version || '1.0.0';
 
     // Validate version - must not be lower than latest published version of the same type
-    const latestPublished = await Terms.findOne({ 
+    const latestPublished = await TermsModel.findOne({ 
       status: 'published',
       type: type
     })
@@ -593,7 +612,7 @@ exports.createTerms = async (req, res) => {
       }
     }
 
-    const newTerms = new Terms({
+    const newTerms = new TermsModel({
       type,
       content,
       version: termsVersion,
@@ -619,13 +638,16 @@ exports.updateTerms = async (req, res) => {
   try {
     const { id } = req.params;
     const { content, version, adminId: bodyAdminId } = req.body;
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const AdminModel = models.admins;
     
     // Get adminId from body, req.user, or query Admin document
     let adminId = bodyAdminId ? Number(bodyAdminId) : null;
     
     // Always get AId from Admin document to ensure it's a Number, not MongoDB _id
     if (!adminId && req.user?.email) {
-      const adminDoc = await Admin.findOne({ email: req.user.email }, { AId: 1 });
+      const adminDoc = await AdminModel.findOne({ email: req.user.email }, { AId: 1 });
       if (adminDoc && adminDoc.AId) {
         adminId = Number(adminDoc.AId);
       }
@@ -641,7 +663,7 @@ exports.updateTerms = async (req, res) => {
       return res.status(400).json({ error: 'Unable to determine admin ID. Please ensure you are logged in as an admin.' });
     }
 
-    const terms = await Terms.findById(id);
+    const terms = await TermsModel.findById(id);
     
     if (!terms) {
       return res.status(404).json({ error: 'Terms not found' });
@@ -668,8 +690,10 @@ exports.updateTerms = async (req, res) => {
 exports.deleteTerms = async (req, res) => {
   try {
     const { id } = req.params;
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
 
-    const terms = await Terms.findById(id);
+    const terms = await TermsModel.findById(id);
     
     if (!terms) {
       return res.status(404).json({ error: 'Terms not found' });
@@ -680,7 +704,7 @@ exports.deleteTerms = async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete published terms. Unpublish first.' });
     }
 
-    await Terms.findByIdAndDelete(id);
+    await TermsModel.findByIdAndDelete(id);
 
     return res.status(200).json({ message: 'Terms deleted successfully' });
   } catch (error) {
