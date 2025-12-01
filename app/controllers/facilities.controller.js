@@ -925,12 +925,25 @@ exports.Update = async (req, res) => {
     
     if (user) {
         try {
-            const query = role === "Admin" 
-                            ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
-                            : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
+            // Build query - prefer aic if provided, otherwise use contactEmail
+            let query = {};
+            if (role === "Admin") {
+                query = request.contactEmail ? { contactEmail: request.contactEmail } : { aic: request.aic };
+            } else {
+                // For non-admin, try aic first (from request), then contactEmail (from token)
+                if (request.aic) {
+                    query = { aic: request.aic };
+                } else if (user.contactEmail) {
+                    query = { contactEmail: user.contactEmail.toLowerCase() };
+                } else {
+                    console.error('No aic or contactEmail provided for update');
+                    return res.status(400).json({ error: 'No identifier (aic or contactEmail) provided for update' });
+                }
+            }
         
             console.log('Facility Update - User from token:', { contactEmail: user.contactEmail, userRole: user.userRole, isTest: user.isTest });
             console.log('Using database:', isTest ? 'test_facilities' : 'facilities');
+            console.log('Query for facility:', query);
             console.log('Update data:', extracted);
         
             // If terms are being accepted, get the latest published terms version and set signed date
@@ -958,10 +971,10 @@ exports.Update = async (req, res) => {
             // Find and update the document
             const updatedDocument = await FacilityModel.findOneAndUpdate(query, updateFields, { new: true }); // Set `new: true` to return updated document
             if (!updatedDocument) {
-                console.error('Facility not found in database:', { contactEmail: user.contactEmail, isTest, database: isTest ? 'test_facilities' : 'facilities' });
+                console.error('Facility not found in database:', { query, isTest, database: isTest ? 'test_facilities' : 'facilities' });
                 return res.status(404).json({ error: 'Facility not found in database' });
             }
-            console.log('Facility updated successfully:', updatedDocument.contactEmail);
+            console.log('Facility updated successfully:', { aic: updatedDocument.aic, contactEmail: updatedDocument.contactEmail });
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
