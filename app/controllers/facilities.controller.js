@@ -722,8 +722,8 @@ exports.login = async (req, res) => {
                 console.log("Password mismatch for:", contactEmail.toLowerCase());
                 res.status(401).json({ message: "Login information is incorrect." })
             } else {
-                // Check if email exists at all
-                const emailExists = await Facility.findOne({ contactEmail: contactEmail.toLowerCase() });
+                // Check if email exists at all in the same database (test or production)
+                const emailExists = await FacilityModel.findOne({ contactEmail: contactEmail.toLowerCase() });
                 console.log("Email exists:", emailExists ? "Yes" : "No");
                 if (emailExists) {
                     console.log("Email exists but userRole mismatch. DB role:", emailExists.userRole, "Requested role:", userRole);

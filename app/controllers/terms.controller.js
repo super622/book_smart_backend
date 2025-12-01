@@ -12,25 +12,34 @@ function getTermsDbModels(req) {
 // Get current published Terms (for public/clinician or facility view)
 exports.getPublishedTerms = async (req, res) => {
   try {
-    const { type } = req.query; // 'clinician' or 'facility'
+    const { type, email } = req.query; // 'clinician' or 'facility', and optional email
     
     if (!type || !['clinician', 'facility'].includes(type)) {
       return res.status(400).json({ error: 'Type parameter is required and must be "clinician" or "facility"' });
     }
 
-    // Check if user is in test mode (from token if authenticated, or check email if provided)
+    // Check if user is in test mode
+    // Priority: 1. Token's isTest flag (if authenticated), 2. Email parameter check, 3. Default to false
     let isTest = false;
+    
+    // First check if authenticated user has isTest flag in token
     if (req.user?.isTest === true) {
       isTest = true;
-    } else if (req.query.email) {
+      console.log('Test mode detected from token');
+    } 
+    // If not authenticated or no isTest in token, check email parameter
+    else if (email) {
       const { isTestUser } = require('../utils/testMode');
-      isTest = await isTestUser(req.query.email, type === 'clinician' ? 'clinical' : 'facility');
+      isTest = await isTestUser(email.toLowerCase(), type === 'clinician' ? 'clinical' : 'facility');
+      console.log(`Test mode check for email ${email}: ${isTest}`);
     }
     
     // Use test database if user is in test mode
     const { getDbModels } = require('../utils/testMode');
     const models = getDbModels(isTest);
     const TermsModel = models.terms;
+    
+    console.log(`Fetching ${type} terms from ${isTest ? 'test' : 'production'} database`);
 
     const terms = await TermsModel.findOne({ 
       status: 'published',
