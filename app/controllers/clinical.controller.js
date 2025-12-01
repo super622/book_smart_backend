@@ -616,6 +616,12 @@ exports.Update = async (req, res) => {
     const role = req.headers.userrole || user.userRole;
     console.log(user);
 
+    // Get the correct models based on test mode
+    const { getDbModels } = require('../utils/testMode');
+    const isTest = req.user?.isTest === true;
+    const models = getDbModels(isTest);
+    const ClinicalModel = models.clinical;
+
     const extracted = await extractNonJobId(request);
 
     if (extracted.updateEmail) {
@@ -627,21 +633,22 @@ exports.Update = async (req, res) => {
 console.log('updating....');
 console.log(extracted);
 console.log(request.email, user.email);
+console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
         
         // Get existing user before update for comparison
-        const existUser = await Clinical.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
+        const existUser = await ClinicalModel.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
         
         // If terms are being accepted, get the latest published terms version and set signed date
         if (extracted.clinicalAcknowledgeTerm === true) {
             try {
                 const db = require('../models');
-                const latestTerms = await db.terms.findOne(
-                    { type: 'clinician', status: 'published' },
-                    {},
-                    { sort: { publishedDate: -1 } }
-                );
-                if (latestTerms) {
-                    extracted.clinicalTermsVersion = latestTerms.version;
+                const TermsModel = isTest ? db.test_terms : db.terms;
+                const latestTerms = await TermsModel.find(
+                    { type: 'clinician', status: 'published' }
+                ).sort({ publishedDate: -1 }).limit(1).lean();
+                
+                if (latestTerms && latestTerms.length > 0) {
+                    extracted.clinicalTermsVersion = latestTerms[0].version;
                     extracted.clinicalTermsSignedDate = new Date();
                 }
             } catch (termsError) {
@@ -650,7 +657,7 @@ console.log(request.email, user.email);
             }
         }
         
-        Clinical.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+        ClinicalModel.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
             console.log('updated');
             if (err) {
                 console.log(err);
@@ -682,6 +689,7 @@ console.log(request.email, user.email);
                 const payload = {
                     email: user.email,
                     userRole: user.userRole,
+                    isTest: isTest, // Include test mode flag in token
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }

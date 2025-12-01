@@ -898,6 +898,12 @@ exports.Update = async (req, res) => {
     const extracted = await extractNonJobId(request);
     const selectedoption = request.selectedoption;
 
+    // Get the correct models based on test mode
+    const { getDbModels } = require('../utils/testMode');
+    const isTest = req.user?.isTest === true;
+    const models = getDbModels(isTest);
+    const FacilityModel = models.facilities;
+
     if (extracted.updateEmail) {
        extracted.contactEmail =extracted.updateEmail; // Create the new property
        delete extracted.updateEmail;
@@ -909,17 +915,19 @@ exports.Update = async (req, res) => {
                             ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
                             : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
         
+            console.log('Using database:', isTest ? 'test_facilities' : 'facilities');
+        
             // If terms are being accepted, get the latest published terms version and set signed date
             if (extracted.facilityAcknowledgeTerm === true) {
                 try {
                     const db = require('../models');
-                    const latestTerms = await db.terms.findOne(
-                        { type: 'facility', status: 'published' },
-                        {},
-                        { sort: { publishedDate: -1 } }
-                    );
-                    if (latestTerms) {
-                        extracted.facilityTermsVersion = latestTerms.version;
+                    const TermsModel = isTest ? db.test_terms : db.terms;
+                    const latestTerms = await TermsModel.find(
+                        { type: 'facility', status: 'published' }
+                    ).sort({ publishedDate: -1 }).limit(1).lean();
+                    
+                    if (latestTerms && latestTerms.length > 0) {
+                        extracted.facilityTermsVersion = latestTerms[0].version;
                         extracted.facilityTermsSignedDate = new Date();
                     }
                 } catch (termsError) {
@@ -932,18 +940,19 @@ exports.Update = async (req, res) => {
             const updateFields = { $set: extracted };
 
             // Find and update the document
-            const updatedDocument = await Facility.findOneAndUpdate(query, updateFields, { new: true }); // Set `new: true` to return updated document
+            const updatedDocument = await FacilityModel.findOneAndUpdate(query, updateFields, { new: true }); // Set `new: true` to return updated document
             console.log('updatedDocumnet',  typeof(updatedDocument.contactEmail));
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
+                isTest: isTest, // Include test mode flag in token
                 iat: Math.floor(Date.now() / 1000), // Issued at time
                 exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
             };
 
             if (role != 'Admin') {
                 const token = setToken(payload);
-                const users = await Facility.findOne({contactEmail: user.contactEmail}, { signature: 0 });
+                const users = await FacilityModel.findOne({contactEmail: user.contactEmail}, { signature: 0 });
                 const verifySubject = "BookSmart™ - New Account signed";
                 const verifySubject1 = "BookSmart™ Terms of Service";
                 const verifiedContent = `
