@@ -671,7 +671,10 @@ exports.login = async (req, res) => {
         const FacilityModel = testContext.models.facilities;
         const isTest = testContext.isTest;
         
-        const isUser = await FacilityModel.findOne({ 
+        console.log("Test mode check:", { email: contactEmail.toLowerCase(), isTest, database: isTest ? 'test_facilities' : 'facilities' });
+        
+        // Try to find user - handle both 'Facility' and 'Facilities' userRole
+        let isUser = await FacilityModel.findOne({ 
             contactEmail: contactEmail.toLowerCase(), 
             password: password, 
             userRole: userRole 
@@ -690,9 +693,35 @@ exports.login = async (req, res) => {
             facilityAcknowledgeTerm: 1, 
             address: 1
         });
+        // If not found with exact userRole, try with alternate (Facility/Facilities)
+        if (!isUser && (userRole === 'Facilities' || userRole === 'Facility')) {
+            const alternateRole = userRole === 'Facilities' ? 'Facility' : 'Facilities';
+            console.log(`User not found with role '${userRole}', trying alternate role '${alternateRole}'`);
+            isUser = await FacilityModel.findOne({ 
+                contactEmail: contactEmail.toLowerCase(), 
+                password: password, 
+                userRole: alternateRole 
+            }, { 
+                aic: 1, 
+                userStatus: 1, 
+                userRole: 1, 
+                entryDate: 1, 
+                companyName: 1, 
+                firstName: 1, 
+                lastName: 1, 
+                contactEmail: 1, 
+                contactPhone: 1, 
+                password: 1, 
+                contactPassword: 1, 
+                facilityAcknowledgeTerm: 1, 
+                address: 1
+            });
+        }
+        
         console.log("Found user:", isUser ? "Yes" : "No");
         if (isUser) {
             console.log("User status:", isUser.userStatus);
+            console.log("User role in DB:", isUser.userRole, "Requested role:", userRole);
         }
         if (isUser) {
             if (isUser.userStatus === 'activate') {
@@ -714,7 +743,12 @@ exports.login = async (req, res) => {
             }
         } else {
             // Check if user exists with email and role
-            const isExist = await FacilityModel.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+            let isExist = await FacilityModel.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+            // If not found, try alternate role
+            if (!isExist && (userRole === 'Facilities' || userRole === 'Facility')) {
+                const alternateRole = userRole === 'Facilities' ? 'Facility' : 'Facilities';
+                isExist = await FacilityModel.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: alternateRole });
+            }
             console.log("User exists check:", isExist ? "Yes" : "No");
             
             if (isExist) {

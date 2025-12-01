@@ -39,14 +39,29 @@ const populateTestDatabases = async () => {
     const nextFacilityAIC = lastFacility ? lastFacility.aic + 1 : 20000;
     const nextAdminAIC = lastAdmin ? lastAdmin.AId + 1 : 1000;
 
-    // Check if test accounts already exist
+    // Check if test accounts already exist and update userRole if needed
     const existingTestAdmin = await db.test_admins.findOne({ email: 'test.admin@booksmart.test' });
     const existingTestClinician = await db.test_clinical.findOne({ email: 'test.rn@booksmart.test' });
     const existingTestFacility = await db.test_facilities.findOne({ contactEmail: 'test.facility1@booksmart.test' });
 
     if (existingTestAdmin || existingTestClinician || existingTestFacility) {
       console.log('⚠️  Test accounts already exist!');
-      console.log('To recreate them, delete existing test accounts first.');
+      console.log('Updating existing accounts if needed...');
+      
+      // Update facility userRole if it's 'Facility' instead of 'Facilities'
+      const facilitiesToUpdate = await db.test_facilities.find({ 
+        contactEmail: { $in: ['test.facility1@booksmart.test', 'test.facility2@booksmart.test'] },
+        userRole: 'Facility'
+      });
+      if (facilitiesToUpdate.length > 0) {
+        await db.test_facilities.updateMany(
+          { contactEmail: { $in: ['test.facility1@booksmart.test', 'test.facility2@booksmart.test'] }, userRole: 'Facility' },
+          { $set: { userRole: 'Facilities' } }
+        );
+        console.log(`✅ Updated ${facilitiesToUpdate.length} facility userRole from 'Facility' to 'Facilities'`);
+      }
+      
+      console.log('Test accounts are ready to use.');
       console.log('Test admin email: test.admin@booksmart.test');
       console.log('Test clinician email: test.rn@booksmart.test');
       console.log('Test facility email: test.facility1@booksmart.test');
@@ -125,7 +140,7 @@ const populateTestDatabases = async () => {
         contactEmail: 'test.facility1@booksmart.test',
         contactPhone: '555-0201',
         password: 'test123',
-        userRole: 'Facility',
+        userRole: 'Facilities', // Match frontend expectation
         userStatus: 'activate',
         facilityAcknowledgeTerm: false,
         facilityTermsVersion: '',
@@ -139,7 +154,7 @@ const populateTestDatabases = async () => {
         contactEmail: 'test.facility2@booksmart.test',
         contactPhone: '555-0202',
         password: 'test123',
-        userRole: 'Facility',
+        userRole: 'Facilities', // Match frontend expectation
         userStatus: 'activate',
         facilityAcknowledgeTerm: false,
         facilityTermsVersion: '',
