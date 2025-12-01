@@ -631,12 +631,16 @@ exports.Update = async (req, res) => {
 
     if (user) {
 console.log('updating....');
-console.log(extracted);
-console.log(request.email, user.email);
+console.log('User from token:', { email: user.email, userRole: user.userRole, isTest: user.isTest });
+console.log('Request body:', extracted);
 console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
         
         // Get existing user before update for comparison
         const existUser = await ClinicalModel.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
+        if (!existUser) {
+            console.error('User not found in database:', { email: user.email, isTest, database: isTest ? 'test_clinicals' : 'clinicals' });
+            return res.status(404).json({ error: 'User not found in database' });
+        }
         
         // If terms are being accepted, get the latest published terms version and set signed date
         if (extracted.clinicalAcknowledgeTerm === true) {

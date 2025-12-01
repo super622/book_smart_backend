@@ -915,7 +915,9 @@ exports.Update = async (req, res) => {
                             ? { contactEmail: request.contactEmail, userRole: 'Facilities' } 
                             : { contactEmail: req.user.contactEmail, userRole: req.user.userRole };
         
+            console.log('Facility Update - User from token:', { contactEmail: user.contactEmail, userRole: user.userRole, isTest: user.isTest });
             console.log('Using database:', isTest ? 'test_facilities' : 'facilities');
+            console.log('Update data:', extracted);
         
             // If terms are being accepted, get the latest published terms version and set signed date
             if (extracted.facilityAcknowledgeTerm === true) {
@@ -941,7 +943,11 @@ exports.Update = async (req, res) => {
 
             // Find and update the document
             const updatedDocument = await FacilityModel.findOneAndUpdate(query, updateFields, { new: true }); // Set `new: true` to return updated document
-            console.log('updatedDocumnet',  typeof(updatedDocument.contactEmail));
+            if (!updatedDocument) {
+                console.error('Facility not found in database:', { contactEmail: user.contactEmail, isTest, database: isTest ? 'test_facilities' : 'facilities' });
+                return res.status(404).json({ error: 'Facility not found in database' });
+            }
+            console.log('Facility updated successfully:', updatedDocument.contactEmail);
             const payload = {
                 contactEmail: user.contactEmail,
                 userRole: user.userRole,
