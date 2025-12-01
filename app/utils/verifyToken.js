@@ -50,8 +50,9 @@ const verifyUser = (req, res, next) => {
         let isUser = {};
         if (req.user.userRole === "Facilities") {
             isUser = await models.facilities.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
-        } else if (req.user.userRole === "Clinician") {
-            isUser = await models.clinical.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
+        } else if (req.user.userRole === "Clinician" || req.user.userRole === "RN" || req.user.userRole === "LPN" || req.user.userRole === "CNA") {
+            // Handle all clinician roles (RN, LPN, CNA, etc.)
+            isUser = await models.clinical.findOne({email: req.user.email}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
         } else if (req.user.userRole === "Admin") {
             isUser = await models.admins.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, userRole: 1, userStatus: 1, firstName: 1, lastName: 1, AId: 1 });
         } else if (req.user.userRole === "restaurantWork") {

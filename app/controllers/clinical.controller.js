@@ -632,15 +632,36 @@ exports.Update = async (req, res) => {
     if (user) {
 console.log('updating....');
 console.log('User from token:', { email: user.email, userRole: user.userRole, isTest: user.isTest });
-console.log('Request body:', extracted);
+console.log('Request body:', request);
+console.log('Extracted data:', extracted);
 console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
         
+        // Build query - prefer aic if provided, otherwise use email
+        let query = {};
+        if (role == "Admin") {
+            query = request.email ? { email: request.email } : { aic: request.aic };
+        } else {
+            // For non-admin, try aic first (from request), then email (from token)
+            if (request.aic) {
+                query = { aic: request.aic };
+            } else if (user.email) {
+                query = { email: user.email.toLowerCase() };
+            } else {
+                console.error('No aic or email provided for update');
+                return res.status(400).json({ error: 'No identifier (aic or email) provided for update' });
+            }
+        }
+        
+        console.log('Query for user:', query);
+        
         // Get existing user before update for comparison
-        const existUser = await ClinicalModel.findOne(role == "Admin" ? { email: request.email } : { email: user.email });
+        const existUser = await ClinicalModel.findOne(query);
         if (!existUser) {
-            console.error('User not found in database:', { email: user.email, isTest, database: isTest ? 'test_clinicals' : 'clinicals' });
+            console.error('User not found in database:', { query, isTest, database: isTest ? 'test_clinicals' : 'clinicals' });
             return res.status(404).json({ error: 'User not found in database' });
         }
+        
+        console.log('Found user:', { aic: existUser.aic, email: existUser.email });
         
         // If terms are being accepted, get the latest published terms version and set signed date
         if (extracted.clinicalAcknowledgeTerm === true) {
@@ -661,7 +682,7 @@ console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
             }
         }
         
-        ClinicalModel.findOneAndUpdate(role == "Admin" ? { email: request.email } : { email: user.email }, { $set: extracted }, { new: true }, (err, updatedDocument) => {
+        ClinicalModel.findOneAndUpdate(query, { $set: extracted }, { new: true }, (err, updatedDocument) => {
             console.log('updated');
             if (err) {
                 console.log(err);
