@@ -1,4 +1,4 @@
-module.exports = mongoose => {
+module.exports = (mongoose, collectionName) => {
 var schema = mongoose.Schema({
     userStatus: {
         type: Boolean,
@@ -84,6 +84,7 @@ schema.method("toJSON", function () {
     return object;
 });
 schema.index({ email: 1 }); // added indexing
-const Admin = mongoose.model("Admin", schema);
+const modelName = collectionName || "Admin";
+const Admin = mongoose.model(modelName, schema, collectionName); // Use custom collection name if provided
 return Admin;
 };

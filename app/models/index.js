@@ -25,4 +25,11 @@ db.restau_job = require('./restau_job.model.js')(mongoose);
 db.hotel_bid = require('./hotel_bid.model.js')(mongoose);
 db.hotel_job = require('./hotel_job.model.js')(mongoose);
 db.terms = require('./terms.model.js')(mongoose);
+
+// Test database models (separate collections for testing)
+db.test_clinical = require("./clinical.model.js")(mongoose, 'test_clinicals');
+db.test_facilities = require("./facilities.model.js")(mongoose, 'test_facilities');
+db.test_admins = require("./admin.model.js")(mongoose, 'test_admins');
+db.test_terms = require("./terms.model.js")(mongoose, 'test_terms');
+
 module.exports = db;

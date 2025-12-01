@@ -1,4 +1,4 @@
-module.exports = mongoose => {
+module.exports = (mongoose, collectionName) => {
     var schema = mongoose.Schema({
         aic: {
             type: Number,
@@ -106,6 +106,7 @@ module.exports = mongoose => {
 
     schema.index({ contactEmail: 1 }); // added indexing
 
-    const Facility = mongoose.model("Facility", schema);
+    const modelName = collectionName || "Facility";
+    const Facility = mongoose.model(modelName, schema, collectionName); // Use custom collection name if provided
     return Facility;
 };

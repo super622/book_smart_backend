@@ -2,6 +2,13 @@ const db = require("../models");
 const Terms = db.terms;
 const Admin = db.admins;
 
+// Helper function to get appropriate database models based on test mode
+function getTermsDbModels(req) {
+  const isTest = req.user?.isTest === true;
+  const { getDbModels } = require('../utils/testMode');
+  return getDbModels(isTest);
+}
+
 // Get current published Terms (for public/clinician or facility view)
 exports.getPublishedTerms = async (req, res) => {
   try {
@@ -11,7 +18,19 @@ exports.getPublishedTerms = async (req, res) => {
       return res.status(400).json({ error: 'Type parameter is required and must be "clinician" or "facility"' });
     }
 
-    const terms = await Terms.findOne({ 
+    // Check if user is in test mode (from token if authenticated, or check email if provided)
+    let isTest = false;
+    if (req.user?.isTest === true) {
+      isTest = true;
+    } else if (req.query.email) {
+      const { isTestUser } = require('../utils/testMode');
+      isTest = await isTestUser(req.query.email, type === 'clinician' ? 'clinical' : 'facility');
+    }
+    
+    const models = getTermsDbModels(req);
+    const TermsModel = isTest ? models.terms : Terms;
+
+    const terms = await TermsModel.findOne({ 
       status: 'published',
       type: type
     })
@@ -250,6 +269,10 @@ exports.saveDraftTerms = async (req, res) => {
 exports.publishTerms = async (req, res) => {
   try {
     const { id, content, version, type, adminId: bodyAdminId } = req.body;
+    const models = getTermsDbModels(req);
+    const TermsModel = models.terms;
+    const ClinicalModel = models.clinical;
+    const FacilitiesModel = models.facilities;
     
     // Get adminId from body, req.user, or query Admin document
     let adminId = bodyAdminId ? Number(bodyAdminId) : null;
@@ -276,7 +299,7 @@ exports.publishTerms = async (req, res) => {
       return res.status(400).json({ error: 'Terms ID is required' });
     }
 
-    const terms = await Terms.findById(id);
+    const terms = await TermsModel.findById(id);
     
     if (!terms) {
       return res.status(404).json({ error: 'Terms not found' });
@@ -298,7 +321,7 @@ exports.publishTerms = async (req, res) => {
     const versionToValidate = version || terms.version;
     const typeToValidate = type || terms.type;
     
-    const latestPublished = await Terms.findOne({ 
+    const latestPublished = await TermsModel.findOne({ 
       status: 'published',
       type: typeToValidate,
       _id: { $ne: id } // Exclude current terms being published
@@ -329,13 +352,11 @@ exports.publishTerms = async (req, res) => {
     console.log('Terms published successfully. Status:', savedTerms.status, 'ID:', savedTerms._id);
 
     // Automatically reset acknowledge flags when new terms are published
-    const db = require('../models');
-    
     try {
       if (savedTerms.type === 'clinician') {
         // Reset clinicalAcknowledgeTerm to false for all clinicians
         // Users will see new terms on next login (no auto-logout)
-        const updateResult = await db.clinical.updateMany(
+        const updateResult = await ClinicalModel.updateMany(
           {},
           { 
             $set: { 
@@ -346,7 +367,7 @@ exports.publishTerms = async (req, res) => {
         console.log(`Reset clinicalAcknowledgeTerm for ${updateResult.modifiedCount} clinicians`);
       } else if (savedTerms.type === 'facility') {
         // Reset facilityAcknowledgeTerm to false for all facilities
-        const updateResult = await db.facilities.updateMany(
+        const updateResult = await FacilitiesModel.updateMany(
           {},
           { 
             $set: { 
@@ -366,8 +387,8 @@ exports.publishTerms = async (req, res) => {
     
     try {
       if (savedTerms.type === 'clinician') {
-        // Notify all active clinicians
-        const clinicians = await db.clinical.find(
+        // Notify all active clinicians (only test users if in test mode)
+        const clinicians = await ClinicalModel.find(
           { userStatus: 'activate', fcmToken: { $exists: true, $ne: null, $ne: '' } },
           { fcmToken: 1 }
         );
@@ -433,8 +454,8 @@ exports.publishTerms = async (req, res) => {
           console.log('No clinicians with FCM tokens found');
         }
       } else if (savedTerms.type === 'facility') {
-        // Notify all facilities (no userStatus filter)
-        const facilities = await db.facilities.find(
+        // Notify all facilities (only test users if in test mode)
+        const facilities = await FacilitiesModel.find(
           { fcmToken: { $exists: true, $ne: null, $ne: '' } },
           { fcmToken: 1 }
         );
@@ -506,7 +527,7 @@ exports.publishTerms = async (req, res) => {
     }
 
     // Reload terms to ensure we have the latest data
-    const publishedTerms = await Terms.findById(id);
+    const publishedTerms = await TermsModel.findById(id);
     
     return res.status(200).json({ 
       message: 'Terms published successfully',

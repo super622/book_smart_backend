@@ -664,7 +664,14 @@ exports.login = async (req, res) => {
         const { contactEmail, password, userRole } = req.body;
         console.log("Login attempt:", { contactEmail: contactEmail?.toLowerCase(), userRole, passwordLength: password?.length });
         
-        const isUser = await Facility.findOne({ 
+        const { getTestModeContext } = require('../utils/testMode');
+        
+        // Check test database first
+        const testContext = await getTestModeContext(contactEmail.toLowerCase(), 'facility');
+        const FacilityModel = testContext.models.facilities;
+        const isTest = testContext.isTest;
+        
+        const isUser = await FacilityModel.findOne({ 
             contactEmail: contactEmail.toLowerCase(), 
             password: password, 
             userRole: userRole 
@@ -692,12 +699,13 @@ exports.login = async (req, res) => {
                 const payload = {
                     contactEmail: isUser.contactEmail,
                     userRole: isUser.userRole,
+                    isTest: isTest, // Include test mode flag in token
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
                 if (token) {
-                    res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: { ...isUser.toObject(), isTest: isTest } });
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
@@ -706,7 +714,7 @@ exports.login = async (req, res) => {
             }
         } else {
             // Check if user exists with email and role
-            const isExist = await Facility.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
+            const isExist = await FacilityModel.findOne({ contactEmail: contactEmail.toLowerCase(), userRole: userRole });
             console.log("User exists check:", isExist ? "Yes" : "No");
             
             if (isExist) {

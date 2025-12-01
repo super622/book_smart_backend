@@ -1,4 +1,4 @@
-module.exports = mongoose => {
+module.exports = (mongoose, collectionName) => {
   var schema = mongoose.Schema({
     type: {
       type: String,
@@ -45,7 +45,8 @@ module.exports = mongoose => {
     return object;
   });
 
-  const Terms = mongoose.model("Terms", schema);
+  const modelName = collectionName || "Terms";
+  const Terms = mongoose.model(modelName, schema, collectionName); // Use custom collection name if provided
   return Terms;
 };
 

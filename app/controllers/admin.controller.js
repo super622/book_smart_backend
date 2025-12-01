@@ -667,9 +667,15 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-
         const { email, password, userRole } = req.body;
-        const isUser = await Admin.findOne(
+        const { getTestModeContext } = require('../utils/testMode');
+        
+        // Check test database first
+        const testContext = await getTestModeContext(email.toLowerCase(), 'admin');
+        const AdminModel = testContext.models.admins;
+        const isTest = testContext.isTest;
+        
+        const isUser = await AdminModel.findOne(
             { email: email.toLowerCase(), password: password, userRole: userRole }, 
             { email: 1, userRole: 1, firstName: 1, lastName: 1, userStatus: 1, password: 1, AId: 1 });
 
@@ -678,14 +684,15 @@ exports.login = async (req, res) => {
                 const payload = {
                     email: isUser.email,
                     userRole: isUser.userRole,
+                    isTest: isTest, // Include test mode flag in token
                     iat: Math.floor(Date.now() / 1000), 
                     exp: Math.floor(Date.now() / 1000) + expirationTime
                 }
                 const token = setToken(payload);
                 console.log(token);
                 if (token) {
-                    const updateUser = await Admin.updateOne({ email: email.toLowerCase(), userRole: userRole }, { $set: { logined: true } });
-                    res.status(200).json({ message: "Successfully Logined!", token: token, user: isUser });
+                    const updateUser = await AdminModel.updateOne({ email: email.toLowerCase(), userRole: userRole }, { $set: { logined: true } });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: { ...isUser.toObject(), isTest: isTest } });
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
@@ -693,7 +700,7 @@ exports.login = async (req, res) => {
                 res.status(402).json({message: "You are not approved! Please wait."})
             }
         } else {
-            const isExist = await Admin.findOne({ email: email.toLowerCase(), userRole: userRole });
+            const isExist = await AdminModel.findOne({ email: email.toLowerCase(), userRole: userRole });
 
             if (isExist) {
                 res.status(401).json({ message: "Login information is incorrect." })

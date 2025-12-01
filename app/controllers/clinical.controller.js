@@ -323,7 +323,14 @@ exports.login = async (req, res) => {
         const { email, password, userRole, device } = req.body;
         console.log('Login attempt:', { email: email?.toLowerCase(), userRole, passwordLength: password?.length, device });
         
-        let userData = await Clinical.findOne({ email: email.toLowerCase(), password: password }, 
+        const { getTestModeContext } = require('../utils/testMode');
+        
+        // Check test database first
+        const testContext = await getTestModeContext(email.toLowerCase(), 'clinical');
+        const ClinicalModel = testContext.models.clinical;
+        const isTest = testContext.isTest;
+        
+        let userData = await ClinicalModel.findOne({ email: email.toLowerCase(), password: password }, 
                                             { aic: 1, firstName: 1, lastName: 1, userRole: 1, userStatus: 1, device: 1, email: 1, phoneNumber: 1, title: 1, clinicalAcknowledgeTerm: 1, password: 1 });
         console.log('got userdata:', userData ? "Yes" : "No");
         if (userData) {
@@ -336,18 +343,19 @@ exports.login = async (req, res) => {
                     phoneAuth = true;
                 } else {
                     phoneAuth = false;
-                    await Clinical.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
+                    await ClinicalModel.updateOne({ email: email.toLowerCase() }, { $set: { logined: true } });
                 }
                 console.log('check device');
                 const payload = {
                     email: userData.email,
                     userRole: userData.userRole,
+                    isTest: isTest, // Include test mode flag in token
                     iat: Math.floor(Date.now() / 1000), // Issued at time
                     exp: Math.floor(Date.now() / 1000) + expirationTime // Expiration time
                 }
                 const token = setToken(payload);
                 if (token) {
-                    res.status(200).json({ message: "Successfully Logined!", token: token, user: userData, phoneAuth: phoneAuth });
+                    res.status(200).json({ message: "Successfully Logined!", token: token, user: { ...userData.toObject(), isTest: isTest }, phoneAuth: phoneAuth });
                 } else {
                     res.status(400).json({ message: "Cannot logined User!" })
                 }
@@ -356,7 +364,7 @@ exports.login = async (req, res) => {
             }
         } else {
             // Check if email exists
-            const isExist = await Clinical.findOne({ email: email.toLowerCase() }, { email: 1, userRole: 1, password: 1 });
+            const isExist = await ClinicalModel.findOne({ email: email.toLowerCase() }, { email: 1, userRole: 1, password: 1 });
             console.log('Email exists check:', isExist ? "Yes" : "No");
             if (isExist) {
                 console.log('Email exists but login failed. DB userRole:', isExist.userRole, 'Requested userRole:', userRole);

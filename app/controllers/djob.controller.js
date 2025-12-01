@@ -90,7 +90,7 @@ exports.getClinicianDJobs = async (req, res) => {
             console.log(`[getClinicianDJobs] No matching degrees found for role: "${clinicianRole}"`);
             return res.status(200).json({ message: "Success", data: [] });
         }
-        
+
         // Get ALL DJobs with matching degrees
         const allMatchingDjobs = await DJob.find({ 
             degree: { $in: matchingDegreeIds }
@@ -170,7 +170,7 @@ exports.getClinicianDJobs = async (req, res) => {
         }));
 
         console.log(`[getClinicianDJobs] Returning ${enrichedDocs.length} total jobs to clinician ${aic}`);
-        
+
         return res.status(200).json({ message: "Success", data: enrichedDocs });
     } catch (e) {
         console.error('[getClinicianDJobs] Error:', e);
@@ -342,15 +342,15 @@ exports.createDJob = async (req, res) => {
           // Send notifications only to facility's eligible staff
           await Promise.all(
             eligibleClinicians.map(async (clinician) => {
-              const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
+        const clinicianName = `${clinician.firstName || ""} ${clinician.lastName || ""}`.trim();
 
               // Email
               const emailSubject = `New ${degreeName} Shift Available`;
-              const emailContent = `
-                <p>Dear ${clinicianName || "Clinician"},</p>
+        const emailContent = `
+          <p>Dear ${clinicianName || "Clinician"},</p>
                 <p>A new ${degreeName} shift is available on <strong>${normShift.date}</strong> at <strong>${normShift.time}</strong> from <strong>${facilityName}</strong>.</p>
                 <p>Login to the app to apply for this shift before someone else does!</p>
-              `;
+        `;
               await mailTrans.sendMail(clinician.email, emailSubject, emailContent);
 
               // FCM Push
@@ -417,7 +417,7 @@ exports.updateDJob = async (req, res) => {
             notifyFacilityAdmin = { action: 'rejected', job: currentJob };
           }
         } else {
-          update.status = s;
+        update.status = s;
         }
     }
 

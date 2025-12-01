@@ -1,4 +1,4 @@
-module.exports = mongoose => {
+module.exports = (mongoose, collectionName) => {
   var schema = mongoose.Schema({
     aic: {
       type: Number,
@@ -299,6 +299,7 @@ module.exports = mongoose => {
 
   schema.index({ aic: 1, email: 1 });
 
-  const Clinical = mongoose.model("Clinical", schema); // Changed model name to "Master"
+  const modelName = collectionName || "Clinical";
+  const Clinical = mongoose.model(modelName, schema, collectionName); // Use custom collection name if provided
   return Clinical;
 };

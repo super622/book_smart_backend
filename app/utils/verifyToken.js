@@ -43,13 +43,17 @@ const verifyUser = (req, res, next) => {
     console.log(req.user);
     verifyToken(req, res, async () => {
         console.log(req.user)
+        const { getDbModels } = require('./testMode');
+        const isTest = req.user.isTest === true;
+        const models = getDbModels(isTest);
+        
         let isUser = {};
         if (req.user.userRole === "Facilities") {
-            isUser = await Facility.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
+            isUser = await models.facilities.findOne({contactEmail: req.user.contactEmail, userRole: req.user.userRole}, { aic: 1, userStatus: 1, userRole: 1, entryDate: 1, companyName: 1, firstName: 1, lastName: 1, contactEmail: 1, contactPhone: 1 })
         } else if (req.user.userRole === "Clinician") {
-            isUser = await Clinical.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
+            isUser = await models.clinical.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 })
         } else if (req.user.userRole === "Admin") {
-            isUser = await Admin.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, userRole: 1, userStatus: 1, firstName: 1, lastName: 1, AId: 1 });
+            isUser = await models.admins.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, userRole: 1, userStatus: 1, firstName: 1, lastName: 1, AId: 1 });
         } else if (req.user.userRole === "restaurantWork") {
             isUser = await RestaurantUser.findOne({email: req.user.email, userRole: req.user.userRole}, { email: 1, aic: 1, firstName: 1, lastName: 1, userRole: 1, phoneNumber: 1, title: 1, userStatus: 1 });
         } else if (req.user.userRole === "restaurantManager") {
@@ -61,7 +65,7 @@ const verifyUser = (req, res, next) => {
         }
 
         if (isUser) {
-            req.user = isUser;
+            req.user = { ...isUser.toObject(), isTest: isTest };
             next();
         } else {
             return res.status(401).json({success: false, message: "You are not authenticated!"});
