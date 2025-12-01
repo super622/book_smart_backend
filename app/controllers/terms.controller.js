@@ -764,10 +764,10 @@ exports.acknowledgeNewTerms = async (req, res) => {
 // Get terms status for all users (admin only)
 exports.getTermsStatus = async (req, res) => {
   try {
-    const db = require('../models');
+    const models = getTermsDbModels(req);
     
     // Get latest published terms versions
-    const clinicianTermsList = await db.terms
+    const clinicianTermsList = await models.terms
       .find({ type: 'clinician', status: 'published' })
       .sort({ publishedDate: -1 })
       .limit(1)
@@ -775,7 +775,7 @@ exports.getTermsStatus = async (req, res) => {
       .lean();
     const latestClinicianTerms = clinicianTermsList.length > 0 ? clinicianTermsList[0] : null;
     
-    const facilityTermsList = await db.terms
+    const facilityTermsList = await models.terms
       .find({ type: 'facility', status: 'published' })
       .sort({ publishedDate: -1 })
       .limit(1)
@@ -784,14 +784,14 @@ exports.getTermsStatus = async (req, res) => {
     const latestFacilityTerms = facilityTermsList.length > 0 ? facilityTermsList[0] : null;
     
     // Get all clinicians with terms info
-    const clinicians = await db.clinical
+    const clinicians = await models.clinical
       .find({})
       .select('aic firstName lastName email phoneNumber userRole title clinicalAcknowledgeTerm clinicalTermsVersion clinicalTermsSignedDate userStatus')
       .sort({ lastName: 1, firstName: 1 })
       .lean();
     
     // Get all facilities with terms info
-    const facilities = await db.facilities
+    const facilities = await models.facilities
       .find({})
       .select('aic firstName lastName companyName contactEmail contactPhone facilityAcknowledgeTerm facilityTermsVersion facilityTermsSignedDate userStatus')
       .sort({ companyName: 1, lastName: 1, firstName: 1 })
