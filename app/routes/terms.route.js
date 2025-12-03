@@ -13,6 +13,7 @@ module.exports = app => {
   router.get("/overview", verifyUser, terms.getTermsOverview);
   router.get("/draft", verifyUser, terms.getDraftTerms);
   router.get("/status", verifyUser, terms.getTermsStatus); // Admin only - get terms status for all users (MUST be before /:id)
+  router.get("/signature-history", verifyUser, terms.getSignatureHistory); // Admin only - get signature history for a user
   router.get("/:id", verifyUser, terms.getTermsById);
   router.post("/save-draft", verifyUser, terms.saveDraftTerms);
   router.post("/publish", verifyUser, terms.publishTerms);

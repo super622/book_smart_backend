@@ -956,8 +956,19 @@ exports.Update = async (req, res) => {
                     ).sort({ publishedDate: -1 }).limit(1).lean();
                     
                     if (latestTerms && latestTerms.length > 0) {
+                        const signedDate = new Date();
                         extracted.facilityTermsVersion = latestTerms[0].version;
-                        extracted.facilityTermsSignedDate = new Date();
+                        extracted.facilityTermsSignedDate = signedDate;
+                        
+                        // Get existing facility to retrieve current history
+                        const existingFacility = await FacilityModel.findOne(query);
+                        const existingHistory = existingFacility?.facilityTermsHistory || [];
+                        const newHistoryEntry = {
+                            version: latestTerms[0].version,
+                            signedDate: signedDate,
+                            signature: extracted.signature || ''
+                        };
+                        extracted.facilityTermsHistory = [...existingHistory, newHistoryEntry];
                     }
                 } catch (termsError) {
                     console.error('Error fetching latest terms version:', termsError);

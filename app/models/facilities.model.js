@@ -53,6 +53,11 @@ module.exports = (mongoose, collectionName) => {
             type: Date,
             default: null
         },
+        facilityTermsHistory: [{
+            version: { type: String, required: true },
+            signedDate: { type: Date, required: true },
+            signature: { type: String, default: '' }
+        }],
         selectedoption: {
             type: String,
         },

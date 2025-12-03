@@ -881,6 +881,49 @@ exports.getTermsStatus = async (req, res) => {
   }
 };
 
+// Get signature history for a user
+exports.getSignatureHistory = async (req, res) => {
+  try {
+    const { aic, type } = req.query; // type: 'clinician' or 'facility'
+    
+    if (!aic || !type) {
+      return res.status(400).json({ error: 'aic and type parameters are required' });
+    }
+    
+    if (!['clinician', 'facility'].includes(type)) {
+      return res.status(400).json({ error: 'type must be "clinician" or "facility"' });
+    }
+    
+    const models = getTermsDbModels(req);
+    const isTest = req.user?.isTest === true;
+    
+    console.log('Fetching signature history:', { aic, type, isTest, database: isTest ? 'test' : 'production' });
+    
+    let history = [];
+    if (type === 'clinician') {
+      const clinician = await models.clinical.findOne({ aic: Number(aic) })
+        .select('clinicalTermsHistory')
+        .lean();
+      history = clinician?.clinicalTermsHistory || [];
+      console.log('Found clinician:', clinician ? 'Yes' : 'No', 'History entries:', history.length);
+    } else {
+      const facility = await models.facilities.findOne({ aic: Number(aic) })
+        .select('facilityTermsHistory')
+        .lean();
+      history = facility?.facilityTermsHistory || [];
+      console.log('Found facility:', facility ? 'Yes' : 'No', 'History entries:', history.length);
+    }
+    
+    // Sort by signedDate descending (most recent first)
+    history.sort((a, b) => new Date(b.signedDate) - new Date(a.signedDate));
+    
+    return res.status(200).json({ history });
+  } catch (error) {
+    console.error('Error fetching signature history:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 // Test FCM notification (for debugging)
 exports.testFCMNotification = async (req, res) => {
     console.log('Test FCM Notification');

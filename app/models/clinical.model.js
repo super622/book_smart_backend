@@ -84,6 +84,11 @@ module.exports = (mongoose, collectionName) => {
       type: Date,
       default: null
     },
+    clinicalTermsHistory: [{
+      version: { type: String, required: true },
+      signedDate: { type: Date, required: true },
+      signature: { type: String, default: '' }
+    }],
     signature: {
       type: Buffer,
       required: false,

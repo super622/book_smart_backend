@@ -687,8 +687,18 @@ console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
                 ).sort({ publishedDate: -1 }).limit(1).lean();
                 
                 if (latestTerms && latestTerms.length > 0) {
+                    const signedDate = new Date();
                     extracted.clinicalTermsVersion = latestTerms[0].version;
-                    extracted.clinicalTermsSignedDate = new Date();
+                    extracted.clinicalTermsSignedDate = signedDate;
+                    
+                    // Get existing history and add new entry
+                    const existingHistory = existUser.clinicalTermsHistory || [];
+                    const newHistoryEntry = {
+                        version: latestTerms[0].version,
+                        signedDate: signedDate,
+                        signature: extracted.signature || ''
+                    };
+                    extracted.clinicalTermsHistory = [...existingHistory, newHistoryEntry];
                 }
             } catch (termsError) {
                 console.error('Error fetching latest terms version:', termsError);
