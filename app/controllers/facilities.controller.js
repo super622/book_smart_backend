@@ -963,10 +963,19 @@ exports.Update = async (req, res) => {
                         // Get existing facility to retrieve current history
                         const existingFacility = await FacilityModel.findOne(query);
                         const existingHistory = existingFacility?.facilityTermsHistory || [];
+                        // Ensure signature is a string (Base64)
+                        let signatureString = '';
+                        if (extracted.signature) {
+                            if (Buffer.isBuffer(extracted.signature)) {
+                                signatureString = extracted.signature.toString('base64');
+                            } else if (typeof extracted.signature === 'string') {
+                                signatureString = extracted.signature;
+                            }
+                        }
                         const newHistoryEntry = {
                             version: latestTerms[0].version,
                             signedDate: signedDate,
-                            signature: extracted.signature || ''
+                            signature: signatureString
                         };
                         extracted.facilityTermsHistory = [...existingHistory, newHistoryEntry];
                     }

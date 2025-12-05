@@ -827,14 +827,14 @@ exports.getTermsStatus = async (req, res) => {
     // Get all clinicians with terms info
     const clinicians = await models.clinical
       .find({})
-      .select('aic firstName lastName email phoneNumber userRole title clinicalAcknowledgeTerm clinicalTermsVersion clinicalTermsSignedDate userStatus')
+      .select('aic firstName lastName email phoneNumber userRole title clinicalAcknowledgeTerm clinicalTermsVersion clinicalTermsSignedDate clinicalTermsHistory userStatus')
       .sort({ lastName: 1, firstName: 1 })
       .lean();
     
     // Get all facilities with terms info
     const facilities = await models.facilities
       .find({})
-      .select('aic firstName lastName companyName contactEmail contactPhone facilityAcknowledgeTerm facilityTermsVersion facilityTermsSignedDate userStatus')
+      .select('aic firstName lastName companyName contactEmail contactPhone facilityAcknowledgeTerm facilityTermsVersion facilityTermsSignedDate facilityTermsHistory userStatus')
       .sort({ companyName: 1, lastName: 1, firstName: 1 })
       .lean();
     
@@ -854,6 +854,16 @@ exports.getTermsStatus = async (req, res) => {
         // The flag gets reset when new terms are published, but if they've signed the latest, they're considered signed
         const hasAccepted = isUpToDate || c.clinicalAcknowledgeTerm === true;
         
+        // Get the latest signature from history (most recent entry)
+        let latestSignature = '';
+        if (c.clinicalTermsHistory && Array.isArray(c.clinicalTermsHistory) && c.clinicalTermsHistory.length > 0) {
+          // Sort by signedDate descending and get the most recent
+          const sortedHistory = [...c.clinicalTermsHistory].sort((a, b) => 
+            new Date(b.signedDate) - new Date(a.signedDate)
+          );
+          latestSignature = sortedHistory[0].signature || '';
+        }
+        
         return {
           aic: c.aic,
           firstName: c.firstName,
@@ -865,6 +875,7 @@ exports.getTermsStatus = async (req, res) => {
           hasAccepted: hasAccepted,
           termsVersion: c.clinicalTermsVersion || '',
           termsSignedDate: c.clinicalTermsSignedDate || null,
+          signature: latestSignature,
           userStatus: c.userStatus || 'inactive',
           isUpToDate: isUpToDate
         };
@@ -876,6 +887,16 @@ exports.getTermsStatus = async (req, res) => {
         // The flag gets reset when new terms are published, but if they've signed the latest, they're considered signed
         const hasAccepted = isUpToDate || f.facilityAcknowledgeTerm === true;
         
+        // Get the latest signature from history (most recent entry)
+        let latestSignature = '';
+        if (f.facilityTermsHistory && Array.isArray(f.facilityTermsHistory) && f.facilityTermsHistory.length > 0) {
+          // Sort by signedDate descending and get the most recent
+          const sortedHistory = [...f.facilityTermsHistory].sort((a, b) => 
+            new Date(b.signedDate) - new Date(a.signedDate)
+          );
+          latestSignature = sortedHistory[0].signature || '';
+        }
+        
         return {
           aic: f.aic,
           firstName: f.firstName,
@@ -886,6 +907,7 @@ exports.getTermsStatus = async (req, res) => {
           hasAccepted: hasAccepted,
           termsVersion: f.facilityTermsVersion || '',
           termsSignedDate: f.facilityTermsSignedDate || null,
+          signature: latestSignature,
           userStatus: f.userStatus || 'inactive',
           isUpToDate: isUpToDate
         };

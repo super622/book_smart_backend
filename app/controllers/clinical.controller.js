@@ -693,10 +693,19 @@ console.log('Using database:', isTest ? 'test_clinicals' : 'clinicals');
                     
                     // Get existing history and add new entry
                     const existingHistory = existUser.clinicalTermsHistory || [];
+                    // Ensure signature is a string (Base64)
+                    let signatureString = '';
+                    if (extracted.signature) {
+                        if (Buffer.isBuffer(extracted.signature)) {
+                            signatureString = extracted.signature.toString('base64');
+                        } else if (typeof extracted.signature === 'string') {
+                            signatureString = extracted.signature;
+                        }
+                    }
                     const newHistoryEntry = {
                         version: latestTerms[0].version,
                         signedDate: signedDate,
-                        signature: extracted.signature || ''
+                        signature: signatureString
                     };
                     extracted.clinicalTermsHistory = [...existingHistory, newHistoryEntry];
                 }
