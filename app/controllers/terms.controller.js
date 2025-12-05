@@ -847,33 +847,49 @@ exports.getTermsStatus = async (req, res) => {
         version: latestFacilityTerms.version,
         publishedDate: latestFacilityTerms.publishedDate
       } : null,
-      clinicians: clinicians.map(c => ({
-        aic: c.aic,
-        firstName: c.firstName,
-        lastName: c.lastName,
-        email: c.email,
-        phoneNumber: c.phoneNumber,
-        userRole: c.userRole,
-        title: c.title,
-        hasAccepted: c.clinicalAcknowledgeTerm || false,
-        termsVersion: c.clinicalTermsVersion || '',
-        termsSignedDate: c.clinicalTermsSignedDate || null,
-        userStatus: c.userStatus || 'inactive',
-        isUpToDate: latestClinicianTerms ? (c.clinicalTermsVersion === latestClinicianTerms.version) : false
-      })),
-      facilities: facilities.map(f => ({
-        aic: f.aic,
-        firstName: f.firstName,
-        lastName: f.lastName,
-        companyName: f.companyName || '',
-        contactEmail: f.contactEmail,
-        contactPhone: f.contactPhone,
-        hasAccepted: f.facilityAcknowledgeTerm || false,
-        termsVersion: f.facilityTermsVersion || '',
-        termsSignedDate: f.facilityTermsSignedDate || null,
-        userStatus: f.userStatus || 'inactive',
-        isUpToDate: latestFacilityTerms ? (f.facilityTermsVersion === latestFacilityTerms.version) : false
-      }))
+      clinicians: clinicians.map(c => {
+        // Check if user has signed the latest version
+        const isUpToDate = latestClinicianTerms ? (c.clinicalTermsVersion === latestClinicianTerms.version) : false;
+        // User has accepted if they've signed the latest version (regardless of clinicalAcknowledgeTerm flag)
+        // The flag gets reset when new terms are published, but if they've signed the latest, they're considered signed
+        const hasAccepted = isUpToDate || c.clinicalAcknowledgeTerm === true;
+        
+        return {
+          aic: c.aic,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          email: c.email,
+          phoneNumber: c.phoneNumber,
+          userRole: c.userRole,
+          title: c.title,
+          hasAccepted: hasAccepted,
+          termsVersion: c.clinicalTermsVersion || '',
+          termsSignedDate: c.clinicalTermsSignedDate || null,
+          userStatus: c.userStatus || 'inactive',
+          isUpToDate: isUpToDate
+        };
+      }),
+      facilities: facilities.map(f => {
+        // Check if facility has signed the latest version
+        const isUpToDate = latestFacilityTerms ? (f.facilityTermsVersion === latestFacilityTerms.version) : false;
+        // Facility has accepted if they've signed the latest version (regardless of facilityAcknowledgeTerm flag)
+        // The flag gets reset when new terms are published, but if they've signed the latest, they're considered signed
+        const hasAccepted = isUpToDate || f.facilityAcknowledgeTerm === true;
+        
+        return {
+          aic: f.aic,
+          firstName: f.firstName,
+          lastName: f.lastName,
+          companyName: f.companyName || '',
+          contactEmail: f.contactEmail,
+          contactPhone: f.contactPhone,
+          hasAccepted: hasAccepted,
+          termsVersion: f.facilityTermsVersion || '',
+          termsSignedDate: f.facilityTermsSignedDate || null,
+          userStatus: f.userStatus || 'inactive',
+          isUpToDate: isUpToDate
+        };
+      })
     });
   } catch (error) {
     console.error('Error fetching terms status:', error);
