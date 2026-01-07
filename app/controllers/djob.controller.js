@@ -72,22 +72,36 @@ exports.getClinicianDJobs = async (req, res) => {
         // Get the clinician's userRole (RN, CNA, LPN, etc.)
         const clinician = await Clinician.findOne({ aic });
         if (!clinician) {
+            console.log(`[getClinicianDJobs] Clinician not found for aic: ${aic}`);
             return res.status(404).json({ message: "Clinician not found" });
         }
-        const clinicianRole = clinician.title;
         
-        console.log(`[getClinicianDJobs] Clinician ${aic} - Role: "${clinicianRole}"`);
+        // Try title first, fallback to userRole if title is empty
+        const clinicianRole = (clinician.title && clinician.title.trim()) || clinician.userRole || '';
+        
+        console.log(`[getClinicianDJobs] Clinician ${aic} - Name: "${clinician.firstName} ${clinician.lastName}" - Title: "${clinician.title}" - UserRole: "${clinician.userRole}" - Using: "${clinicianRole}"`);
 
-        // Find degrees that match the clinician's userRole
+        if (!clinicianRole) {
+            console.log(`[getClinicianDJobs] Clinician has no title or userRole`);
+            return res.status(200).json({ message: "Success", data: [] });
+        }
+
+        // Find degrees that match the clinician's role (try both exact match and case-insensitive)
         const matchingDegrees = await Degree.find({ 
-            degreeName: { $regex: new RegExp(`^${clinicianRole}$`, 'i') } 
+            $or: [
+                { degreeName: { $regex: new RegExp(`^${clinicianRole}$`, 'i') } },
+                { degreeName: clinicianRole }
+            ]
         });
         const matchingDegreeIds = matchingDegrees.map(d => d.Did);
         
-        console.log(`[getClinicianDJobs] Matching degrees:`, matchingDegrees.map(d => `${d.Did}:${d.degreeName}`));
+        console.log(`[getClinicianDJobs] Matching degrees (${matchingDegrees.length}):`, matchingDegrees.map(d => `${d.Did}:${d.degreeName}`));
 
         if (matchingDegreeIds.length === 0) {
             console.log(`[getClinicianDJobs] No matching degrees found for role: "${clinicianRole}"`);
+            // Log all available degrees for debugging
+            const allDegrees = await Degree.find({});
+            console.log(`[getClinicianDJobs] All available degrees:`, allDegrees.map(d => `${d.Did}:${d.degreeName}`));
             return res.status(200).json({ message: "Success", data: [] });
         }
 
@@ -108,8 +122,11 @@ exports.getClinicianDJobs = async (req, res) => {
           // Compare as numbers to avoid type mismatch issues
           const isAssignedToMe = Number(dJob.clinicianId) === clinicianAicNum;
           
+          console.log(`[getClinicianDJobs] DJob ${dJob.DJobId}: clinicianId=${dJob.clinicianId} (${typeof dJob.clinicianId}), clinicianAicNum=${clinicianAicNum}, isAssignedToMe=${isAssignedToMe}`);
+          
           // If assigned to me, always show
           if (isAssignedToMe) {
+            console.log(`[getClinicianDJobs] DJob ${dJob.DJobId} is assigned to this clinician - including it`);
             filteredDocs.push(dJob);
             continue;
           }
