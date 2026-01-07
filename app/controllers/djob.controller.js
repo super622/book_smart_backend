@@ -102,9 +102,11 @@ exports.getClinicianDJobs = async (req, res) => {
         // 1. Assigned to this clinician, OR
         // 2. Unassigned AND clinician is in that facility's staffInfo
         const filteredDocs = [];
+        const clinicianAicNum = Number(aic); // Normalize to number for comparison
         
         for (const dJob of allMatchingDjobs) {
-          const isAssignedToMe = dJob.clinicianId === aic;
+          // Compare as numbers to avoid type mismatch issues
+          const isAssignedToMe = Number(dJob.clinicianId) === clinicianAicNum;
           
           // If assigned to me, always show
           if (isAssignedToMe) {
@@ -113,13 +115,13 @@ exports.getClinicianDJobs = async (req, res) => {
           }
           
           // If unassigned (AVAILABLE), check if I'm in this facility's staff
-          if (dJob.clinicianId === 0 && dJob.facilitiesId) {
+          if (Number(dJob.clinicianId) === 0 && dJob.facilitiesId) {
             const facilityDoc = await Facility.findOne({ aic: dJob.facilitiesId });
             
             if (facilityDoc && Array.isArray(facilityDoc.staffInfo)) {
               // Check if clinician's AIC is in this facility's staffInfo
               const isInFacilityStaff = facilityDoc.staffInfo.some(
-                staff => Number(staff.aic || staff.userAic) === Number(aic)
+                staff => Number(staff.aic || staff.userAic) === clinicianAicNum
               );
               
               if (isInFacilityStaff) {
